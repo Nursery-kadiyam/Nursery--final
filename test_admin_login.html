@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Admin Login Test</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Instructions</h3>
+            <p>This page helps you test the admin login functionality. Follow these steps:</p>
+            <ol>
+                <li>Run the SQL script <code>fix_admin_login.sql</code> in Supabase</li>
+                <li>Update the admin email list in the login popup component</li>
+                <li>Test the login functionality</li>
+                <li>Check the console logs for debugging information</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test Cases</h3>
+            <button onclick="testAdminLogin()">Test Admin Login</button>
+            <button onclick="testRegularLogin()">Test Regular Login</button>
+            <button onclick="testGoogleOAuth()">Test Google OAuth</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Console Logs</h3>
+            <div id="logOutput" class="log"></div>
+        </div>
+
+        <div class="test-section success">
+            <h3>✅ Expected Results</h3>
+            <ul>
+                <li><strong>Admin Login:</strong> Should redirect to <code>/admin-dashboard</code></li>
+                <li><strong>Regular Login:</strong> Should redirect to <code>/home</code></li>
+                <li><strong>Google OAuth Admin:</strong> Should redirect to <code>/admin-dashboard</code></li>
+                <li><strong>Console Logs:</strong> Should show detailed redirect information</li>
+            </ul>
+        </div>
+
+        <div class="test-section warning">
+            <h3>⚠️ Common Issues</h3>
+            <ul>
+                <li><strong>Still redirecting to user dashboard:</strong> Check admin email list and SQL script</li>
+                <li><strong>Database errors:</strong> Ensure RLS is disabled and tables exist</li>
+                <li><strong>Profile not found:</strong> Verify user exists in auth.users table</li>
+                <li><strong>No console logs:</strong> Check browser console for errors</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Quick Fixes</h3>
+            <button onclick="showSQLScript()">Show SQL Script</button>
+            <button onclick="showCodeChanges()">Show Code Changes</button>
+            <button onclick="openSupabase()">Open Supabase Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.innerHTML += `[${timestamp}] ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logOutput').innerHTML = '';
+        }
+
+        function testAdminLogin() {
+            log('🧪 Testing Admin Login...');
+            log('Expected: Redirect to /admin-dashboard');
+            log('Check browser console for detailed logs');
+            log('Look for: "Admin user detected, redirecting to admin dashboard"');
+        }
+
+        function testRegularLogin() {
+            log('🧪 Testing Regular Login...');
+            log('Expected: Redirect to /home');
+            log('Check browser console for detailed logs');
+            log('Look for: "Regular user, redirecting to home"');
+        }
+
+        function testGoogleOAuth() {
+            log('🧪 Testing Google OAuth...');
+            log('Expected: Redirect based on user role');
+            log('Check browser console for detailed logs');
+            log('Look for: "Google OAuth - Admin user detected" or "Google OAuth - Regular user"');
+        }
+
+        function showSQLScript() {
+            log('📄 SQL Script Content:');
+            log('-- Run this in Supabase SQL Editor');
+            log('-- Replace "your-admin-email@example.com" with actual email');
+            log('-- See fix_admin_login.sql for full script');
+        }
+
+        function showCodeChanges() {
+            log('📝 Code Changes Made:');
+            log('1. Enhanced login-popup.tsx with better role checking');
+            log('2. Updated AdminDashboard.tsx to check database roles');
+            log('3. Added fallback mechanisms for admin detection');
+            log('4. Improved error handling and logging');
+        }
+
+        function openSupabase() {
+            window.open('https://supabase.com/dashboard', '_blank');
+            log('🔗 Opening Supabase Dashboard...');
+        }
+
+        // Auto-log on page load
+        window.onload = function() {
+            log('🚀 Admin Login Test Page Loaded');
+            log('Ready to test admin login functionality');
+            log('Make sure to run the SQL script first!');
+        };
+    </script>
+</body>
+</html>

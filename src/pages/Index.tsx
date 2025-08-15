@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "../lib/supabase";
 
+
 // Add as many images as you want for a richer hero effect
 const heroImages = [
   "/assets/kobbari.jpeg",
@@ -123,6 +124,7 @@ const Index = () => {
       <style>{scrollAnimation}</style>
       {/* Header */}
       <Navbar />
+
 
       {/* Hero Section */}
       <section

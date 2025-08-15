@@ -24,6 +24,7 @@ import RegisterMerchant from "./pages/RegisterMerchant";
 import AdminDashboard from "./pages/AdminDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import MyQuotations from "./pages/MyQuotations";
+import AdminAutoRedirect from "./components/AdminAutoRedirect";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => {
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <AdminAutoRedirect />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/about" element={<About />} />

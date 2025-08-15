@@ -52,6 +52,8 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         const fetchAll = async () => {
             setLoading(true);
+            console.log('AdminDashboard: Fetching all data...');
+            
             const { data: quotationsData, error: quotationsError } = await supabase
                 .from('quotations')
                 .select('*');
@@ -60,13 +62,24 @@ const AdminDashboard: React.FC = () => {
                 .select('*');
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select('*, cart_items');
+                .select('*')
+                .order('created_at', { ascending: false });
             const { data: orderItemsData, error: orderItemsError } = await supabase
                 .from('order_items')
                 .select('*');
             const { data: productsData, error: productsError } = await supabase
                 .from('products')
                 .select('*');
+            
+            // Debug logging
+            console.log('AdminDashboard - Data fetch results:');
+            console.log('Orders data:', ordersData);
+            console.log('Orders error:', ordersError);
+            console.log('Order items data:', orderItemsData);
+            console.log('Order items error:', orderItemsError);
+            console.log('Quotations data:', quotationsData);
+            console.log('Merchants data:', merchantsData);
+            console.log('Products data:', productsData);
             
             if (!quotationsError && !merchantsError && !ordersError && !orderItemsError && !productsError) {
                 setQuotations(quotationsData || []);
@@ -78,20 +91,44 @@ const AdminDashboard: React.FC = () => {
                 setMerchantQuotations((quotationsData || []).filter((q: any) => 
                     merchantCodes.includes(q.merchant_code) && q.status === 'waiting_for_admin'
                 ));
+            } else {
+                console.error('AdminDashboard - Errors during data fetch:');
+                if (quotationsError) console.error('Quotations error:', quotationsError);
+                if (merchantsError) console.error('Merchants error:', merchantsError);
+                if (ordersError) console.error('Orders error:', ordersError);
+                if (orderItemsError) console.error('Order items error:', orderItemsError);
+                if (productsError) console.error('Products error:', productsError);
             }
             setLoading(false);
         };
         fetchAll();
+        
+        // Set up real-time subscription for orders
+        const ordersSubscription = supabase
+            .channel('orders_changes')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'orders' }, 
+                (payload) => {
+                    console.log('Orders table changed:', payload);
+                    // Refresh orders data when there's a change
+                    fetchAll();
+                }
+            )
+            .subscribe();
+            
+        return () => {
+            ordersSubscription.unsubscribe();
+        };
     }, [actionLoading]);
 
     useEffect(() => {
         const fetchMerchants = async () => {
             setMerchantsLoading(true);
-            const { data, error } = await supabase
-                .from('merchants')
-                .select('*');
+                const { data, error } = await supabase
+                    .from('merchants')
+                    .select('*');
             if (!error) setMerchants(data || []);
-            setMerchantsLoading(false);
+                setMerchantsLoading(false);
         };
         fetchMerchants();
     }, [actionLoading]);
@@ -101,18 +138,18 @@ const AdminDashboard: React.FC = () => {
         await supabase.from('merchants').update({ status }).eq('id', id);
         setActionLoading(null);
 
-        if (status === 'approved') {
-            toast({
-                title: "Merchant Approved!",
-                description: "Merchant can now access their dashboard.",
-                variant: "default"
-            });
-        } else if (status === 'rejected') {
-            toast({
-                title: "Merchant Rejected",
-                description: "Merchant was rejected.",
-                variant: "destructive"
-            });
+                if (status === 'approved') {
+                    toast({
+                        title: "Merchant Approved!",
+                        description: "Merchant can now access their dashboard.",
+                        variant: "default"
+                    });
+                } else if (status === 'rejected') {
+                    toast({
+                        title: "Merchant Rejected",
+                        description: "Merchant was rejected.",
+                        variant: "destructive"
+                    });
         }
     };
 
@@ -1255,11 +1292,11 @@ const AdminDashboard: React.FC = () => {
                                                                     // Get approved pricing if available
                                                                     let approvedPricePerUnit = 0;
                                                                     let approvedTotal = 0;
-                                                                    if (approvedQuotation && approvedQuotation.product_prices) {
-                                                                        const productPrices = typeof approvedQuotation.product_prices === 'string' 
-                                                                            ? JSON.parse(approvedQuotation.product_prices || '{}') 
-                                                                            : (approvedQuotation.product_prices || {});
-                                                                        approvedPricePerUnit = productPrices[idx] || 0;
+                                                                    if (approvedQuotation && approvedQuotation.unit_prices) {
+            const unitPrices = typeof approvedQuotation.unit_prices === 'string'
+                ? JSON.parse(approvedQuotation.unit_prices || '{}')
+                : (approvedQuotation.unit_prices || {});
+                                                                                                                                                 approvedPricePerUnit = unitPrices[idx] || 0;
                                                                         approvedTotal = approvedPricePerUnit * (item.quantity || 1);
                                                                     }
                                                                     
@@ -1399,10 +1436,10 @@ const AdminDashboard: React.FC = () => {
                                                         <td className="px-6 py-4">
                                                             <div className="text-sm text-gray-900 max-w-xs">
                                                                 {Array.isArray(q.items) ? q.items.map((item, idx) => {
-                                                                    const productPrices = typeof q.product_prices === 'string' 
-                                                                        ? JSON.parse(q.product_prices || '{}') 
-                                                                        : (q.product_prices || {});
-                                                                    const pricePerUnit = productPrices[idx] || 0;
+                                                                                const unitPrices = typeof q.unit_prices === 'string'
+                                                                        ? JSON.parse(q.unit_prices || '{}') 
+                                                                        : (q.unit_prices || {});
+                                                                                                                                          const pricePerUnit = unitPrices[idx] || 0;
                                                                     const totalForItem = pricePerUnit * (item.quantity || 1);
                                                                     
                                                                     const product = products.find(p => p.id === item.product_id);
@@ -1499,10 +1536,23 @@ const AdminDashboard: React.FC = () => {
                     <TabsContent value="orders" className="space-y-6">
                         <Card className="shadow-lg">
                             <CardHeader>
-                                <CardTitle className="flex items-center space-x-2">
-                                    <Package className="w-5 h-5" />
-                                    <span>Orders Management</span>
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <Package className="w-5 h-5" />
+                                        <span>Orders Management</span>
+                                    </div>
+                                    <Button 
+                                        onClick={() => {
+                                            setActionLoading('refresh-orders');
+                                            setTimeout(() => setActionLoading(null), 1000);
+                                        }}
+                                        disabled={actionLoading === 'refresh-orders'}
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        {actionLoading === 'refresh-orders' ? 'Refreshing...' : 'Refresh Orders'}
+                                    </Button>
+                                </div>
                                 <CardDescription>View all orders and their items</CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -1529,7 +1579,17 @@ const AdminDashboard: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {orders.map(order => {
+                                        {orders.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-12 text-center">
+                                                    <div className="text-gray-500">
+                                                        <div className="text-lg font-medium mb-2">No orders found</div>
+                                                        <div className="text-sm">Orders will appear here once customers place them</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            orders.map(order => {
                                             const orderItemsForOrder = orderItems.filter(item => item.order_id === order.id);
                                             return (
                                                 <tr key={order.id} className="hover:bg-gray-50">
@@ -1591,7 +1651,8 @@ const AdminDashboard: React.FC = () => {
                                                     </td>
                                                 </tr>
                                             );
-                                        })}
+                                        })
+                                        )}
                         </tbody>
                     </table>
                 </div>

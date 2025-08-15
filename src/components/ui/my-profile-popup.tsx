@@ -25,35 +25,47 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
     React.useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true)
+            setErrorMsg('')
             if (user) {
-                let { data: profileData, error } = await supabase
-                    .from("user_profiles")
-                    .select("first_name, last_name, email, phone")
-                    .eq("user_id", user.id)
-                    .maybeSingle();
-                if (!profileData) {
-                    // Profile does not exist, create it
-                    const { error: insertError } = await supabase.from('user_profiles').insert([{
-                        user_id: user.id,
-                        email: user.email,
-                        first_name: user.user_metadata?.first_name || '',
-                        last_name: user.user_metadata?.last_name || '',
-                        phone: user.user_metadata?.phone || '',
-                        created_at: new Date().toISOString()
-                    }]);
-                    if (!insertError) {
-                        // Try fetching again
-                        ({ data: profileData, error } = await supabase
-                            .from("user_profiles")
-                            .select("first_name, last_name, email, phone")
-                            .eq("user_id", user.id)
-                            .maybeSingle());
+                try {
+                    let { data: profileData, error } = await supabase
+                        .from("user_profiles")
+                        .select("first_name, last_name, email, phone")
+                        .eq("user_id", user.id)
+                        .maybeSingle();
+                    
+                    if (!profileData && !error) {
+                        // Profile does not exist, create it
+                        const { error: insertError } = await supabase.from('user_profiles').insert([{
+                            user_id: user.id,
+                            email: user.email,
+                            first_name: user.user_metadata?.first_name || '',
+                            last_name: user.user_metadata?.last_name || '',
+                            phone: user.user_metadata?.phone || '',
+                            created_at: new Date().toISOString()
+                        }]);
+                        if (!insertError) {
+                            // Try fetching again
+                            ({ data: profileData, error } = await supabase
+                                .from("user_profiles")
+                                .select("first_name, last_name, email, phone")
+                                .eq("user_id", user.id)
+                                .maybeSingle());
+                        }
                     }
-                }
-                if (error) {
+                    
+                    if (error) {
+                        console.error('Profile fetch error:', error);
+                        setProfile(null);
+                        setErrorMsg('Could not load profile. Please try again.');
+                    } else {
+                        setProfile(profileData);
+                        setErrorMsg('');
+                    }
+                } catch (err) {
+                    console.error('Profile fetch error:', err);
                     setProfile(null);
-                } else {
-                    setProfile(profileData);
+                    setErrorMsg('Could not load profile. Please try again.');
                 }
             } else {
                 setProfile(null);
@@ -76,27 +88,32 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
     const handleSave = async () => {
         setSaving(true);
         setErrorMsg('');
-        const { error } = await supabase
-            .from('user_profiles')
-            .update({
-                first_name: firstName,
-                last_name: lastName,
-                phone: phone
-            })
-            .eq('user_id', user.id);
-        setSaving(false);
-        if (error) {
-            setErrorMsg('Failed to update profile. Please try again.');
-        } else {
-            setEditMode(false);
-            // Refresh profile
-            const { data: profileData } = await supabase
+        try {
+            const { error } = await supabase
                 .from('user_profiles')
-                .select('first_name, last_name, email, phone')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            setProfile(profileData);
+                .update({
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone: phone
+                })
+                .eq('user_id', user.id);
+            
+            if (error) {
+                setErrorMsg('Failed to update profile. Please try again.');
+            } else {
+                setEditMode(false);
+                // Refresh profile
+                const { data: profileData } = await supabase
+                    .from('user_profiles')
+                    .select('first_name, last_name, email, phone')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                setProfile(profileData);
+            }
+        } catch (err) {
+            setErrorMsg('Failed to update profile. Please try again.');
         }
+        setSaving(false);
     };
 
     const handleLogout = async () => {
@@ -106,9 +123,9 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md rounded-2xl shadow-2xl border-0">
-                {/* Logo at the top */}
+            <DialogContent className="max-w-md rounded-2xl shadow-2xl border-0" aria-describedby="profile-dialog-desc">
                 <DialogDescription id="profile-dialog-desc" className="sr-only">View and edit your profile information</DialogDescription>
+                {/* Logo at the top */}
                 <div className="flex flex-col items-center mb-4">
                     <span className="text-2xl font-bold font-montserrat leading-tight">
                         <span className="text-emerald-800">Nursery</span>
@@ -171,7 +188,9 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
                                             <p>{profile.phone || "Not provided"}</p>
                                         </div>
                                     </div>
-                                  
+                                    <div className="flex gap-2 mt-4">
+                                        <Button onClick={() => setEditMode(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">Edit Profile</Button>
+                                    </div>
                                 </>
                             )}
                             <div className="border-t border-emerald-100 my-6"></div>
@@ -184,7 +203,15 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
                             </Button>
                         </div>
                     ) : (
-                        <div className="text-red-500">Could not load profile. Please try again.</div>
+                        <div className="text-center">
+                            <div className="text-red-500 mb-4">{errorMsg || 'Could not load profile. Please try again.'}</div>
+                            <Button 
+                                onClick={() => window.location.reload()} 
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                Retry
+                            </Button>
+                        </div>
                     )}
                 </div>
             </DialogContent>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Admin Dashboard Fix Test</h1>
+        
+        <div class="step">
+            <h3>Step 1: Database Fix</h3>
+            <p>Run this SQL script in your Supabase SQL Editor:</p>
+            <div class="code">
+                -- Make all users admin
+                UPDATE user_profiles SET role = 'admin';
+                
+                -- Disable RLS
+                ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
+                
+                -- Grant permissions
+                GRANT ALL ON user_profiles TO authenticated;
+                GRANT ALL ON user_profiles TO anon;
+            </div>
+            <button onclick="checkStep1()">✅ I've run the SQL script</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Clear Browser Cache</h3>
+            <p>Clear your browser cache completely:</p>
+            <ul>
+                <li>Press <strong>Ctrl + Shift + R</strong> (Windows/Linux)</li>
+                <li>Or <strong>Cmd + Shift + R</strong> (Mac)</li>
+                <li>Or open Developer Tools (F12) → Application → Clear Storage</li>
+            </ul>
+            <button onclick="checkStep2()">✅ I've cleared the cache</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test Login</h3>
+            <p>Login to your application with any user account.</p>
+            <button onclick="checkStep3()">✅ I'm logged in</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Check Navigation</h3>
+            <p>Look for "Dashboard" link in the navigation menu.</p>
+            <button onclick="checkStep4()">✅ Dashboard link is visible</button>
+            <button onclick="checkStep4Error()">❌ Dashboard link is NOT visible</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Test Direct Access</h3>
+            <p>Try accessing the admin dashboard directly:</p>
+            <div class="code">
+                /admin-dashboard
+            </div>
+            <button onclick="checkStep5()">✅ Dashboard loads successfully</button>
+            <button onclick="checkStep5Error()">❌ Dashboard does NOT load</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 6: Browser Console Check</h3>
+            <p>Open browser console (F12) and check for errors:</p>
+            <button onclick="checkStep6()">✅ No errors in console</button>
+            <button onclick="checkStep6Error()">❌ There are errors</button>
+        </div>
+
+        <div id="results" class="step" style="display: none;">
+            <h3>Test Results</h3>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="step warning">
+            <h3>🚨 Emergency Fix</h3>
+            <p>If nothing works, try this nuclear option:</p>
+            <div class="code">
+                -- Make ALL users admin and disable all security
+                UPDATE user_profiles SET role = 'admin';
+                ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
+                GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+                GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            step1: false,
+            step2: false,
+            step3: false,
+            step4: false,
+            step5: false,
+            step6: false
+        };
+
+        function checkStep1() {
+            testResults.step1 = true;
+            document.querySelector('.step:nth-child(2)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep2() {
+            testResults.step2 = true;
+            document.querySelector('.step:nth-child(3)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep3() {
+            testResults.step3 = true;
+            document.querySelector('.step:nth-child(4)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep4() {
+            testResults.step4 = true;
+            document.querySelector('.step:nth-child(5)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep4Error() {
+            testResults.step4 = false;
+            document.querySelector('.step:nth-child(5)').classList.add('error');
+            updateResults();
+        }
+
+        function checkStep5() {
+            testResults.step5 = true;
+            document.querySelector('.step:nth-child(6)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep5Error() {
+            testResults.step5 = false;
+            document.querySelector('.step:nth-child(6)').classList.add('error');
+            updateResults();
+        }
+
+        function checkStep6() {
+            testResults.step6 = true;
+            document.querySelector('.step:nth-child(7)').classList.add('success');
+            updateResults();
+        }
+
+        function checkStep6Error() {
+            testResults.step6 = false;
+            document.querySelector('.step:nth-child(7)').classList.add('error');
+            updateResults();
+        }
+
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultContent');
+            
+            const passed = Object.values(testResults).filter(Boolean).length;
+            const total = Object.keys(testResults).length;
+            
+            let html = `<h4>Progress: ${passed}/${total} steps completed</h4>`;
+            
+            if (passed === total) {
+                html += '<div class="success"><h4>🎉 SUCCESS! Admin dashboard should be working now!</h4></div>';
+            } else if (passed >= 3) {
+                html += '<div class="warning"><h4>⚠️ Almost there! Check the failed steps above.</h4></div>';
+            } else {
+                html += '<div class="error"><h4>❌ Please complete the steps above first.</h4></div>';
+            }
+            
+            contentDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

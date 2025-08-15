@@ -162,12 +162,12 @@ const MyQuotations: React.FC = () => {
 
       // Calculate individual item price from quotation
       let itemPrice = 0;
-      if (quotation.product_prices) {
-        // Parse product_prices if it's a string, otherwise use as is
-        const productPrices = typeof quotation.product_prices === 'string' 
-          ? JSON.parse(quotation.product_prices || '{}') 
-          : (quotation.product_prices || {});
-        const pricePerUnit = productPrices[index] || 0;
+              if (quotation.unit_prices) {
+            // Parse unit_prices if it's a string, otherwise use as is
+            const unitPrices = typeof quotation.unit_prices === 'string'
+                ? JSON.parse(quotation.unit_prices || '{}')
+                : (quotation.unit_prices || {});
+        const pricePerUnit = unitPrices[index] || 0;
         itemPrice = pricePerUnit * item.quantity; // Price per unit × quantity
       } else {
         // Fallback: distribute approved price equally
@@ -454,13 +454,13 @@ const MyQuotations: React.FC = () => {
                                           </TableCell>
                                                                                      <TableCell>{item.quantity}</TableCell>
                                            <TableCell>
-                                             {quotation.product_prices ? (
+                                             {quotation.unit_prices ? (
                                                (() => {
-                                                 // Parse product_prices if it's a string, otherwise use as is
-                                                 const productPrices = typeof quotation.product_prices === 'string' 
-                                                   ? JSON.parse(quotation.product_prices || '{}') 
-                                                   : (quotation.product_prices || {});
-                                                 const pricePerUnit = productPrices[index] || 0;
+                                                 // Parse unit_prices if it's a string, otherwise use as is
+                                                 const unitPrices = typeof quotation.unit_prices === 'string' 
+                                                   ? JSON.parse(quotation.unit_prices || '{}') 
+                                                   : (quotation.unit_prices || {});
+                                                 const pricePerUnit = unitPrices[index] || 0;
                                                  return (
                                                    <span className="font-medium">₹{pricePerUnit.toFixed(2)}</span>
                                                  );
@@ -470,13 +470,13 @@ const MyQuotations: React.FC = () => {
                                              ) : '-'}
                                            </TableCell>
                                            <TableCell>
-                                             {quotation.product_prices ? (
+                                             {quotation.unit_prices ? (
                                                (() => {
-                                                 // Parse product_prices if it's a string, otherwise use as is
-                                                 const productPrices = typeof quotation.product_prices === 'string' 
-                                                   ? JSON.parse(quotation.product_prices || '{}') 
-                                                   : (quotation.product_prices || {});
-                                                 const pricePerUnit = productPrices[index] || 0;
+                                                 // Parse unit_prices if it's a string, otherwise use as is
+                                                 const unitPrices = typeof quotation.unit_prices === 'string' 
+                                                   ? JSON.parse(quotation.unit_prices || '{}') 
+                                                   : (quotation.unit_prices || {});
+                                                 const pricePerUnit = unitPrices[index] || 0;
                                                  const totalForItem = pricePerUnit * (item.quantity || 1);
                                                  return (
                                                    <span className="font-medium">₹{totalForItem.toFixed(2)}</span>
@@ -508,18 +508,18 @@ const MyQuotations: React.FC = () => {
 
 
                           {/* Detailed Costs Breakdown - Only show for approved quotations */}
-                          {quotation.status === 'approved' && quotation.product_prices && (
+                          {quotation.status === 'approved' && quotation.unit_prices && (
                             <div className="mt-6">
                               <h4 className="font-semibold text-gray-700 mb-3">Detailed Costs Breakdown</h4>
                               <div className="bg-white p-4 rounded-lg shadow-sm">
                                 <div className="mb-4">
                                   <div className="font-medium text-green-600 text-sm mb-2">Product Costs:</div>
                                   {Array.isArray(quotation.items) ? quotation.items.map((item: any, idx: number) => {
-                                    // Parse product_prices if it's a string, otherwise use as is
-                                    const productPrices = typeof quotation.product_prices === 'string' 
-                                        ? JSON.parse(quotation.product_prices || '{}') 
-                                        : (quotation.product_prices || {});
-                                    const pricePerUnit = productPrices[idx] || 0;
+                                    // Parse unit_prices if it's a string, otherwise use as is
+                                    const unitPrices = typeof quotation.unit_prices === 'string' 
+                                        ? JSON.parse(quotation.unit_prices || '{}') 
+                                        : (quotation.unit_prices || {});
+                                    const pricePerUnit = unitPrices[idx] || 0;
                                     const totalForItem = pricePerUnit * (item.quantity || 1);
                                     const product = products[item.product_id];
                                     

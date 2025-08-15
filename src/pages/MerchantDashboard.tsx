@@ -687,8 +687,8 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
             ...prev,
             [quotationId]: {
                 ...prev[quotationId],
-                product_prices: {
-                    ...prev[quotationId]?.product_prices,
+                unit_prices: {
+                    ...prev[quotationId]?.unit_prices,
                     [productIndex]: parseFloat(price) || 0
                 }
             }
@@ -696,9 +696,9 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
     };
 
     const calculateTotalProductCost = (quotationId: string, items: any[]) => {
-        const productPrices = formStates[quotationId]?.product_prices || {};
+        const unitPrices = formStates[quotationId]?.unit_prices || {};
         return items.reduce((total, item, index) => {
-            const price = productPrices[index] || 0;
+            const price = unitPrices[index] || 0;
             const quantity = item.quantity || 1;
             return total + (price * quantity);
         }, 0);
@@ -721,6 +721,13 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
         }
         
         console.log('Creating new merchant quotation with merchant_code:', merchantCode);
+        console.log('Form data being sent:', {
+            unit_prices: form.unit_prices,
+            transport_cost,
+            custom_work_cost,
+            estimated_delivery_days,
+            total_quote_price
+        });
         
         const newId = crypto.randomUUID();
         const { error: insertError } = await supabase
@@ -731,7 +738,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                 user_id: q.user_id,
                 items: q.items,
                 product_cost: total_product_cost,
-                product_prices: form.product_prices || {},
+                unit_prices: form.unit_prices ? JSON.stringify(Object.values(form.unit_prices)) : null,
                 transport_cost,
                 custom_work_cost,
                 estimated_delivery_days,
@@ -890,11 +897,11 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                                                     type="number"
                                                                     placeholder="0.00"
                                                                     className="w-20 sm:w-24 h-8 sm:h-10 text-sm"
-                                                                    value={formStates[q.id]?.product_prices?.[idx] || ''}
+                                                                    value={formStates[q.id]?.unit_prices?.[idx] || ''}
                                                                     onChange={(e) => handleProductPriceChange(q.id, idx, e.target.value)}
                                                                 />
                                                                 <span className="text-xs sm:text-sm text-gray-500">
-                                                                    Total: ₹{((formStates[q.id]?.product_prices?.[idx] || 0) * (item.quantity || 1)).toFixed(2)}
+                                                                    Total: ₹{((formStates[q.id]?.unit_prices?.[idx] || 0) * (item.quantity || 1)).toFixed(2)}
                                                                 </span>
                                                             </div>
                                                         </div>

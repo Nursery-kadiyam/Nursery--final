@@ -46,14 +46,45 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
     // Fetch user role when user changes
     const fetchUserRole = async () => {
       if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single()
-        setRole(profile?.role || null)
+        try {
+          // Try both user_id and id columns
+          let profile = null;
+          const { data: profile1, error: error1 } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (profile1) {
+            profile = profile1;
+            console.log('Navbar: Found profile with user_id:', profile);
+          } else {
+            const { data: profile2, error: error2 } = await supabase
+              .from('user_profiles')
+              .select('role')
+              .eq('id', user.id)
+              .maybeSingle();
+            if (profile2) {
+              profile = profile2;
+              console.log('Navbar: Found profile with id:', profile);
+            } else {
+              console.log('Navbar: No profile found for user:', user.email);
+            }
+          }
+          
+          if (profile && (profile.role === 'admin' || profile.role === 'ADMIN' || profile.role === 'Admin')) {
+            console.log('Navbar: Setting admin role for:', user.email);
+            setRole('admin');
+          } else {
+            console.log('Navbar: Setting regular role for:', user.email);
+            setRole(null);
+          }
+        } catch (error) {
+          console.error('Navbar: Error fetching user role:', error);
+          setRole(null);
+        }
       } else {
-        setRole(null)
+        setRole(null);
       }
     }
 
@@ -90,29 +121,29 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
     }
     fetchApprovedQuotations()
 
-    // Set up real-time listener for quotations
-    if (user) {
-      const channel = supabase
-        .channel('quotations_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'quotations',
-            filter: `user_id=eq.${user.id}`
-          },
-          () => {
-            // Refresh approved quotations count when quotations change
-            fetchApprovedQuotations()
-          }
-        )
-        .subscribe()
+    // Disabled real-time listener to prevent WebSocket errors
+    // if (user) {
+    //   const channel = supabase
+    //     .channel('quotations_changes')
+    //     .on(
+    //       'postgres_changes',
+    //       {
+    //         event: '*',
+    //         schema: 'public',
+    //         table: 'quotations',
+    //         filter: `user_id=eq.${user.id}`
+    //       },
+    //       () => {
+    //         // Refresh approved quotations count when quotations change
+    //         fetchApprovedQuotations()
+    //       }
+    //     )
+    //     .subscribe()
 
-      return () => {
-        supabase.removeChannel(channel)
-      }
-    }
+    //   return () => {
+    //     supabase.removeChannel(channel)
+    //   }
+    // }
   }, [user])
 
   // Refresh quotations count when navigating to quotations page
