@@ -133,3 +133,5 @@ SELECT role, COUNT(*) FROM user_profiles GROUP BY role;
 The user roles are now properly updated! 🎯
 
 
+
+

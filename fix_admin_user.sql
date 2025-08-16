@@ -1,80 +1,58 @@
--- Fix admin user issue
--- This script will make an existing user an admin
+-- Fix Admin User Role
+-- Run this in your Supabase SQL editor
 
--- 1. First, let's see all users and their current roles
-SELECT '=== CURRENT USERS AND ROLES ===' as check_type;
+-- Step 1: Check current user_profiles table
 SELECT 
-    up.id,
-    up.user_id,
-    up.email,
-    up.first_name,
-    up.last_name,
-    up.role,
-    up.created_at
-FROM user_profiles up
-ORDER BY up.created_at DESC;
+    'Current User Profiles' as check_type,
+    id,
+    user_id,
+    email,
+    role,
+    created_at
+FROM user_profiles
+ORDER BY created_at DESC;
 
--- 2. Make the first user (or a specific user) an admin
--- Replace 'your-email@example.com' with the actual email of the user you want to make admin
+-- Step 2: Check auth.users table
+SELECT 
+    'Auth Users' as check_type,
+    id,
+    email,
+    created_at
+FROM auth.users
+ORDER BY created_at DESC;
+
+-- Step 3: Set admin role for a specific user (replace with your admin email)
+-- Option 1: Update by email
 UPDATE user_profiles 
-SET role = 'admin', updated_at = NOW()
-WHERE email = 'your-email@example.com'  -- Replace with actual email
-AND role != 'admin';
+SET role = 'admin' 
+WHERE email = 'your-admin-email@gmail.com';
 
--- 3. Alternative: Make the most recent user admin (uncomment if you want this)
--- UPDATE user_profiles 
--- SET role = 'admin', updated_at = NOW()
--- WHERE id = (
---     SELECT id FROM user_profiles 
---     ORDER BY created_at DESC 
---     LIMIT 1
--- );
+-- Option 2: Update the first user to admin
+UPDATE user_profiles 
+SET role = 'admin' 
+WHERE id = (SELECT MIN(id) FROM user_profiles);
 
--- 4. Verify the change
-SELECT '=== VERIFICATION - ADMIN USERS ===' as check_type;
+-- Option 3: Create admin profile if it doesn't exist
+INSERT INTO user_profiles (user_id, email, first_name, last_name, role, created_at)
 SELECT 
-    up.id,
-    up.user_id,
-    up.email,
-    up.first_name,
-    up.last_name,
-    up.role,
-    up.created_at
-FROM user_profiles up
-WHERE up.role = 'admin';
+    id,
+    email,
+    COALESCE(raw_user_meta_data->>'first_name', 'Admin'),
+    COALESCE(raw_user_meta_data->>'last_name', 'User'),
+    'admin',
+    NOW()
+FROM auth.users 
+WHERE email = 'your-admin-email@gmail.com'
+ON CONFLICT (user_id) DO UPDATE SET role = 'admin';
 
--- 5. Check if the user_profiles table is accessible
-SELECT '=== TABLE ACCESSIBILITY ===' as check_type;
+-- Step 4: Verify the changes
 SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM user_profiles LIMIT 1) THEN '✅ user_profiles accessible'
-        ELSE '❌ user_profiles not accessible'
-    END as accessibility_status;
-
--- 6. Check RLS status
-SELECT '=== RLS STATUS ===' as check_type;
-SELECT 
-    schemaname,
-    tablename,
-    rowsecurity
-FROM pg_tables 
-WHERE tablename = 'user_profiles';
-
--- 7. If RLS is enabled, temporarily disable it for testing
--- ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
-
--- 8. Grant necessary permissions
-GRANT ALL ON user_profiles TO authenticated;
-GRANT ALL ON user_profiles TO anon;
-GRANT ALL ON user_profiles TO service_role;
-
--- 9. Final verification
-SELECT '=== FINAL VERIFICATION ===' as check_type;
-SELECT 
-    'Admin users count: ' || COUNT(*) as admin_count
-FROM user_profiles 
-WHERE role = 'admin';
-
-SELECT 
-    'Total users count: ' || COUNT(*) as total_users
-FROM user_profiles;
+    'Updated User Profiles' as check_type,
+    id,
+    user_id,
+    email,
+    role,
+    created_at
+FROM user_profiles
+WHERE role = 'admin'
+ORDER BY created_at DESC;

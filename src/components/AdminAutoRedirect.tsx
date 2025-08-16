@@ -24,30 +24,47 @@ const AdminAutoRedirect: React.FC = () => {
           }
           console.log('Current user ID:', currentUser.id);
 
-          // Step 2: Fetch role from user_profiles - try both user_id and id columns
+          // Step 2: Fetch role from user_profiles - try email first, then user_id, then id
           let profile = null;
           let error = null;
-          const { data: profile1, error: error1 } = await supabase
+          
+          // Try by email first (most reliable)
+          const { data: profileByEmail, error: emailError } = await supabase
             .from("user_profiles")
             .select("role, id, user_id")
-            .eq("user_id", currentUser.id)
+            .eq("email", currentUser.email)
             .maybeSingle();
           
-          if (profile1) { 
-            profile = profile1; 
-            console.log('Found profile with user_id:', profile); 
+          if (profileByEmail) { 
+            profile = profileByEmail; 
+            console.log('Found profile by email:', profile); 
           } else {
-            const { data: profile2, error: error2 } = await supabase
+            // Try by user_id
+            const { data: profileByUserId, error: userIdError } = await supabase
               .from("user_profiles")
               .select("role, id, user_id")
-              .eq("id", currentUser.id)
+              .eq("user_id", currentUser.id)
               .maybeSingle();
-            if (profile2) { 
-              profile = profile2; 
-              console.log('Found profile with id:', profile); 
-            } else { 
-              error = error2; 
-              console.log('No profile found with either user_id or id'); 
+            
+            if (profileByUserId) { 
+              profile = profileByUserId; 
+              console.log('Found profile by user_id:', profile); 
+            } else {
+              // Try by id as fallback
+              const { data: profileById, error: idError } = await supabase
+                .from("user_profiles")
+                .select("role, id, user_id")
+                .eq("id", currentUser.id)
+                .maybeSingle();
+              
+              if (profileById) { 
+                profile = profileById; 
+                console.log('Found profile by id:', profile); 
+              } else { 
+                error = idError; 
+                console.log('No profile found with email, user_id, or id'); 
+                console.log('Errors - Email:', emailError, 'UserID:', userIdError, 'ID:', idError);
+              }
             }
           }
 
@@ -57,18 +74,23 @@ const AdminAutoRedirect: React.FC = () => {
           }
           console.log('User role:', profile.role);
 
-          // Step 3: Redirect based on role
-          if (profile.role === "admin" || profile.role === "ADMIN" || profile.role === "Admin") {
-            if (location.pathname !== '/admin-dashboard') {
-              console.log('Admin user - redirecting to admin dashboard');
-              navigate('/admin-dashboard');
-              setHasRedirected(true);
-            }
-          } else {
-            if (location.pathname === '/admin-dashboard') {
-              console.log('Regular user - redirecting away from admin dashboard');
-              navigate('/');
-              setHasRedirected(true);
+          // Step 3: Redirect based on role (using improved role checking)
+          if (profile.role) {
+            const roleLower = profile.role.toLowerCase().trim();
+            console.log('AdminAutoRedirect: Role after lowercase and trim:', JSON.stringify(roleLower));
+            
+            if (roleLower === 'admin') {
+              if (location.pathname !== '/admin-dashboard') {
+                console.log('Admin user - redirecting to admin dashboard');
+                navigate('/admin-dashboard');
+                setHasRedirected(true);
+              }
+            } else {
+              if (location.pathname === '/admin-dashboard') {
+                console.log('Regular user - redirecting away from admin dashboard');
+                navigate('/');
+                setHasRedirected(true);
+              }
             }
           }
         } catch (error) {

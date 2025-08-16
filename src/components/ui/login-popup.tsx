@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
+import GoogleLoginButton from "./GoogleLoginButton"
 
 interface LoginPopupProps {
     isOpen: boolean
@@ -357,8 +358,11 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
+            <DialogContent className={`sm:max-w-md ${isRegisterMode ? 'max-h-[90vh] overflow-y-auto' : ''}`} aria-describedby="login-dialog-desc">
+                <div id="login-dialog-desc" className="sr-only">
+                    {isRegisterMode ? "Register for a new account" : "Sign in to your account"}
+                </div>
+                <DialogHeader className={isRegisterMode ? "sticky top-0 bg-white z-10 pb-4 border-b border-gray-100" : ""}>
                     <DialogTitle className="text-center text-2xl font-bold text-emerald-800 font-montserrat">
                         {isRegisterMode ? "Register" : "Sign In"}
                     </DialogTitle>
@@ -418,6 +422,24 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose }) => {
                             >
                                 {loading ? "Signing in..." : "Sign In"}
                             </Button>
+                            
+                            {/* Divider */}
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-gray-300" />
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                                </div>
+                            </div>
+                            
+                            {/* Google Sign-in Button */}
+                            <GoogleLoginButton 
+                                mode="login" 
+                                disabled={loading}
+                                className="min-h-[48px] font-montserrat"
+                            />
+                            
                             <div className="text-center mt-4">
                                 <span className="text-sm text-gray-600">Don't have an account? </span>
                                 <button
@@ -432,7 +454,7 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose }) => {
                         </form>
                     ) : (
                         // Register Form
-                        <form onSubmit={handleRegister} className="space-y-4">
+                        <form onSubmit={handleRegister} className="space-y-4 pb-6">
                             <input type="hidden" name="merchant_user_id" value="merchant123" />
                             <div className="flex gap-3">
                                 <div className="w-1/2 space-y-2">
@@ -545,6 +567,24 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose }) => {
                             >
                                 {loading ? "Creating Account..." : registrationSent ? "Email Sent!" : "Create Account"}
                             </Button>
+                            
+                            {/* Divider */}
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-gray-300" />
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                                </div>
+                            </div>
+                            
+                            {/* Google Sign-in Button */}
+                            <GoogleLoginButton 
+                                mode="register" 
+                                disabled={loading || registrationSent}
+                                className="min-h-[48px] font-montserrat"
+                            />
+                            
                             <div className="text-center mt-4">
                                 <span className="text-sm text-gray-600">Already have an account? </span>
                                 <button

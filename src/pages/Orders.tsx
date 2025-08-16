@@ -316,7 +316,7 @@ const Orders = () => {
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="font-medium text-gray-900 truncate">{item.name}</p>
                                                                 <p className="text-sm text-gray-600">
-                                                                    Quantity: {item.quantity}
+                                                                    Quantity: {item.quantity} × ₹{item.price?.toFixed(2) || '0.00'} = ₹{((item.quantity || 1) * (item.price || 0)).toFixed(2)}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -341,12 +341,12 @@ const Orders = () => {
                                                                             className="w-12 h-12 object-cover rounded-lg flex-shrink-0" 
                                                                             onError={e => { e.currentTarget.src = '/assets/placeholder.svg'; }} 
                                                                         />
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="font-medium text-gray-900 truncate">{item.name}</p>
-                                                                            <p className="text-sm text-gray-600">
-                                                                                Quantity: {item.quantity}
-                                                                            </p>
-                                                                        </div>
+                                                                                                                                <div className="flex-1 min-w-0">
+                                                            <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                                                            <p className="text-sm text-gray-600">
+                                                                Quantity: {item.quantity} × ₹{item.price?.toFixed(2) || '0.00'} = ₹{((item.quantity || 1) * (item.price || 0)).toFixed(2)}
+                                                            </p>
+                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>

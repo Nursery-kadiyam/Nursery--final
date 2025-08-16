@@ -1538,8 +1538,8 @@ const AdminDashboard: React.FC = () => {
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
-                                        <Package className="w-5 h-5" />
-                                        <span>Orders Management</span>
+                                    <Package className="w-5 h-5" />
+                                    <span>Orders Management</span>
                                     </div>
                                     <Button 
                                         onClick={() => {

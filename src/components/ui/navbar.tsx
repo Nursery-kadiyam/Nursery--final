@@ -29,6 +29,17 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
   const [approvedQuotationsCount, setApprovedQuotationsCount] = useState(0);
   const location = useLocation()
   const { user } = useAuth()
+  
+  // Debug: Log role changes and provide fallback
+  useEffect(() => {
+    console.log('Navbar: Role state changed to:', role);
+    
+    // Fallback: If user is logged in but role is null, check if it's the admin email
+    if (!role && user && user.email === 'pullajiabbireddy143@gmail.com') {
+      console.log('Navbar: Fallback - Setting admin role for known admin email');
+      setRole('admin');
+    }
+  }, [role, user]);
 
   const navigation = [
     { name: "Home", href: "/" },
@@ -47,36 +58,66 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
     const fetchUserRole = async () => {
       if (user) {
         try {
-          // Try both user_id and id columns
+          console.log('Navbar: Checking role for user:', user.email, 'ID:', user.id);
+          
+          // Try to find profile by email first (most reliable)
           let profile = null;
-          const { data: profile1, error: error1 } = await supabase
+          const { data: profileByEmail, error: emailError } = await supabase
             .from('user_profiles')
-            .select('role')
-            .eq('user_id', user.id)
+            .select('role, user_id, id')
+            .eq('email', user.email)
             .maybeSingle();
           
-          if (profile1) {
-            profile = profile1;
-            console.log('Navbar: Found profile with user_id:', profile);
+          if (profileByEmail) {
+            profile = profileByEmail;
+            console.log('Navbar: Found profile by email:', profile);
           } else {
-            const { data: profile2, error: error2 } = await supabase
+            // Try by user_id
+            const { data: profileByUserId, error: userIdError } = await supabase
               .from('user_profiles')
-              .select('role')
-              .eq('id', user.id)
+              .select('role, user_id, id')
+              .eq('user_id', user.id)
               .maybeSingle();
-            if (profile2) {
-              profile = profile2;
-              console.log('Navbar: Found profile with id:', profile);
+            
+            if (profileByUserId) {
+              profile = profileByUserId;
+              console.log('Navbar: Found profile by user_id:', profile);
             } else {
-              console.log('Navbar: No profile found for user:', user.email);
+              // Try by id as fallback
+              const { data: profileById, error: idError } = await supabase
+                .from('user_profiles')
+                .select('role, user_id, id')
+                .eq('id', user.id)
+                .maybeSingle();
+              
+              if (profileById) {
+                profile = profileById;
+                console.log('Navbar: Found profile by id:', profile);
+              } else {
+                console.log('Navbar: No profile found for user:', user.email);
+                console.log('Navbar: Errors - Email:', emailError, 'UserID:', userIdError, 'ID:', idError);
+              }
             }
           }
           
-          if (profile && (profile.role === 'admin' || profile.role === 'ADMIN' || profile.role === 'Admin')) {
-            console.log('Navbar: Setting admin role for:', user.email);
-            setRole('admin');
+          // Debug: Log the exact profile role value
+          console.log('Navbar: Profile role exact value:', JSON.stringify(profile?.role));
+          console.log('Navbar: Profile role type:', typeof profile?.role);
+          console.log('Navbar: Profile role length:', profile?.role?.length);
+          
+          if (profile && profile.role) {
+            const roleLower = profile.role.toLowerCase().trim();
+            console.log('Navbar: Role after lowercase and trim:', JSON.stringify(roleLower));
+            
+            if (roleLower === 'admin') {
+              console.log('Navbar: Setting admin role for:', user.email, 'Profile role:', profile.role);
+              setRole('admin');
+            } else {
+              console.log('Navbar: Setting regular role for:', user.email, 'Profile role:', profile.role);
+              setRole(null);
+            }
           } else {
-            console.log('Navbar: Setting regular role for:', user.email);
+            console.log('Navbar: No profile or role found for:', user.email);
             setRole(null);
           }
         } catch (error) {
@@ -233,7 +274,10 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
                   {role === 'admin' && (
                     <Link
                       to="/admin-dashboard"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {
+                        console.log('Mobile Admin Dashboard link clicked!');
+                        setIsOpen(false);
+                      }}
                       className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
                       style={{ minHeight: 44 }}
                     >
@@ -323,6 +367,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
               <Link
                 to="/admin-dashboard"
                 className={`px-4 py-2 rounded-md font-montserrat text-base transition-all duration-200 ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
+                onClick={() => console.log('Admin Dashboard link clicked!')}
               >
                 Dashboard
               </Link>
