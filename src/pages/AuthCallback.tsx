@@ -26,7 +26,7 @@ const AuthCallback: React.FC = () => {
                     const { data: profileData, error: profileError } = await supabase
                         .from('user_profiles')
                         .select('*')
-                        .eq('user_id', data.session.user.id)
+                        .eq('id', data.session.user.id)
                         .single();
 
                     if (profileError && profileError.code === 'PGRST116') {
@@ -35,7 +35,7 @@ const AuthCallback: React.FC = () => {
                             .from('user_profiles')
                             .insert([
                                 {
-                                    user_id: data.session.user.id,
+                                    id: data.session.user.id,
                                     email: data.session.user.email,
                                     first_name: data.session.user.user_metadata?.full_name?.split(' ')[0] || '',
                                     last_name: data.session.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',

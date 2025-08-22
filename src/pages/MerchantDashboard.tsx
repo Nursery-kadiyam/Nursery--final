@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
+import ImageUpload from "@/components/ui/ImageUpload";
 import { 
     Store, 
     FileText, 
@@ -363,9 +364,13 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [formData, setFormData] = useState({
         name: '',
-        price: '',
         available_quantity: '',
-        image_url: ''
+        image_url: '',
+        description: '',
+        about: '',
+        care_instructions: '',
+        specifications: '',
+        categories: ''
     });
 
     const fetchProducts = async () => {
@@ -384,23 +389,66 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
 
     const handleAddProduct = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { error } = await supabase
-            .from('products')
-            .insert([{
-                name: formData.name,
-                price: parseFloat(formData.price),
+        
+        // Debug logging
+        console.log('Adding product with data:', formData);
+        console.log('Merchant email:', merchantEmail);
+        
+        // Validate required fields
+        if (!formData.name.trim()) {
+            toast({
+                title: "Validation Error",
+                description: "Product name is required.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
+        if (!formData.available_quantity || parseInt(formData.available_quantity) <= 0) {
+            toast({
+                title: "Validation Error",
+                description: "Available quantity must be greater than 0.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
+        const productData = {
+            name: formData.name.trim(),
                 available_quantity: parseInt(formData.available_quantity),
-                image_url: formData.image_url,
+            image_url: formData.image_url || null,
+            description: formData.description || null,
+            about: formData.about || null,
+            care_instructions: formData.care_instructions || null,
+            specifications: formData.specifications || null,
+            categories: formData.categories || null,
                 merchant_email: merchantEmail
-            }]);
+        };
+        
+        console.log('Product data to insert:', productData);
+        
+        const { data, error } = await supabase
+            .from('products')
+            .insert([productData])
+            .select();
+            
+        console.log('Insert result:', { data, error });
+        
         if (!error) {
             setShowAddDialog(false);
-            setFormData({ name: '', price: '', available_quantity: '', image_url: '' });
+            setFormData({ name: '', available_quantity: '', image_url: '', description: '', about: '', care_instructions: '', specifications: '', categories: '' });
             fetchProducts();
             toast({
-                title: "Product Added",
+                title: "Product Added ✅",
                 description: "Product has been added successfully.",
                 variant: "default"
+            });
+        } else {
+            console.error('Error adding product:', error);
+            toast({
+                title: "Error ❌",
+                description: error.message || "Failed to add product. Please try again.",
+                variant: "destructive"
             });
         }
     };
@@ -409,9 +457,13 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
         setEditingProduct(product);
         setFormData({
             name: product.name,
-            price: product.price.toString(),
             available_quantity: product.available_quantity.toString(),
-            image_url: product.image_url || ''
+            image_url: product.image_url || '',
+            description: product.description || '',
+            about: product.about || '',
+            care_instructions: product.care_instructions || '',
+            specifications: product.specifications || '',
+            categories: product.categories || ''
         });
         setShowAddDialog(true);
     };
@@ -422,15 +474,19 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
             .from('products')
             .update({
                 name: formData.name,
-                price: parseFloat(formData.price),
                 available_quantity: parseInt(formData.available_quantity),
-                image_url: formData.image_url
+                image_url: formData.image_url,
+                description: formData.description,
+                about: formData.about,
+                care_instructions: formData.care_instructions,
+                specifications: formData.specifications,
+                categories: formData.categories
             })
             .eq('id', editingProduct.id);
         if (!error) {
             setShowAddDialog(false);
             setEditingProduct(null);
-            setFormData({ name: '', price: '', available_quantity: '', image_url: '' });
+            setFormData({ name: '', available_quantity: '', image_url: '', description: '', about: '', care_instructions: '', specifications: '', categories: '' });
             fetchProducts();
             toast({
                 title: "Product Updated",
@@ -490,8 +546,19 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                             )}
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-base sm:text-lg truncate">{product.name}</CardTitle>
-                                <CardDescription className="text-sm">
-                                    ₹{product.price} • {product.available_quantity} in stock
+                                <CardDescription className="text-sm space-y-1">
+                                    <div className="flex items-center gap-2">
+                                                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    {product.categories || 'Uncategorized'}
+                                </span>
+                                        <span>•</span>
+                                        <span>{product.available_quantity} in stock</span>
+                                    </div>
+                                    {product.description && (
+                                        <p className="text-gray-600 text-xs line-clamp-2">
+                                            {product.description}
+                                        </p>
+                                    )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="pt-0">
@@ -526,7 +593,18 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                             <CardTitle className="text-lg sm:text-xl">{editingProduct ? 'Edit Product' : 'Add New Product'}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <form onSubmit={editingProduct ? handleEditProduct : handleAddProduct} className="space-y-4">
+                            <form 
+                                onSubmit={(e) => {
+                                    console.log('Form submitted!');
+                                    console.log('Editing product:', editingProduct);
+                                    if (editingProduct) {
+                                        handleEditProduct(e);
+                                    } else {
+                                        handleAddProduct(e);
+                                    }
+                                }} 
+                                className="space-y-4"
+                            >
                                 <div>
                                     <Label htmlFor="name" className="text-sm">Product Name</Label>
                                     <Input
@@ -537,18 +615,7 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                                         required
                                     />
                                 </div>
-                                <div>
-                                    <Label htmlFor="price" className="text-sm">Price (₹)</Label>
-                                    <Input
-                                        id="price"
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.price}
-                                        onChange={(e) => setFormData({...formData, price: e.target.value})}
-                                        className="h-10 text-sm"
-                                        required
-                                    />
-                                </div>
+
                                 <div>
                                     <Label htmlFor="quantity" className="text-sm">Available Quantity</Label>
                                     <Input
@@ -560,18 +627,91 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                                         required
                                     />
                                 </div>
+                                <ImageUpload
+                                    currentImageUrl={formData.image_url}
+                                    onImageUpload={(imageUrl) => setFormData({...formData, image_url: imageUrl})}
+                                    onImageRemove={() => setFormData({...formData, image_url: ''})}
+                                    productId={editingProduct?.id}
+                                />
+                                
                                 <div>
-                                    <Label htmlFor="image" className="text-sm">Image URL</Label>
-                                    <Input
-                                        id="image"
-                                        type="url"
-                                        value={formData.image_url}
-                                        onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                                        className="h-10 text-sm"
+                                    <Label htmlFor="categories" className="text-sm">Categories</Label>
+                                    <select
+                                        id="categories"
+                                        value={formData.categories}
+                                        onChange={(e) => setFormData({...formData, categories: e.target.value})}
+                                        className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select a category</option>
+                                        <option value="indoor-plants">Indoor Plants</option>
+                                        <option value="outdoor-plants">Outdoor Plants</option>
+                                        <option value="flowering-plants">Flowering Plants</option>
+                                        <option value="succulents">Succulents & Cacti</option>
+                                        <option value="trees">Trees & Shrubs</option>
+                                        <option value="herbs">Herbs & Vegetables</option>
+                                        <option value="aquatic">Aquatic Plants</option>
+                                        <option value="medicinal">Medicinal Plants</option>
+                                        <option value="ornamental">Ornamental Plants</option>
+                                        <option value="seasonal">Seasonal Plants</option>
+                                        <option value="bamboo">Bamboo Plants</option>
+                                        <option value="climbers">Climbers & Creepers</option>
+                                        <option value="grass">Grasses & Ground Covers</option>
+                                        <option value="exotic">Exotic Plants</option>
+                                        <option value="air-purifying">Air Purifying Plants</option>
+                                        <option value="grafted">Grafted Varieties</option>
+                                        <option value="shade">Shade Trees</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <Label htmlFor="description" className="text-sm">Description</Label>
+                                    <textarea
+                                        id="description"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="Brief description of the product..."
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <Label htmlFor="about" className="text-sm">About</Label>
+                                    <textarea
+                                        id="about"
+                                        value={formData.about}
+                                        onChange={(e) => setFormData({...formData, about: e.target.value})}
+                                        className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="Detailed information about the product..."
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <Label htmlFor="specifications" className="text-sm">Specifications</Label>
+                                    <textarea
+                                        id="specifications"
+                                        value={formData.specifications}
+                                        onChange={(e) => setFormData({...formData, specifications: e.target.value})}
+                                        className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="Technical specifications, dimensions, etc..."
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <Label htmlFor="care_instructions" className="text-sm">Care Instructions</Label>
+                                    <textarea
+                                        id="care_instructions"
+                                        value={formData.care_instructions}
+                                        onChange={(e) => setFormData({...formData, care_instructions: e.target.value})}
+                                        className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="Watering, sunlight, soil requirements, etc..."
                                     />
                                 </div>
                                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                                    <Button type="submit" className="flex-1 h-10 text-sm">
+                                    <Button 
+                                        type="submit" 
+                                        className="flex-1 h-10 text-sm"
+                                        onClick={() => console.log('Submit button clicked!')}
+                                    >
                                         {editingProduct ? 'Update Product' : 'Add Product'}
                                     </Button>
                                     <Button 
@@ -580,7 +720,7 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                                         onClick={() => {
                                             setShowAddDialog(false);
                                             setEditingProduct(null);
-                                            setFormData({ name: '', price: '', available_quantity: '', image_url: '' });
+                                            setFormData({ name: '', available_quantity: '', image_url: '', description: '', about: '', care_instructions: '', specifications: '', categories: '' });
                                         }}
                                         className="flex-1 h-10 text-sm"
                                     >
@@ -1014,11 +1154,14 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                 return;
             }
             try {
-            const { data, error } = await supabase
-                .from('quotations')
-                .select('*')
-                .eq('merchant_code', merchantCode)
+                console.log('Fetching quotations for merchant code:', merchantCode);
+                const { data, error } = await supabase
+                    .from('quotations')
+                    .select('*')
+                    .eq('merchant_code', merchantCode)
                     .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+                
+                console.log('Quotations query result:', { data, error });
                 
             if (!error && data) {
                 setMyQuotations(data);
@@ -1033,15 +1176,29 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                 const allProductIds = Array.from(new Set(
                     data.flatMap((q: any) => Array.isArray(q.items) ? q.items.map((item: any) => item.product_id) : [])
                 ));
+                console.log('Product IDs found:', allProductIds);
+                
                 if (allProductIds.length > 0) {
-                    const { data: productsData, error: productsError } = await supabase
-                        .from('products')
-                        .select('id, name, image_url')
-                        .in('id', allProductIds);
-                    if (!productsError && productsData) {
-                        const map: { [id: string]: any } = {};
-                        productsData.forEach((p: any) => { map[p.id] = p; });
-                        setProductMap(map);
+                    // Filter out non-UUID product IDs
+                    const validProductIds = allProductIds.filter(id => 
+                        typeof id === 'string' && id.length === 36 && id.includes('-')
+                    );
+                    console.log('Valid product IDs:', validProductIds);
+                    
+                    if (validProductIds.length > 0) {
+                        const { data: productsData, error: productsError } = await supabase
+                            .from('products')
+                            .select('id, name, image_url')
+                            .in('id', validProductIds);
+                        console.log('Products data:', productsData);
+                        console.log('Products error:', productsError);
+                        
+                        if (!productsError && productsData) {
+                            const map: { [id: string]: any } = {};
+                            productsData.forEach((p: any) => { map[p.id] = p; });
+                            setProductMap(map);
+                            console.log('Product map created:', map);
+                        }
                     }
                 }
             }

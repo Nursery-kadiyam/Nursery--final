@@ -228,22 +228,66 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 sm:py-16 bg-emerald-800">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 font-montserrat">Ready to Transform Your Space?</h2>
-          <p className="text-emerald-100 mb-6 sm:mb-8 max-w-2xl mx-auto font-lora">
-            Browse our extensive collection of premium plants and start your green journey today
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/shop">
-              <Button variant="outline" className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-emerald-800 px-6 sm:px-8 py-3 min-h-[48px] font-montserrat">
-                Start Shopping
-              </Button>
-            </Link>
+
+
+      {/* Footer */}
+      <footer className="bg-emerald-900 text-white py-8 sm:py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 font-montserrat">Nursery Shop</h3>
+              <p className="text-emerald-200 mb-4 font-lora">
+                Premium plants from Kadiyam, Andhra Pradesh, delivered across India.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Quick Links</h4>
+              <ul className="space-y-2 text-emerald-200">
+                <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
+                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Our Plants</Link></li>
+                <li><Link to="/shop" className="hover:text-white transition-colors">Shop</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Plant Categories</h4>
+              <ul className="space-y-2 text-emerald-200">
+                <li><Link to="/plants" className="hover:text-white transition-colors">Ornamental Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Flowering Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Fruit Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Medicinal Plants</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Contact Info</h4>
+              <div className="text-emerald-200 space-y-2">
+                <p>Kadiyam, Andhra Pradesh, India</p>
+                <p>Phone: +91-98765-43210</p>
+                <p>Email: info@kadiyamnursery.com</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-emerald-800 mt-8 pt-8 text-center text-emerald-200">
+            <p className="text-sm sm:text-base font-lora">
+              &copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India
+            </p>
+            <div className="mt-4 flex justify-center space-x-4 text-sm">
+              <Link to="/privacy-policy" className="text-emerald-300 hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <span className="text-emerald-600">|</span>
+              <Link to="/terms-of-service" className="text-emerald-300 hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+            </div>
           </div>
         </div>
-      </section>
+      </footer>
     </div>
   );
 };

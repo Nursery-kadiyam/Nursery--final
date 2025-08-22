@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Auth Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Supabase Auth Test</h1>
+        <p>This test bypasses your React app to test Supabase Auth directly.</p>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="test@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="testpassword123">
+        </div>
+        
+        <button onclick="testSignUp()">Test Sign Up</button>
+        <button onclick="testSignIn()">Test Sign In</button>
+        <button onclick="clearLog()">Clear Log</button>
+        
+        <div id="result"></div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        // Replace with your actual Supabase URL and anon key
+        const supabaseUrl = 'https://rjapkpboonxljiupceyq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZGNxY29lemt4dXZ3cXBpem1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MDUxNzgsImV4cCI6MjA3MTA4MTE3OH0.ddc205bd';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        async function testSignUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('=== TESTING SIGN UP ===');
+            log(`Email: ${email}`);
+            log(`Password: ${password}`);
+            
+            try {
+                log('Calling supabase.auth.signUp...');
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+                
+                log('SignUp response received');
+                log(`Data: ${JSON.stringify(data, null, 2)}`);
+                log(`Error: ${JSON.stringify(error, null, 2)}`);
+                
+                if (error) {
+                    document.getElementById('result').innerHTML = `<div class="error">❌ SignUp Error: ${error.message}</div>`;
+                    log(`❌ SignUp failed: ${error.message}`);
+                    log(`Error status: ${error.status}`);
+                    log(`Error name: ${error.name}`);
+                } else {
+                    document.getElementById('result').innerHTML = `<div class="success">✅ SignUp successful!</div>`;
+                    log('✅ SignUp successful!');
+                    if (data.user) {
+                        log(`User ID: ${data.user.id}`);
+                        log(`User email: ${data.user.email}`);
+                    }
+                }
+                
+            } catch (err) {
+                log(`❌ Exception during SignUp: ${err.message}`);
+                document.getElementById('result').innerHTML = `<div class="error">❌ Exception: ${err.message}</div>`;
+            }
+        }
+        
+        async function testSignIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('=== TESTING SIGN IN ===');
+            log(`Email: ${email}`);
+            log(`Password: ${password}`);
+            
+            try {
+                log('Calling supabase.auth.signInWithPassword...');
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                log('SignIn response received');
+                log(`Data: ${JSON.stringify(data, null, 2)}`);
+                log(`Error: ${JSON.stringify(error, null, 2)}`);
+                
+                if (error) {
+                    document.getElementById('result').innerHTML = `<div class="error">❌ SignIn Error: ${error.message}</div>`;
+                    log(`❌ SignIn failed: ${error.message}`);
+                } else {
+                    document.getElementById('result').innerHTML = `<div class="success">✅ SignIn successful!</div>`;
+                    log('✅ SignIn successful!');
+                    if (data.user) {
+                        log(`User ID: ${data.user.id}`);
+                        log(`User email: ${data.user.email}`);
+                    }
+                }
+                
+            } catch (err) {
+                log(`❌ Exception during SignIn: ${err.message}`);
+                document.getElementById('result').innerHTML = `<div class="error">❌ Exception: ${err.message}</div>`;
+            }
+        }
+        
+        // Test connection on page load
+        window.onload = function() {
+            log('=== SUPABASE CONNECTION TEST ===');
+            log(`Supabase URL: ${supabaseUrl}`);
+            log('Testing connection...');
+            
+            // Test if we can access the client
+            if (supabase) {
+                log('✅ Supabase client created successfully');
+            } else {
+                log('❌ Failed to create Supabase client');
+            }
+        };
+    </script>
+</body>
+</html>

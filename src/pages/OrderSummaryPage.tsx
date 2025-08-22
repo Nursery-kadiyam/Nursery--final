@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/ui/navbar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/components/ui/use-toast';
 
@@ -179,6 +179,11 @@ const OrderSummaryPage = () => {
         fetchCartProducts();
     }, [cart]);
 
+    // Debug useEffect to monitor success dialog state
+    useEffect(() => {
+        console.log('showOrderSuccess state changed to:', showOrderSuccess);
+    }, [showOrderSuccess]);
+
     const subtotal = cartProducts.reduce((sum, item) => {
         // For quotation-based items, use the calculated price (already includes quantity)
         if (item.quotation_id) {
@@ -242,7 +247,7 @@ const OrderSummaryPage = () => {
     };
 
     const handleMockOrderPlacement = async () => {
-        // Simple user check
+        // Strict user authentication check - no fallback
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
@@ -256,16 +261,17 @@ const OrderSummaryPage = () => {
         console.log('Cart products:', cartProducts);
         
         // Check if this order is from a quotation
-        const hasQuotation = cartProducts.some(item => item.quotation_id);
-        const quotationId = hasQuotation ? cartProducts[0].quotation_id : null;
+        const hasQuotation = cartProducts.some(item => item.quotation_code);
         const quotationCode = hasQuotation ? cartProducts[0].quotation_code : null;
+        const quotationId = hasQuotation ? cartProducts[0].quotation_id : null;
         
         console.log('Has quotation:', hasQuotation);
-        console.log('Quotation ID:', quotationId);
         console.log('Quotation Code:', quotationCode);
+        console.log('Quotation ID:', quotationId);
         
         const orderPayload = {
             user_id: user.id,
+            quotation_code: quotationCode, // Add quotation_code if this is a quotation order
             delivery_address: deliveryAddress || {},
             shipping_address: deliveryAddress ? JSON.stringify(deliveryAddress) : 'Default Address',
             total_amount: total,
@@ -284,66 +290,8 @@ const OrderSummaryPage = () => {
             
         if (orderError) {
             console.error('Order save error:', orderError);
-            
-            // If it's a foreign key error, try without user_id
-            if (orderError.message.includes('foreign key constraint')) {
-                console.log('Trying without user_id...');
-                const fallbackPayload = {
-                    ...orderPayload,
-                    user_id: null // Remove user_id temporarily
-                };
-                
-                const { data: fallbackOrderData, error: fallbackError } = await supabase
-                    .from('orders')
-                    .insert([fallbackPayload])
-                    .select('id')
-                    .single();
-                    
-                if (fallbackError) {
-                    console.error('Fallback order save error:', fallbackError);
-                    alert('Order save failed: ' + fallbackError.message);
-                    return;
-                }
-                
-                console.log('Order saved with fallback method');
-                const orderId = fallbackOrderData.id;
-                
-                // Insert order_items for each cart item
-                const orderItems = cartProducts.map(item => ({
-                    order_id: orderId,
-                    product_id: item.id,
-                    quantity: item.quantity,
-                    price: item.price
-                }));
-                
-                const { error: orderItemsError } = await supabase
-                    .from('order_items')
-                    .insert(orderItems);
-                    
-                if (orderItemsError) {
-                    console.error('Order items save error:', orderItemsError);
-                    alert('Order items save failed: ' + orderItemsError.message);
-                    return;
-                }
-                
-                console.log('Order items saved successfully');
-                
-                // Show success message
-                toast({
-                    title: "Order Placed Successfully!",
-                    description: `Order saved with ID: ${orderId}. Order items: ${orderItems.length}`,
-                    variant: "default"
-                });
-                
-                setShowOrderSuccess(true);
-                setCart([]);
-                localStorage.removeItem('cart');
-                clearCart();
-                return;
-            } else {
-                alert('Order save failed: ' + orderError.message);
-                return;
-            }
+            alert('Order save failed: ' + orderError.message);
+            return;
         }
         
         console.log('Order saved successfully. Order ID:', orderData.id);
@@ -354,7 +302,8 @@ const OrderSummaryPage = () => {
             order_id: orderId,
             product_id: item.id,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            unit_price: item.unit_price || Math.round(item.price / item.quantity) // Use unit_price from quotation or calculate from total
         }));
         
         console.log('Order items to save:', orderItems);
@@ -395,14 +344,20 @@ const OrderSummaryPage = () => {
             variant: "default"
         });
         
+        // Clear cart and show success dialog
         setShowOrderSuccess(true);
         setCart([]);
         localStorage.removeItem('cart');
         clearCart();
+        
+        console.log('Success actions completed - cart cleared, success dialog shown');
     };
 
-    const handlePlaceOrderClick = () => {
-        if (!user) {
+    const handlePlaceOrderClick = async () => {
+        // Double-check user authentication
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
             alert('Please log in to place an order.');
             return;
         }
@@ -423,6 +378,7 @@ const OrderSummaryPage = () => {
 
     // Handler to clear cart and go home (for both close and button)
     const handleOrderSuccessClose = () => {
+        console.log('Closing success dialog and navigating home...');
         setShowOrderSuccess(false);
         setCart([]);
         localStorage.removeItem('cart');
@@ -696,12 +652,18 @@ const OrderSummaryPage = () => {
                     </div>
                 </div>
             </div>
-            <Dialog open={showOrderSuccess} onOpenChange={open => { if (!open) handleOrderSuccessClose(); }}>
+            <Dialog open={showOrderSuccess} onOpenChange={open => { 
+                console.log('Dialog onOpenChange called with:', open);
+                if (!open) handleOrderSuccessClose(); 
+            }}>
                 <DialogContent className="max-w-lg p-8 text-center flex flex-col items-center">
                     <FlyingEnvelope />
                     <AnimatedTick />
                     <DialogHeader>
                         <DialogTitle className="text-3xl font-bold text-emerald-700 mb-4">Order Placed Successfully!</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Order confirmation dialog showing successful order placement
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="text-lg text-gray-700 mb-6">Your order will be delivered within 5 to 7 days.</div>
                     <Button className="bg-gold-600 hover:bg-gold-700 text-white font-bold px-8 py-3 text-lg rounded-lg" onClick={handleOrderSuccessClose}>

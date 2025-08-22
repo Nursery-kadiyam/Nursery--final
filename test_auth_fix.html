@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth & Profile Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .error-box {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success-box {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .steps {
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 10px 0;
+        }
+        .test-email {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            cursor: pointer;
+        }
+        .test-email:hover {
+            background: #ffe0b2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Auth & Profile Fix Test</h1>
+        
+        <div class="info-box">
+            <h3>🚨 Issue Identified</h3>
+            <p>Users are registering but not appearing in Authentication > Users section and profile data is not being saved to the database.</p>
+        </div>
+
+        <div class="error-box">
+            <h3>❌ Current Problems</h3>
+            <ul>
+                <li><strong>Auth Users Not Appearing:</strong> Users don't show up in Supabase Authentication > Users</li>
+                <li><strong>Profile Data Not Saving:</strong> Registration data not saved to user_profiles table</li>
+                <li><strong>Database Issues:</strong> RLS policies or table structure problems</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <h3>✅ Solution Applied</h3>
+            <p>I've created a comprehensive fix that addresses both issues:</p>
+            <ul>
+                <li><strong>Database Fix:</strong> Recreates tables, disables RLS, removes problematic policies</li>
+                <li><strong>Auth Fix:</strong> Creates trigger for automatic profile creation</li>
+                <li><strong>Enhanced Logging:</strong> Better error handling and debugging information</li>
+                <li><strong>Email Confirmation:</strong> Handles email confirmation requirements</li>
+            </ul>
+        </div>
+
+        <div class="steps">
+            <h3>📋 Fix Steps</h3>
+            <ol>
+                <li><strong>Run the Database Fix Script:</strong> Execute `fix_auth_and_profile_save.sql` in Supabase SQL Editor</li>
+                <li><strong>Test Registration:</strong> Try registering with a different email address</li>
+                <li><strong>Check Authentication:</strong> Verify user appears in Authentication > Users</li>
+                <li><strong>Verify Profile Data:</strong> Check user_profiles table for saved data</li>
+                <li><strong>Monitor Console:</strong> Watch browser console for detailed logs</li>
+            </ol>
+        </div>
+
+        <h3>🧪 Test Email Suggestions</h3>
+        <div class="test-email" onclick="copyEmail('test@outlook.com')">test@outlook.com</div>
+        <div class="test-email" onclick="copyEmail('test@yahoo.com')">test@yahoo.com</div>
+        <div class="test-email" onclick="copyEmail('test@hotmail.com')">test@hotmail.com</div>
+        <div class="test-email" onclick="copyEmail('your-real-email@domain.com')">your-real-email@domain.com</div>
+
+        <div class="warning-box">
+            <h3>⚠️ Important Notes</h3>
+            <ul>
+                <li><strong>Email Confirmation:</strong> Users may need to confirm email before appearing in auth.users</li>
+                <li><strong>Gmail Issues:</strong> Gmail addresses might be blocked by Supabase settings</li>
+                <li><strong>Console Logs:</strong> Check browser console for detailed error information</li>
+                <li><strong>Database Logs:</strong> Check Supabase logs for any database errors</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>🔍 What the Fix Does</h3>
+            <ol>
+                <li><strong>Recreates user_profiles table</strong> with proper structure</li>
+                <li><strong>Disables Row Level Security</strong> to prevent permission issues</li>
+                <li><strong>Removes all RLS policies</strong> that might be blocking inserts</li>
+                <li><strong>Creates trigger function</strong> for automatic profile creation</li>
+                <li><strong>Sets up trigger</strong> to create profiles when auth users are created</li>
+                <li><strong>Tests data insertion</strong> to verify everything works</li>
+                <li><strong>Adds enhanced logging</strong> for better debugging</li>
+            </ol>
+        </div>
+
+        <div class="success-box">
+            <h3>✅ Expected Results After Fix</h3>
+            <ul>
+                <li><strong>Registration Success:</strong> Users can register without email validation errors</li>
+                <li><strong>Auth Users Appear:</strong> Users show up in Authentication > Users (after email confirmation)</li>
+                <li><strong>Profile Data Saved:</strong> Registration data appears in user_profiles table</li>
+                <li><strong>Console Logs:</strong> Detailed success messages in browser console</li>
+                <li><strong>No Database Errors:</strong> Clean registration process without errors</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>🛠️ Troubleshooting</h3>
+            <p><strong>If users still don't appear in Authentication > Users:</strong></p>
+            <ul>
+                <li>Check if email confirmation is required in Supabase settings</li>
+                <li>Verify the user confirmed their email address</li>
+                <li>Check Supabase project logs for any auth errors</li>
+                <li>Try with a different email provider (Outlook, Yahoo)</li>
+            </ul>
+            
+            <p><strong>If profile data still not saving:</strong></p>
+            <ul>
+                <li>Check browser console for specific error messages</li>
+                <li>Verify the SQL fix script ran successfully</li>
+                <li>Check if RLS is properly disabled</li>
+                <li>Verify table structure matches expected format</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <h3>🎯 Quick Test</h3>
+            <p>After running the fix script, try registering with <strong>test@outlook.com</strong> and check:</p>
+            <ol>
+                <li>Browser console for success messages</li>
+                <li>Authentication > Users for the new user</li>
+                <li>Table Editor > user_profiles for saved data</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function copyEmail(email) {
+            navigator.clipboard.writeText(email).then(function() {
+                alert(`Email copied: ${email}`);
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Auth fix test page loaded');
+            console.log('Run the fix script and test registration');
+        });
+    </script>
+</body>
+</html>

@@ -204,31 +204,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 sm:py-20 bg-gradient-to-r from-emerald-600 to-emerald-800">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto animate-fade-in">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 font-montserrat">
-              Ready to Experience Our Legacy?
-            </h2>
-            <p className="text-lg sm:text-xl text-emerald-100 mb-8 max-w-2xl mx-auto font-lora">
-              Discover the difference that 30+ years of expertise and Kadiyam's fertile heritage can make in your garden
-            </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-2 border-white text-white hover:bg-white hover:text-emerald-800 px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 min-h-[48px] font-montserrat"
-                >
-                  Contact Us
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-emerald-900 text-white py-8 sm:py-12">
@@ -276,7 +252,18 @@ const About = () => {
           </div>
 
           <div className="border-t border-emerald-800 mt-8 pt-8 text-center text-emerald-200">
-            <p className="text-sm sm:text-base font-lora">&copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India</p>
+            <p className="text-sm sm:text-base font-lora">
+              &copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India
+            </p>
+            <div className="mt-4 flex justify-center space-x-4 text-sm">
+              <Link to="/privacy-policy" className="text-emerald-300 hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <span className="text-emerald-600">|</span>
+              <Link to="/terms-of-service" className="text-emerald-300 hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+            </div>
           </div>
         </div>
       </footer>

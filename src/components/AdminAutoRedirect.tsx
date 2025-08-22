@@ -24,46 +24,50 @@ const AdminAutoRedirect: React.FC = () => {
           }
           console.log('Current user ID:', currentUser.id);
 
-          // Step 2: Fetch role from user_profiles - try email first, then user_id, then id
+          // Step 2: Check both user_profiles (for normal users) and merchants table (for merchants)
           let profile = null;
           let error = null;
+          let userRole = null;
           
-          // Try by email first (most reliable)
-          const { data: profileByEmail, error: emailError } = await supabase
-            .from("user_profiles")
-            .select("role, id, user_id")
+          // First, check if user is a merchant
+          const { data: merchantData, error: merchantError } = await supabase
+            .from("merchants")
+            .select("status, user_id")
             .eq("email", currentUser.email)
             .maybeSingle();
           
-          if (profileByEmail) { 
-            profile = profileByEmail; 
-            console.log('Found profile by email:', profile); 
+          if (merchantData) {
+            console.log('Found merchant record:', merchantData);
+            userRole = 'merchant';
+            profile = { role: 'merchant', id: currentUser.id };
           } else {
-            // Try by user_id
-            const { data: profileByUserId, error: userIdError } = await supabase
+            // If not a merchant, check user_profiles for normal users
+            const { data: profileByEmail, error: emailError } = await supabase
               .from("user_profiles")
-              .select("role, id, user_id")
-              .eq("user_id", currentUser.id)
+              .select("role, id")
+              .eq("email", currentUser.email)
               .maybeSingle();
             
-            if (profileByUserId) { 
-              profile = profileByUserId; 
-              console.log('Found profile by user_id:', profile); 
+            if (profileByEmail) { 
+              profile = profileByEmail; 
+              userRole = profileByEmail.role;
+              console.log('Found user profile by email:', profile); 
             } else {
               // Try by id as fallback
               const { data: profileById, error: idError } = await supabase
                 .from("user_profiles")
-                .select("role, id, user_id")
+                .select("role, id")
                 .eq("id", currentUser.id)
                 .maybeSingle();
               
               if (profileById) { 
                 profile = profileById; 
-                console.log('Found profile by id:', profile); 
+                userRole = profileById.role;
+                console.log('Found user profile by id:', profile); 
               } else { 
                 error = idError; 
-                console.log('No profile found with email, user_id, or id'); 
-                console.log('Errors - Email:', emailError, 'UserID:', userIdError, 'ID:', idError);
+                console.log('No profile found in user_profiles or merchants table'); 
+                console.log('Errors - Merchant:', merchantError, 'Email:', emailError, 'ID:', idError);
               }
             }
           }
@@ -75,14 +79,20 @@ const AdminAutoRedirect: React.FC = () => {
           console.log('User role:', profile.role);
 
           // Step 3: Redirect based on role (using improved role checking)
-          if (profile.role) {
-            const roleLower = profile.role.toLowerCase().trim();
+          if (userRole) {
+            const roleLower = userRole.toLowerCase().trim();
             console.log('AdminAutoRedirect: Role after lowercase and trim:', JSON.stringify(roleLower));
             
             if (roleLower === 'admin') {
               if (location.pathname !== '/admin-dashboard') {
                 console.log('Admin user - redirecting to admin dashboard');
                 navigate('/admin-dashboard');
+                setHasRedirected(true);
+              }
+            } else if (roleLower === 'merchant') {
+              if (location.pathname !== '/merchant-dashboard') {
+                console.log('Merchant user - redirecting to merchant dashboard');
+                navigate('/merchant-dashboard');
                 setHasRedirected(true);
               }
             } else {

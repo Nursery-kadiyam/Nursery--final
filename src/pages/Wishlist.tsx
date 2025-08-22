@@ -94,7 +94,7 @@ const Wishlist = () => {
             existingCart.push({
                 id: plant.id,
                 name: plant.name,
-                category: plant.category,
+                category: plant.categories,
                 price: plant.price,
                 quantity: 1,
                 image: plant.image_url || plant.image
@@ -174,7 +174,7 @@ const Wishlist = () => {
                                         <CardContent className="p-4 sm:p-6">
                                             <div className="mb-2">
                                                 <Badge variant="outline" className="text-emerald-700 border-emerald-200 text-xs">
-                                                    {plant.category}
+                                                    {plant.categories}
                                                 </Badge>
                                             </div>
 

@@ -28,30 +28,54 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
             setErrorMsg('')
             if (user) {
                 try {
-                    let { data: profileData, error } = await supabase
-                        .from("user_profiles")
-                        .select("first_name, last_name, email, phone")
-                        .eq("user_id", user.id)
+                    // First check if user is a merchant
+                    let { data: merchantData, error: merchantError } = await supabase
+                        .from("merchants")
+                        .select("full_name, phone_number, email")
+                        .eq("email", user.email)
                         .maybeSingle();
                     
-                    if (!profileData && !error) {
-                        // Profile does not exist, create it
-                        const { error: insertError } = await supabase.from('user_profiles').insert([{
-                            user_id: user.id,
-                            email: user.email,
-                            first_name: user.user_metadata?.first_name || '',
-                            last_name: user.user_metadata?.last_name || '',
-                            phone: user.user_metadata?.phone || '',
-                            created_at: new Date().toISOString()
-                        }]);
-                        if (!insertError) {
-                            // Try fetching again
-                            ({ data: profileData, error } = await supabase
-                                .from("user_profiles")
-                                .select("first_name, last_name, email, phone")
-                                .eq("user_id", user.id)
-                                .maybeSingle());
+                    let profileData = null;
+                    let error = null;
+                    
+                    if (merchantData) {
+                        // User is a merchant, use merchant data
+                        console.log('Found merchant data:', merchantData);
+                        profileData = {
+                            first_name: merchantData.full_name.split(' ')[0] || merchantData.full_name,
+                            last_name: merchantData.full_name.split(' ').slice(1).join(' ') || '',
+                            email: merchantData.email,
+                            phone: merchantData.phone_number
+                        };
+                    } else {
+                        // User is not a merchant, check user_profiles
+                        let { data: userProfileData, error: userProfileError } = await supabase
+                            .from("user_profiles")
+                            .select("first_name, last_name, email, phone")
+                            .eq("id", user.id)
+                            .maybeSingle();
+                        
+                        if (!userProfileData && !userProfileError) {
+                            // Profile does not exist, create it
+                            const { error: insertError } = await supabase.from('user_profiles').insert([{
+                                id: user.id,
+                                email: user.email,
+                                first_name: user.user_metadata?.first_name || '',
+                                last_name: user.user_metadata?.last_name || '',
+                                phone: user.user_metadata?.phone || '',
+                                created_at: new Date().toISOString()
+                            }]);
+                            if (!insertError) {
+                                // Try fetching again
+                                ({ data: userProfileData, error: userProfileError } = await supabase
+                                    .from("user_profiles")
+                                    .select("first_name, last_name, email, phone")
+                                    .eq("id", user.id)
+                                    .maybeSingle());
+                            }
                         }
+                        profileData = userProfileData;
+                        error = userProfileError;
                     }
                     
                     if (error) {
@@ -89,26 +113,67 @@ const MyProfilePopup: React.FC<MyProfilePopupProps> = ({ isOpen, onClose }) => {
         setSaving(true);
         setErrorMsg('');
         try {
-            const { error } = await supabase
-                .from('user_profiles')
-                .update({
-                    first_name: firstName,
-                    last_name: lastName,
-                    phone: phone
-                })
-                .eq('user_id', user.id);
+            // First check if user is a merchant
+            const { data: merchantData } = await supabase
+                .from("merchants")
+                .select("id")
+                .eq("email", user.email)
+                .maybeSingle();
             
-            if (error) {
-                setErrorMsg('Failed to update profile. Please try again.');
+            if (merchantData) {
+                // Update merchant record
+                const fullName = `${firstName} ${lastName}`.trim();
+                const { error } = await supabase
+                    .from('merchants')
+                    .update({
+                        full_name: fullName,
+                        phone_number: phone
+                    })
+                    .eq('email', user.email);
+                
+                if (error) {
+                    setErrorMsg('Failed to update merchant profile. Please try again.');
+                } else {
+                    setEditMode(false);
+                    // Refresh merchant data
+                    const { data: updatedMerchantData } = await supabase
+                        .from("merchants")
+                        .select("full_name, phone_number, email")
+                        .eq("email", user.email)
+                        .maybeSingle();
+                    
+                    if (updatedMerchantData) {
+                        setProfile({
+                            first_name: updatedMerchantData.full_name.split(' ')[0] || updatedMerchantData.full_name,
+                            last_name: updatedMerchantData.full_name.split(' ').slice(1).join(' ') || '',
+                            email: updatedMerchantData.email,
+                            phone: updatedMerchantData.phone_number
+                        });
+                    }
+                }
             } else {
-                setEditMode(false);
-                // Refresh profile
-                const { data: profileData } = await supabase
+                // Update user profile
+                const { error } = await supabase
                     .from('user_profiles')
-                    .select('first_name, last_name, email, phone')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                setProfile(profileData);
+                    .update({
+                        first_name: firstName,
+                        last_name: lastName,
+                        phone: phone
+                    })
+                    .eq('id', user.id);
+                
+                if (error) {
+                    setErrorMsg('Failed to update profile. Please try again.');
+                } else {
+                    setEditMode(false);
+                    // Refresh profile
+                    const { data: profileData } = await supabase
+                        .from('user_profiles')
+                        .select('first_name, last_name, email, phone')
+                        .eq('id', user.id)
+                        .maybeSingle();
+                    setProfile(profileData);
+                }
             }
         } catch (err) {
             setErrorMsg('Failed to update profile. Please try again.');

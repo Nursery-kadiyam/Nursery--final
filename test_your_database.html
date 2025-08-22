@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Your Database Connection</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Your Database Connection</h1>
+        <p>This page will help identify the source of the 500 server error in your Nursery Shop app.</p>
+
+        <div class="test-section info">
+            <h3>📋 Test Instructions</h3>
+            <ol>
+                <li>Click "Test Database Connection" to verify Supabase connection</li>
+                <li>Click "Test User Profiles Table" to check your table structure</li>
+                <li>Click "Test Products Table" to verify products are loading</li>
+                <li>Click "Test Authentication" to check auth status</li>
+                <li>Check the results below for any errors</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Run Tests</h3>
+            <button onclick="testConnection()">Test Database Connection</button>
+            <button onclick="testUserProfiles()">Test User Profiles Table</button>
+            <button onclick="testProducts()">Test Products Table</button>
+            <button onclick="testAuth()">Test Authentication</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Your Supabase configuration
+        const supabaseUrl = 'https://rjapkpboonxljiupceyq.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZGNxY29lemt4dXZ3cXBpem1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NTg1MTQsImV4cCI6MjA2NjIzNDUxNH0.oiLG5Pr079Zzz82hHvgvfASKryolWYsXt9e6z7zL-JE';
+
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(content, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testConnection() {
+            try {
+                addResult('🔌 Testing Database Connection', 'Connecting to Supabase...', 'info');
+                
+                // Test basic connection
+                const { data, error } = await supabase.from('user_profiles').select('count').limit(1);
+                
+                if (error) {
+                    addResult('❌ Connection Failed', error, 'error');
+                } else {
+                    addResult('✅ Connection Successful', { message: 'Database connection is working', data }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Connection Error', err, 'error');
+            }
+        }
+
+        async function testUserProfiles() {
+            try {
+                addResult('👤 Testing User Profiles Table', 'Checking user_profiles table structure...', 'info');
+                
+                // Test user_profiles table
+                const { data, error } = await supabase.from('user_profiles').select('*').limit(3);
+                
+                if (error) {
+                    addResult('❌ User Profiles Test Failed', error, 'error');
+                } else {
+                    addResult('✅ User Profiles Test Successful', { 
+                        count: data.length, 
+                        sample_records: data.map(p => ({ 
+                            id: p.id, 
+                            user_id: p.user_id, 
+                            first_name: p.first_name,
+                            email: p.email,
+                            role: p.role
+                        }))
+                    }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ User Profiles Test Error', err, 'error');
+            }
+        }
+
+        async function testProducts() {
+            try {
+                addResult('🌱 Testing Products Table', 'Fetching products from database...', 'info');
+                
+                const { data, error } = await supabase.from('products').select('*').limit(5);
+                
+                if (error) {
+                    addResult('❌ Products Test Failed', error, 'error');
+                } else {
+                    addResult('✅ Products Test Successful', { 
+                        count: data.length, 
+                        products: data.map(p => ({ id: p.id, name: p.name, price: p.price }))
+                    }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Products Test Error', err, 'error');
+            }
+        }
+
+        async function testAuth() {
+            try {
+                addResult('🔐 Testing Authentication', 'Checking authentication status...', 'info');
+                
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    addResult('❌ Auth Test Failed', error, 'error');
+                } else {
+                    addResult('✅ Auth Test Successful', { 
+                        user: user ? { id: user.id, email: user.email } : null,
+                        isAuthenticated: !!user
+                    }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Auth Test Error', err, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-run connection test on page load
+        window.onload = function() {
+            addResult('🚀 Page Loaded', 'Database connection test page is ready. Click the buttons above to run tests.', 'info');
+        };
+    </script>
+</body>
+</html>

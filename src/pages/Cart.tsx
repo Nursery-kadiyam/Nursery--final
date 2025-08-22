@@ -66,33 +66,43 @@ const Cart = () => {
       toast({ title: "Login Required", description: "Please login to request a quotation.", variant: "destructive" });
       return;
     }
-    // Generate a unique string id for the quotation
-    const newId = crypto.randomUUID();
-    const year = new Date().getFullYear();
-    // Get the count of quotations for this year to generate the next code
-    const { count } = await supabase
-      .from('quotations')
-      .select('id', { count: 'exact', head: true })
-      .ilike('quotation_code', `QTN-${year}-%`);
-    const nextNumber = (count || 0) + 1;
-    const quotationCode = `QTN-${year}-${String(nextNumber).padStart(4, '0')}`;
-    // Map cartItems to correct structure
-    const items = cartItems.map(item => ({ product_id: item.id, quantity: item.quantity }));
-    const { data, error } = await supabase
-      .from('quotations')
-      .insert([{
-        id: newId, // Provide the new string id here
-        quotation_code: quotationCode, // New formatted code
-        user_id: user.id,
-        items, // Always array of {product_id, quantity}
-        status: 'pending',
-        created_at: new Date().toISOString()
-      }]);
+    
+    try {
+      // Map cartItems to correct structure for the items JSONB field
+      const items = cartItems.map(item => ({ 
+        product_id: item.id, 
+        quantity: item.quantity,
+        name: item.name,
+        price: item.price,
+        category: item.category,
+        image: item.image
+      }));
+      
+      // Use the create_quotation function
+      const { data, error } = await supabase.rpc('create_quotation', {
+        p_user_id: user.id,
+        p_items: items,
+        p_product_cost: null, // Will be calculated by admin
+        p_transport_cost: null, // Will be calculated by admin
+        p_custom_work_cost: null, // Will be calculated by admin
+        p_estimated_delivery_days: null // Will be set by admin
+      });
+      
     if (error) {
+        console.error('Quotation creation error:', error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else if (data && data.success) {
+        toast({ 
+          title: "Quotation Requested", 
+          description: `Quotation ${data.quotation_code} has been submitted. Admin will review your request.` 
+        });
+        clearCart();
     } else {
-      toast({ title: "Quotation Requested", description: "Admin will review your request." });
-      clearCart();
+        toast({ title: "Error", description: data?.message || "Failed to create quotation", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast({ title: "Error", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
     }
   };
 

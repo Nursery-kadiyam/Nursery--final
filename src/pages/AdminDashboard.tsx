@@ -34,7 +34,7 @@ const AdminDashboard: React.FC = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [merchantsLoading, setMerchantsLoading] = useState(true);
-    const [ordersLoading, setOrdersLoading] = useState(true);
+    const [ordersLoading, setOrdersLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -49,17 +49,35 @@ const AdminDashboard: React.FC = () => {
         navigate('/');
     };
 
-    useEffect(() => {
-        const fetchAll = async () => {
-            setLoading(true);
-            console.log('AdminDashboard: Fetching all data...');
+    const refreshOrdersData = async () => {
+        try {
+            setOrdersLoading(true);
+            console.log('Refreshing orders data...');
             
-            const { data: quotationsData, error: quotationsError } = await supabase
-                .from('quotations')
-                .select('*');
-            const { data: merchantsData, error: merchantsError } = await supabase
-                .from('merchants')
-                .select('*');
+            // Check if we're authenticated as admin
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            console.log('Current user (refresh):', user);
+            console.log('Auth error (refresh):', authError);
+            
+            if (authError) {
+                console.error('Authentication error during refresh:', authError);
+                toast({
+                    title: "Authentication Error",
+                    description: "Please log in again",
+                    variant: "destructive"
+                });
+                setOrdersLoading(false);
+                return;
+            }
+            
+            // Test basic database access first
+            const { data: testData, error: testError } = await supabase
+                .from('orders')
+                .select('count', { count: 'exact', head: true });
+            
+            console.log('Test query result:', testData);
+            console.log('Test query error:', testError);
+            
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
@@ -67,40 +85,128 @@ const AdminDashboard: React.FC = () => {
             const { data: orderItemsData, error: orderItemsError } = await supabase
                 .from('order_items')
                 .select('*');
-            const { data: productsData, error: productsError } = await supabase
-                .from('products')
-                .select('*');
             
-            // Debug logging
-            console.log('AdminDashboard - Data fetch results:');
-            console.log('Orders data:', ordersData);
-            console.log('Orders error:', ordersError);
-            console.log('Order items data:', orderItemsData);
-            console.log('Order items error:', orderItemsError);
-            console.log('Quotations data:', quotationsData);
-            console.log('Merchants data:', merchantsData);
-            console.log('Products data:', productsData);
+            console.log('Refresh - Orders data:', ordersData);
+            console.log('Refresh - Orders error:', ordersError);
+            console.log('Refresh - Order items data:', orderItemsData);
+            console.log('Refresh - Order items error:', orderItemsError);
             
-            if (!quotationsError && !merchantsError && !ordersError && !orderItemsError && !productsError) {
+            if (!ordersError && !orderItemsError) {
+                setOrders(ordersData || []);
+                setOrderItems(orderItemsData || []);
+                toast({
+                    title: "Orders Refreshed!",
+                    description: `Found ${ordersData?.length || 0} orders`,
+                    variant: "default"
+                });
+            } else {
+                console.error('Error refreshing orders:', ordersError || orderItemsError);
+                toast({
+                    title: "Refresh Failed",
+                    description: ordersError?.message || orderItemsError?.message || "Could not refresh orders data",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Unexpected error during refresh:', error);
+            toast({
+                title: "Refresh Failed",
+                description: "An unexpected error occurred",
+                variant: "destructive"
+            });
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        const fetchAll = async () => {
+            try {
+                setLoading(true);
+                console.log('AdminDashboard: Starting data fetch...');
+                
+                // Add timeout to prevent infinite loading
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Data fetch timeout')), 10000)
+                );
+                
+                // Check authentication first
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                console.log('Current user:', user);
+                console.log('Auth error:', authError);
+                
+                if (authError) {
+                    console.error('Authentication error:', authError);
+                    setLoading(false);
+                    return;
+                }
+                
+                // Fetch data with better error handling and timeout
+                const dataFetchPromise = Promise.all([
+                    supabase.from('quotations').select('*'),
+                    supabase.from('merchants').select('*'),
+                    supabase.from('orders').select('*').order('created_at', { ascending: false }),
+                    supabase.from('order_items').select('*'),
+                    supabase.from('products').select('*')
+                ]);
+                
+                const results = await Promise.race([dataFetchPromise, timeoutPromise]);
+                
+                const [
+                    { data: quotationsData, error: quotationsError },
+                    { data: merchantsData, error: merchantsError },
+                    { data: ordersData, error: ordersError },
+                    { data: orderItemsData, error: orderItemsError },
+                    { data: productsData, error: productsError }
+                ] = results as any;
+                
+                // Debug logging
+                console.log('AdminDashboard - Data fetch results:');
+                console.log('Orders data:', ordersData);
+                console.log('Orders error:', ordersError);
+                console.log('Order items data:', orderItemsData);
+                console.log('Order items error:', orderItemsError);
+                console.log('Quotations data:', quotationsData);
+                console.log('Merchants data:', merchantsData);
+                console.log('Products data:', productsData);
+                
+                // Set data regardless of errors to show what we have
                 setQuotations(quotationsData || []);
                 setMerchants(merchantsData || []);
                 setOrders(ordersData || []);
                 setOrderItems(orderItemsData || []);
                 setProducts(productsData || []);
+                
+                // Set merchant quotations
                 const merchantCodes = merchantsData?.map((m: any) => m.merchant_code).filter(Boolean) || [];
                 setMerchantQuotations((quotationsData || []).filter((q: any) => 
                     merchantCodes.includes(q.merchant_code) && q.status === 'waiting_for_admin'
                 ));
-            } else {
-                console.error('AdminDashboard - Errors during data fetch:');
+                
+                // Log any errors but don't fail completely
                 if (quotationsError) console.error('Quotations error:', quotationsError);
                 if (merchantsError) console.error('Merchants error:', merchantsError);
                 if (ordersError) console.error('Orders error:', ordersError);
                 if (orderItemsError) console.error('Order items error:', orderItemsError);
                 if (productsError) console.error('Products error:', productsError);
+                
+                console.log('AdminDashboard: Data fetch completed');
+                
+            } catch (error) {
+                console.error('AdminDashboard: Error during data fetch:', error);
+                // Set empty arrays to prevent infinite loading
+                setQuotations([]);
+                setMerchants([]);
+                setOrders([]);
+                setOrderItems([]);
+                setProducts([]);
+                setMerchantQuotations([]);
+            } finally {
+                setLoading(false);
+                setOrdersLoading(false); // Fix: Set ordersLoading to false after initial fetch
             }
-            setLoading(false);
         };
+        
         fetchAll();
         
         // Set up real-time subscription for orders
@@ -119,7 +225,7 @@ const AdminDashboard: React.FC = () => {
         return () => {
             ordersSubscription.unsubscribe();
         };
-    }, [actionLoading]);
+    }, []); // Remove actionLoading dependency to prevent unnecessary re-fetches
 
     useEffect(() => {
         const fetchMerchants = async () => {
@@ -1541,22 +1647,65 @@ const AdminDashboard: React.FC = () => {
                                     <Package className="w-5 h-5" />
                                     <span>Orders Management</span>
                                     </div>
-                                    <Button 
-                                        onClick={() => {
-                                            setActionLoading('refresh-orders');
-                                            setTimeout(() => setActionLoading(null), 1000);
-                                        }}
-                                        disabled={actionLoading === 'refresh-orders'}
-                                        variant="outline"
-                                        size="sm"
-                                    >
-                                        {actionLoading === 'refresh-orders' ? 'Refreshing...' : 'Refresh Orders'}
-                                    </Button>
+                                    <div className="flex space-x-2">
+                                        <Button 
+                                            onClick={refreshOrdersData}
+                                            disabled={ordersLoading}
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            {ordersLoading ? 'Refreshing...' : 'Refresh Orders'}
+                                        </Button>
+                                        <Button 
+                                            onClick={async () => {
+                                                console.log('Testing database connection...');
+                                                
+                                                // Test 1: Check if table exists and has any data
+                                                const { count, error: countError } = await supabase
+                                                    .from('orders')
+                                                    .select('*', { count: 'exact', head: true });
+                                                console.log('Count test:', { count, countError });
+                                                
+                                                // Test 2: Try to get actual orders
+                                                const { data: ordersData, error: ordersError } = await supabase
+                                                    .from('orders')
+                                                    .select('*')
+                                                    .limit(5);
+                                                console.log('Orders test:', { ordersData, ordersError });
+                                                
+                                                // Test 3: Check RLS policies
+                                                const { data: { user } } = await supabase.auth.getUser();
+                                                console.log('Current user for RLS test:', user);
+                                                
+                                                const result = {
+                                                    count,
+                                                    countError,
+                                                    ordersData,
+                                                    ordersError,
+                                                    user: user?.id
+                                                };
+                                                
+                                                console.log('Comprehensive test result:', result);
+                                                toast({
+                                                    title: "Database Test",
+                                                    description: countError ? `Count Error: ${countError.message}` : 
+                                                               ordersError ? `Orders Error: ${ordersError.message}` :
+                                                               `Success: ${count || 0} orders found, ${ordersData?.length || 0} retrieved`,
+                                                    variant: (countError || ordersError) ? "destructive" : "default"
+                                                });
+                                            }}
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-blue-600"
+                                        >
+                                            Test DB
+                                        </Button>
+                                    </div>
                                 </div>
                                 <CardDescription>View all orders and their items</CardDescription>
                             </CardHeader>
                             <CardContent>
-                        {loading ? (
+                        {ordersLoading ? (
                             <div className="text-center py-8">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                                 <p className="mt-2 text-gray-600">Loading orders...</p>

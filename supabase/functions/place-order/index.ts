@@ -80,7 +80,8 @@ serve(async (req) => {
         order_id: newOrder.id,
         product_id: item.id, // Change to item.productId if needed
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        unit_price: item.unit_price || Math.round(item.price / item.quantity) // Use unit_price from quotation or calculate from total
     }));
     const { error: orderItemsError } = await supabase
         .from('order_items')

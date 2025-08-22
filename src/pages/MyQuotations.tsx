@@ -162,25 +162,29 @@ const MyQuotations: React.FC = () => {
 
       // Calculate individual item price from quotation
       let itemPrice = 0;
-              if (quotation.unit_prices) {
-            // Parse unit_prices if it's a string, otherwise use as is
-            const unitPrices = typeof quotation.unit_prices === 'string'
-                ? JSON.parse(quotation.unit_prices || '{}')
-                : (quotation.unit_prices || {});
-        const pricePerUnit = unitPrices[index] || 0;
+      let pricePerUnit = 0;
+      
+      if (quotation.unit_prices) {
+        // Parse unit_prices if it's a string, otherwise use as is
+        const unitPrices = typeof quotation.unit_prices === 'string'
+            ? JSON.parse(quotation.unit_prices || '{}')
+            : (quotation.unit_prices || {});
+        pricePerUnit = unitPrices[index] || 0;
         itemPrice = pricePerUnit * item.quantity; // Price per unit × quantity
       } else {
         // Fallback: distribute approved price equally
-        itemPrice = quotation.approved_price / quotation.items.length;
+        pricePerUnit = quotation.approved_price / quotation.items.length;
+        itemPrice = pricePerUnit * item.quantity;
       }
 
       return {
         id: product.id,
         name: product.name,
         price: itemPrice, // Individual item total price
+        unit_price: pricePerUnit, // Unit price from quotation
         image: product.image_url,
         quantity: item.quantity,
-        category: product.category || 'other',
+                        category: product.categories || 'other',
         quotation_id: quotation.id, // Reference to the quotation
         quotation_code: quotation.quotation_code,
         transport_cost: quotation.transport_cost || 0,

@@ -63,52 +63,102 @@ const Index = () => {
     setFormSuccess('');
     setFormLoading(true);
     
-    // Generate merchant code
-    const year = new Date().getFullYear();
-    const { count } = await supabase
-      .from('merchants')
-      .select('id', { count: 'exact', head: true })
-      .ilike('merchant_code', `MC-${year}-%`);
-    const nextNumber = (count || 0) + 1;
-    const merchantCode = `MC-${year}-${String(nextNumber).padStart(4, '0')}`;
+    // Validate form data before submission
+    if (!form.fullName || !form.nurseryName || !form.phoneNumber || !form.email || !form.nurseryAddress || !form.password) {
+      setFormError('Please fill in all required fields.');
+      setFormLoading(false);
+      return;
+    }
     
-    // 1. Create Supabase Auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
+    // Validate password length
+    if (form.password.length < 6) {
+      setFormError('Password must be at least 6 characters long.');
+      setFormLoading(false);
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      setFormError('Please enter a valid email address.');
+      setFormLoading(false);
+      return;
+    }
+    
+    try {
+      console.log('🔄 Starting merchant registration...', { 
+        email: form.email, 
+        nurseryName: form.nurseryName,
+        passwordLength: form.password.length 
+      });
+      
+      // Generate merchant code
+      const year = new Date().getFullYear();
+      const { count } = await supabase
+        .from('merchants')
+        .select('id', { count: 'exact', head: true })
+        .ilike('merchant_code', `MC-${year}-%`);
+      const nextNumber = (count || 0) + 1;
+      const merchantCode = `MC-${year}-${String(nextNumber).padStart(4, '0')}`;
+      
+      console.log('📝 Generated merchant code:', merchantCode);
+      
+      // 1. Create Supabase Auth user
+      console.log('🔐 Creating Supabase Auth user...');
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            full_name: form.fullName,
+            nursery_name: form.nurseryName,
+            phone_number: form.phoneNumber,
+          }
+        }
+      });
+      
+      if (authError) {
+        console.error('❌ Auth signup error:', authError);
+        setFormError(`Authentication error: ${authError.message}`);
+        setFormLoading(false);
+        return;
+      }
+      
+      console.log('✅ Auth user created successfully:', authData);
+      
+      // 2. Insert into merchants table (merchants don't need user_profiles entry)
+      console.log('🏪 Inserting into merchants table...');
+      const { error: dbError } = await supabase.from('merchants').insert([
+        {
           full_name: form.fullName,
           nursery_name: form.nurseryName,
           phone_number: form.phoneNumber,
+          email: form.email,
+          nursery_address: form.nurseryAddress,
+          merchant_code: merchantCode,
+          status: 'pending',
+          user_id: authData.user?.id || null
         }
+      ]);
+      
+      if (dbError) {
+        console.error('❌ Database insert error:', dbError);
+        setFormError(`Database error: ${dbError.message}`);
+        setFormLoading(false);
+        return;
       }
-    });
-    if (authError) {
-      setFormError(authError.message);
+      
+      console.log('✅ Merchant record created successfully');
+      
+      setFormSuccess('Registration successful! Your account is pending approval.');
       setFormLoading(false);
-      return;
-    }
-    // 2. Insert into merchants table
-    const { error: dbError } = await supabase.from('merchants').insert([
-      {
-        full_name: form.fullName,
-        nursery_name: form.nurseryName,
-        phone_number: form.phoneNumber,
-        email: form.email,
-        nursery_address: form.nurseryAddress,
-        merchant_code: merchantCode,
-        status: 'pending',
-      }
-    ]);
-    if (dbError) {
-      setFormError(dbError.message);
+      setForm({ fullName: '', nurseryName: '', phoneNumber: '', email: '', nurseryAddress: '', password: '' });
+      
+    } catch (err) {
+      console.error('💥 Unexpected error during registration:', err);
+      setFormError('An unexpected error occurred. Please try again.');
       setFormLoading(false);
-      return;
     }
-    setFormSuccess('Registration successful! Your account is pending approval.');
-    setFormLoading(false);
-    setForm({ fullName: '', nurseryName: '', phoneNumber: '', email: '', nurseryAddress: '', password: '' });
   };
 
   // CSS for infinite scroll animation
@@ -170,15 +220,71 @@ const Index = () => {
                     Please fill the form below to register your nursery with us. Your request will be reviewed by our admin team before activation.
                   </DialogDescription>
                   <form onSubmit={handleRegisterMerchant} className="space-y-4 mt-4">
-                    <Input name="fullName" placeholder="Full Name" value={form.fullName} onChange={handleFormChange} required />
-                    <Input name="nurseryName" placeholder="Nursery Name" value={form.nurseryName} onChange={handleFormChange} required />
-                    <Input name="phoneNumber" placeholder="Phone Number" value={form.phoneNumber} onChange={handleFormChange} required />
-                    <Input name="email" type="email" placeholder="Email" value={form.email} onChange={handleFormChange} required />
-                    <Textarea name="nurseryAddress" placeholder="Nursery Address" value={form.nurseryAddress} onChange={handleFormChange} required />
-                    <Input name="password" type="password" placeholder="Password" value={form.password} onChange={handleFormChange} required minLength={6} />
-                    {formError && <div className="text-red-600 text-sm">{formError}</div>}
-                    {formSuccess && <div className="text-green-600 text-sm">{formSuccess}</div>}
-                    <Button type="submit" className="w-full" disabled={formLoading}>{formLoading ? 'Registering...' : 'Submit'}</Button>
+                    <Input 
+                      name="fullName" 
+                      placeholder="Full Name" 
+                      value={form.fullName} 
+                      onChange={handleFormChange} 
+                      required 
+                      className={!form.fullName ? 'border-red-300' : ''}
+                    />
+                    <Input 
+                      name="nurseryName" 
+                      placeholder="Nursery Name" 
+                      value={form.nurseryName} 
+                      onChange={handleFormChange} 
+                      required 
+                      className={!form.nurseryName ? 'border-red-300' : ''}
+                    />
+                    <Input 
+                      name="phoneNumber" 
+                      placeholder="Phone Number" 
+                      value={form.phoneNumber} 
+                      onChange={handleFormChange} 
+                      required 
+                      className={!form.phoneNumber ? 'border-red-300' : ''}
+                    />
+                    <Input 
+                      name="email" 
+                      type="email" 
+                      placeholder="Email" 
+                      value={form.email} 
+                      onChange={handleFormChange} 
+                      required 
+                      className={!form.email ? 'border-red-300' : ''}
+                    />
+                    <Textarea 
+                      name="nurseryAddress" 
+                      placeholder="Nursery Address" 
+                      value={form.nurseryAddress} 
+                      onChange={handleFormChange} 
+                      required 
+                      className={!form.nurseryAddress ? 'border-red-300' : ''}
+                    />
+                    <div>
+                      <Input 
+                        name="password" 
+                        type="password" 
+                        placeholder="Password (minimum 6 characters)" 
+                        value={form.password} 
+                        onChange={handleFormChange} 
+                        required 
+                        minLength={6}
+                        className={!form.password || form.password.length < 6 ? 'border-red-300' : ''}
+                      />
+                      {form.password && form.password.length < 6 && (
+                        <p className="text-red-500 text-xs mt-1">Password must be at least 6 characters long</p>
+                      )}
+                    </div>
+                    {formError && <div className="text-red-600 text-sm bg-red-50 p-2 rounded">{formError}</div>}
+                    {formSuccess && <div className="text-green-600 text-sm bg-green-50 p-2 rounded">{formSuccess}</div>}
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={formLoading || !form.password || form.password.length < 6}
+                    >
+                      {formLoading ? 'Registering...' : 'Submit Registration'}
+                    </Button>
                   </form>
                 </DialogContent>
               </Dialog>
@@ -317,41 +423,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 sm:py-20 bg-gradient-to-r from-emerald-600 to-emerald-800">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto animate-fade-in">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 font-montserrat">
-              Ready to Transform Your Garden?
-            </h2>
-            <p className="text-lg sm:text-xl text-emerald-100 mb-8 max-w-2xl mx-auto font-lora">
-              Join thousands of satisfied customers who trust Nursery Shop for their plant needs
-            </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/contact">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto bg-white text-emerald-800 hover:bg-gray-100 px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 min-h-[48px] font-montserrat"
-                >
-                  <Mail className="w-5 h-5 mr-2" />
-                  Contact Us
-                </Button>
-              </Link>
-              <Link to="/plants">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-2 border-white text-white hover:bg-white hover:text-emerald-800 px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 min-h-[48px] font-montserrat"
-                >
-                  View Our Collection
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-emerald-900 text-white py-8 sm:py-12">
@@ -396,7 +468,18 @@ const Index = () => {
           </div>
 
           <div className="border-t border-emerald-800 mt-8 pt-8 text-center text-emerald-200">
-            <p className="text-sm sm:text-base font-lora">&copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India</p>
+            <p className="text-sm sm:text-base font-lora">
+              &copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India
+            </p>
+            <div className="mt-4 flex justify-center space-x-4 text-sm">
+              <Link to="/privacy-policy" className="text-emerald-300 hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <span className="text-emerald-600">|</span>
+              <Link to="/terms-of-service" className="text-emerald-300 hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+            </div>
           </div>
         </div>
       </footer>

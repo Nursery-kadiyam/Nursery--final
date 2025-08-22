@@ -22,38 +22,58 @@ const RegisterMerchant: React.FC = () => {
     const onSubmit: SubmitHandler<MerchantFormInputs> = async (data) => {
         setError(null);
         
-        // Generate merchant code
-        const year = new Date().getFullYear();
-        const { count } = await supabase
-            .from('merchants')
-            .select('id', { count: 'exact', head: true })
-            .ilike('merchant_code', `MC-${year}-%`);
-        const nextNumber = (count || 0) + 1;
-        const merchantCode = `MC-${year}-${String(nextNumber).padStart(4, '0')}`;
-        
-        const { error } = await supabase.from("merchants").insert([
-            {
-                full_name: data.fullName,
-                nursery_name: data.nurseryName,
-                phone_number: data.phoneNumber,
-                email: data.email,
-                nursery_address: data.nurseryAddress,
-                merchant_code: merchantCode,
-                status: 'pending',
-            },
-        ]);
-        if (error) {
-            setError("Submission failed. Please try again later.");
-        } else {
-            setSubmitted(true);
+        try {
+            console.log('🔄 Submitting merchant registration...', data);
+            
+            // Get current user if logged in
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            // Use the database function for better error handling
+            const { data: result, error } = await supabase.rpc('register_merchant', {
+                p_full_name: data.fullName,
+                p_nursery_name: data.nurseryName,
+                p_phone_number: data.phoneNumber,
+                p_email: data.email,
+                p_nursery_address: data.nurseryAddress,
+                p_user_id: user?.id || null
+            });
+            
+            if (error) {
+                console.error('❌ Database function error:', error);
+                setError(`Database error: ${error.message}`);
+                return;
+            }
+            
+            if (result && result.success) {
+                console.log('✅ Merchant registration successful:', result);
+                setSubmitted(true);
+            } else {
+                console.error('❌ Registration failed:', result);
+                setError(result?.message || 'Registration failed. Please try again.');
+            }
+            
+        } catch (err) {
+            console.error('💥 Unexpected error:', err);
+            setError('An unexpected error occurred. Please try again.');
         }
     };
 
     if (submitted) {
         return (
             <div className="max-w-md mx-auto mt-4 p-3 bg-white rounded shadow">
-                <h2 className="text-2xl font-bold mb-4">Registration Submitted</h2>
-                <p>Your account will be reviewed. You will be notified once approved.</p>
+                <h2 className="text-2xl font-bold mb-4 text-green-600">✅ Registration Submitted</h2>
+                <p className="text-gray-700 mb-4">Your merchant registration has been submitted successfully!</p>
+                <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
+                    <p className="text-sm text-green-800">
+                        <strong>What happens next?</strong>
+                    </p>
+                    <ul className="text-sm text-green-700 mt-2 space-y-1">
+                        <li>• Our admin team will review your application</li>
+                        <li>• You will receive an email notification once approved</li>
+                        <li>• You can then log in and start managing your nursery</li>
+                    </ul>
+                </div>
+                <p className="text-sm text-gray-600">Thank you for choosing to partner with us!</p>
             </div>
         );
     }

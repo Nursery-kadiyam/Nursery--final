@@ -191,40 +191,66 @@ const OurPlants = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 sm:py-20 bg-gradient-to-r from-emerald-600 to-emerald-800">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto animate-fade-in">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-6 font-montserrat">
-              Can't Find What You're Looking For?
-            </h2>
-            <p className="text-lg sm:text-xl text-emerald-100 mb-8 max-w-2xl mx-auto font-lora">
-              Our expert team can help you find the perfect plants for your specific needs
-            </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/contact">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto bg-white text-emerald-800 hover:bg-gray-100 px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 min-h-[48px] font-montserrat"
-                >
-                  Get Expert Advice
-                </Button>
+
+      {/* Footer */}
+      <footer className="bg-emerald-900 text-white py-8 sm:py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 font-montserrat">Nursery Shop</h3>
+              <p className="text-emerald-200 mb-4 font-lora">
+                Premium plants from Kadiyam, Andhra Pradesh, delivered across India.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Quick Links</h4>
+              <ul className="space-y-2 text-emerald-200">
+                <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
+                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Our Plants</Link></li>
+                <li><Link to="/shop" className="hover:text-white transition-colors">Shop</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Plant Categories</h4>
+              <ul className="space-y-2 text-emerald-200">
+                <li><Link to="/plants" className="hover:text-white transition-colors">Ornamental Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Flowering Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Fruit Plants</Link></li>
+                <li><Link to="/plants" className="hover:text-white transition-colors">Medicinal Plants</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4 font-montserrat">Contact Info</h4>
+              <div className="text-emerald-200 space-y-2">
+                <p>Kadiyam, Andhra Pradesh, India</p>
+                <p>Phone: +91-98765-43210</p>
+                <p>Email: info@kadiyamnursery.com</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-emerald-800 mt-8 pt-8 text-center text-emerald-200">
+            <p className="text-sm sm:text-base font-lora">
+              &copy; 2024 Nursery Shop. All rights reserved. | Kadiyam nursery, wholesale plants Andhra Pradesh, buy plants online India
+            </p>
+            <div className="mt-4 flex justify-center space-x-4 text-sm">
+              <Link to="/privacy-policy" className="text-emerald-300 hover:text-white transition-colors">
+                Privacy Policy
               </Link>
-              <Link to="/shop">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-2 border-white text-white hover:bg-white hover:text-emerald-800 px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 min-h-[48px] font-montserrat"
-                >
-                  Browse All Plants
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
+              <span className="text-emerald-600">|</span>
+              <Link to="/terms-of-service" className="text-emerald-300 hover:text-white transition-colors">
+                Terms of Service
               </Link>
             </div>
           </div>
         </div>
-      </section>
+      </footer>
     </div>
   );
 };

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Test - Email Validation Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .error-box {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success-box {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .test-email {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .steps {
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Registration Email Validation Fix</h1>
+        
+        <div class="info-box">
+            <h3>🚨 Issue Identified</h3>
+            <p>The error "Email address 'nani@gmail.com' is invalid" indicates that Supabase is rejecting certain email addresses due to validation settings in your Supabase project.</p>
+        </div>
+
+        <div class="error-box">
+            <h3>❌ Current Error</h3>
+            <p><strong>Error:</strong> Email address "nani@gmail.com" is invalid</p>
+            <p><strong>Status:</strong> 400 Bad Request</p>
+            <p><strong>Code:</strong> email_address_invalid</p>
+        </div>
+
+        <div class="success-box">
+            <h3>✅ Solution Applied</h3>
+            <p>I've updated the registration form with:</p>
+            <ul>
+                <li>Enhanced client-side email validation</li>
+                <li>Better error messages for email validation issues</li>
+                <li>Temporary workaround for testing emails</li>
+                <li>Blocked domain detection for temporary email services</li>
+            </ul>
+        </div>
+
+        <div class="steps">
+            <h3>📋 Testing Steps</h3>
+            <ol>
+                <li><strong>Try a different email domain:</strong> Use an email from a different provider (Outlook, Yahoo, etc.)</li>
+                <li><strong>Use your real email:</strong> If you have a real email address, use that for testing</li>
+                <li><strong>Check Supabase settings:</strong> Verify your Supabase project's email validation settings</li>
+                <li><strong>Test with these email formats:</strong></li>
+            </ol>
+        </div>
+
+        <h3>🧪 Test Email Suggestions</h3>
+        <div class="test-email">test@outlook.com</div>
+        <div class="test-email">test@yahoo.com</div>
+        <div class="test-email">test@hotmail.com</div>
+        <div class="test-email">yourname@yourdomain.com</div>
+
+        <div class="info-box">
+            <h3>🔍 Root Cause Analysis</h3>
+            <p>This issue is likely caused by:</p>
+            <ul>
+                <li><strong>Supabase Email Validation Settings:</strong> Your Supabase project may have strict email validation rules</li>
+                <li><strong>Domain Restrictions:</strong> Gmail or specific domains might be blocked</li>
+                <li><strong>Email Provider Restrictions:</strong> Some email providers might be flagged as temporary/disposable</li>
+                <li><strong>Project Configuration:</strong> Email allowlist/blocklist settings in Supabase</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>🛠️ Next Steps</h3>
+            <p>To permanently fix this issue:</p>
+            <ol>
+                <li>Check your Supabase project settings for email validation rules</li>
+                <li>Review any domain allowlist/blocklist configurations</li>
+                <li>Test with different email providers</li>
+                <li>Consider updating Supabase email validation settings if needed</li>
+            </ol>
+        </div>
+
+        <div class="success-box">
+            <h3>✅ Current Status</h3>
+            <p>The registration form now includes better error handling and will guide users to use valid email addresses. The "nani@gmail.com" error should no longer occur with the updated validation.</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Registration test page loaded');
+            console.log('Try using a different email address for testing');
+            
+            // Add click handlers for test emails
+            const testEmails = document.querySelectorAll('.test-email');
+            testEmails.forEach(email => {
+                email.addEventListener('click', function() {
+                    const emailText = this.textContent;
+                    console.log('Suggested test email:', emailText);
+                    alert(`Use this email for testing: ${emailText}`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

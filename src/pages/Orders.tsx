@@ -40,7 +40,7 @@ const Orders = () => {
                 const { data: profileData, error: profileError } = await supabase
                     .from("user_profiles")
                     .select("first_name, last_name, email, phone")
-                    .eq("user_id", user.id)
+                    .eq("id", user.id)
                     .single();
                 if (profileError) throw profileError;
                 setProfile(profileData);
@@ -98,7 +98,15 @@ const Orders = () => {
                                 if (item.transport_cost) transportTotal += item.transport_cost;
                                 if (item.custom_work_cost) customWorkTotal += item.custom_work_cost;
                                 
-                                console.log(`Quotation item: ${item.name}, quotation_price: ${quotationPrice}, transport: ${item.transport_cost || 0}, custom: ${item.custom_work_cost || 0}`);
+                                console.log(`Quotation item processing:`, {
+                                    name: item.name,
+                                    quantity: item.quantity,
+                                    original_price: item.price,
+                                    quotation_price: item.quotation_price,
+                                    transport_cost: item.transport_cost || 0,
+                                    custom_work_cost: item.custom_work_cost || 0,
+                                    calculated_quotation_price: quotationPrice
+                                });
                             });
                             
                             calculatedTotal = itemsTotal + transportTotal + customWorkTotal;
@@ -141,14 +149,32 @@ const Orders = () => {
                         is_quotation_order: isQuotationOrder,
                                             items: isQuotationOrder && order.cart_items ? 
                             // For quotation orders, use cart_items with quotation prices
-                            order.cart_items.map(item => ({
-                                name: item.name || item.title,
-                                image: item.image || item.image_url,
-                                quantity: item.quantity || 1,
-                                price: item.quotation_price ? (item.quotation_price / (item.quantity || 1)) : (item.price || 0),
-                                quotation_price: item.quotation_price,
-                                is_quotation: true
-                            })) :
+                            order.cart_items.map(item => {
+                                // For quotation orders, the quotation_price is the total price for the item
+                                // We need to calculate the unit price by dividing quotation_price by quantity
+                                const quotationPrice = item.quotation_price || item.price || 0;
+                                const unitPrice = quotationPrice / (item.quantity || 1);
+                                
+                                console.log(`Quotation item mapping:`, {
+                                    name: item.name || item.title,
+                                    quantity: item.quantity || 1,
+                                    original_price: item.price,
+                                    quotation_price: item.quotation_price,
+                                    calculated_unit_price: unitPrice,
+                                    final_quotation_price: quotationPrice,
+                                    calculation: `${item.quantity || 1} × ₹${unitPrice.toFixed(2)} = ₹${quotationPrice.toFixed(2)}`
+                                });
+                                
+                                return {
+                                    name: item.name || item.title,
+                                    image: item.image || item.image_url,
+                                    quantity: item.quantity || 1,
+                                    // For quotation orders, calculate the unit price from quotation price and quantity
+                                    price: unitPrice, // Calculate unit price from quotation total
+                                    quotation_price: quotationPrice, // Ensure quotation_price is always available
+                                    is_quotation: true
+                                };
+                            }) :
                             // For regular orders, use order_items
                             (order.order_items || []).map(item => {
                                 const product = Array.isArray(item.product) ? item.product[0] : item.product;
@@ -313,10 +339,23 @@ const Orders = () => {
                                                                 className="w-12 h-12 object-cover rounded-lg flex-shrink-0" 
                                                                 onError={e => { e.currentTarget.src = '/assets/placeholder.svg'; }} 
                                                             />
-                                                            <div className="flex-1 min-w-0">
+                                                                                                                    <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
                                                                 <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                                                                {item.is_quotation && (
+                                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                                        Quotation
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                                 <p className="text-sm text-gray-600">
-                                                                    Quantity: {item.quantity} × ₹{item.price?.toFixed(2) || '0.00'} = ₹{((item.quantity || 1) * (item.price || 0)).toFixed(2)}
+                                                                    {item.is_quotation ? (
+                                                                        // For quotation items, show the quotation price as total
+                                                                        `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${item.quotation_price?.toFixed(2) || '0.00'}`
+                                                                    ) : (
+                                                                        // For regular items, calculate quantity × price
+                                                                        `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
+                                                                    )}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -342,9 +381,22 @@ const Orders = () => {
                                                                             onError={e => { e.currentTarget.src = '/assets/placeholder.svg'; }} 
                                                                         />
                                                                                                                                 <div className="flex-1 min-w-0">
-                                                            <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                                                                {item.is_quotation && (
+                                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                                        Quotation
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-sm text-gray-600">
-                                                                Quantity: {item.quantity} × ₹{item.price?.toFixed(2) || '0.00'} = ₹{((item.quantity || 1) * (item.price || 0)).toFixed(2)}
+                                                                {item.is_quotation ? (
+                                                                    // For quotation items, show the quotation price as total
+                                                                    `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${item.quotation_price?.toFixed(2) || '0.00'}`
+                                                                ) : (
+                                                                    // For regular items, calculate quantity × price
+                                                                    `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
+                                                                )}
                                                             </p>
                                                         </div>
                                                                     </div>

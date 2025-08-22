@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Connection</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Auth Connection</h1>
+        <p>This page will help test the Supabase Auth connection and identify the source of the "Database error saving new user" error.</p>
+
+        <div class="test-section info">
+            <h3>📋 Test Instructions</h3>
+            <ol>
+                <li>Click "Test Database Connection" to verify basic connection</li>
+                <li>Click "Test Auth Signup" to test user creation</li>
+                <li>Check the results below for any errors</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Run Tests</h3>
+            <button onclick="testConnection()">Test Database Connection</button>
+            <button onclick="testAuthSignup()">Test Auth Signup</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Test Auth Signup</h3>
+            <input type="email" id="testEmail" placeholder="Enter test email" value="test@example.com">
+            <input type="password" id="testPassword" placeholder="Enter test password" value="test123456">
+            <button onclick="testSpecificSignup()">Test Specific Signup</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Your Supabase configuration
+        const supabaseUrl = 'https://rjapkpboonxljiupceyq.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZGNxY29lemt4dXZ3cXBpem1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NTg1MTQsImV4cCI6MjA2NjIzNDUxNH0.oiLG5Pr079Zzz82hHvgvfASKryolWYsXt9e6z7zL-JE';
+
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(content, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testConnection() {
+            try {
+                addResult('🔌 Testing Database Connection', 'Connecting to Supabase...', 'info');
+                
+                // Test basic connection
+                const { data, error } = await supabase.from('user_profiles').select('count').limit(1);
+                
+                if (error) {
+                    addResult('❌ Connection Failed', error, 'error');
+                } else {
+                    addResult('✅ Connection Successful', { message: 'Database connection is working', data }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Connection Error', err, 'error');
+            }
+        }
+
+        async function testAuthSignup() {
+            try {
+                addResult('🔐 Testing Auth Signup', 'Testing user creation...', 'info');
+                
+                // Generate unique email
+                const timestamp = Date.now();
+                const testEmail = `test${timestamp}@example.com`;
+                const testPassword = 'test123456';
+                
+                console.log('Testing signup with:', testEmail);
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            first_name: 'Test',
+                            last_name: 'User'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    addResult('❌ Auth Signup Failed', error, 'error');
+                } else {
+                    addResult('✅ Auth Signup Successful', { 
+                        message: 'User created successfully',
+                        user: data.user ? { id: data.user.id, email: data.user.email } : null,
+                        session: data.session ? 'Session created' : 'No session'
+                    }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Auth Signup Error', err, 'error');
+            }
+        }
+
+        async function testSpecificSignup() {
+            try {
+                const email = document.getElementById('testEmail').value;
+                const password = document.getElementById('testPassword').value;
+                
+                if (!email || !password) {
+                    addResult('❌ Input Error', 'Please enter both email and password', 'error');
+                    return;
+                }
+                
+                addResult('🔐 Testing Specific Signup', `Testing signup with ${email}...`, 'info');
+                
+                console.log('Testing specific signup with:', email);
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            first_name: 'Test',
+                            last_name: 'User'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    addResult('❌ Specific Signup Failed', error, 'error');
+                } else {
+                    addResult('✅ Specific Signup Successful', { 
+                        message: 'User created successfully',
+                        user: data.user ? { id: data.user.id, email: data.user.email } : null,
+                        session: data.session ? 'Session created' : 'No session'
+                    }, 'success');
+                }
+            } catch (err) {
+                addResult('❌ Specific Signup Error', err, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-run connection test on page load
+        window.onload = function() {
+            addResult('🚀 Page Loaded', 'Auth connection test page is ready. Click the buttons above to run tests.', 'info');
+        };
+    </script>
+</body>
+</html>

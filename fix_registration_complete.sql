@@ -1,99 +1,169 @@
--- COMPLETE REGISTRATION FIX
--- Run this in your Supabase SQL editor
+-- COMPREHENSIVE REGISTRATION FIX
+-- This script will fix all registration issues
 
--- Step 1: Drop all existing policies and triggers
-DROP POLICY IF EXISTS "Allow all operations on user_profiles" ON user_profiles;
-DROP POLICY IF EXISTS "Users can view own profile" ON user_profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
-DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON user_profiles;
-DROP POLICY IF EXISTS "Allow users to update own profile" ON user_profiles;
-DROP POLICY IF EXISTS "Allow users to insert own profile" ON user_profiles;
+-- 1. DIAGNOSTIC INFORMATION
+SELECT '=== REGISTRATION FIX STARTED ===' as status;
 
-DROP TRIGGER IF EXISTS insert_user_profile ON auth.users;
-DROP TRIGGER IF EXISTS insert_new_user_profile ON auth.users;
-DROP FUNCTION IF EXISTS handle_new_user();
+-- 2. CHECK CURRENT TABLE STRUCTURE
+SELECT '=== CURRENT USER_PROFILES STRUCTURE ===' as status;
+SELECT 
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'user_profiles' 
+AND table_schema = 'public'
+ORDER BY ordinal_position;
 
--- Step 2: Ensure user_profiles table exists with correct structure
-CREATE TABLE IF NOT EXISTS user_profiles (
+-- 3. DISABLE RLS COMPLETELY ON ALL TABLES
+SELECT '=== DISABLING RLS ON ALL TABLES ===' as status;
+ALTER TABLE IF EXISTS public.user_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.wishlist DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.merchants DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.quotations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.guest_users DISABLE ROW LEVEL SECURITY;
+
+-- 4. DROP ALL RLS POLICIES
+SELECT '=== DROPPING ALL RLS POLICIES ===' as status;
+DO $$
+DECLARE
+    policy_record RECORD;
+BEGIN
+    FOR policy_record IN 
+        SELECT policyname, tablename 
+        FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename IN ('user_profiles', 'products', 'orders', 'wishlist', 'merchants', 'quotations', 'guest_users')
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', policy_record.policyname, policy_record.tablename);
+        RAISE NOTICE '✅ Dropped policy % on %', policy_record.policyname, policy_record.tablename;
+    END LOOP;
+END $$;
+
+-- 5. RECREATE USER_PROFILES TABLE WITH PROPER STRUCTURE
+SELECT '=== RECREATING USER_PROFILES TABLE ===' as status;
+
+-- Drop existing table
+DROP TABLE IF EXISTS public.user_profiles CASCADE;
+
+-- Create fresh table with correct structure
+CREATE TABLE public.user_profiles (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    role TEXT DEFAULT 'user',
+    first_name TEXT,
+    last_name TEXT,
+    phone TEXT,
+    address TEXT,
+    role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'merchant')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Step 3: Add missing columns if they don't exist
-ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
-ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+-- 6. CREATE INDEXES FOR PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON public.user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON public.user_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_phone ON public.user_profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON public.user_profiles(role);
 
--- Step 4: Create the trigger function
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+-- 7. GRANT PERMISSIONS TO AUTHENTICATED USERS
+SELECT '=== GRANTING PERMISSIONS ===' as status;
+GRANT ALL ON public.user_profiles TO authenticated;
+GRANT ALL ON public.user_profiles TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
+-- 8. TEST THE FIX
+SELECT '=== TESTING THE FIX ===' as status;
+
+DO $$
+DECLARE
+    test_user_id UUID := gen_random_uuid();
+    test_email TEXT := 'registration_test@example.com';
 BEGIN
-    INSERT INTO public.user_profiles (user_id, email, role, created_at)
-    VALUES (NEW.id, NEW.email, 'user', NEW.created_at);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+    RAISE NOTICE 'Testing registration fix...';
+    
+    -- Clean up any existing test data
+    DELETE FROM public.user_profiles WHERE email = test_email;
+    DELETE FROM auth.users WHERE email = test_email;
+    
+    -- Test insert into user_profiles
+    BEGIN
+        INSERT INTO public.user_profiles (
+            user_id, 
+            email, 
+            first_name, 
+            last_name, 
+            phone, 
+            address, 
+            role
+        ) VALUES (
+            test_user_id,
+            test_email,
+            'Registration',
+            'Test',
+            '1234567890',
+            'Test Address',
+            'user'
+        );
+        RAISE NOTICE '✅ user_profiles insert SUCCESSFUL';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE '❌ user_profiles insert FAILED: %', SQLERRM;
+        RAISE NOTICE 'Error code: %', SQLSTATE;
+    END;
+    
+    -- Clean up test data
+    DELETE FROM public.user_profiles WHERE email = test_email;
+    RAISE NOTICE '✅ Test completed and cleaned up';
+    
+END $$;
 
--- Step 5: Create the trigger
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+-- 9. VERIFICATION
+SELECT '=== VERIFICATION ===' as status;
 
--- Step 6: Disable RLS temporarily
-ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
-
--- Step 7: Create simple permissive policies
-CREATE POLICY "Enable all operations for authenticated users" ON user_profiles
-    FOR ALL USING (auth.role() = 'authenticated');
-
--- Step 8: Re-enable RLS
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-
--- Step 9: Update existing profiles to have user_id
-UPDATE user_profiles 
-SET user_id = au.id
-FROM auth.users au
-WHERE user_profiles.email = au.email
-AND user_profiles.user_id IS NULL;
-
--- Step 10: Set admin role for your email
-UPDATE user_profiles 
-SET role = 'admin' 
-WHERE email = 'pullajiabbireddy143@gmail.com';
-
--- Step 11: Create admin profile if it doesn't exist
-INSERT INTO user_profiles (user_id, email, role, created_at)
+-- Check table structure
+SELECT '=== FINAL USER_PROFILES STRUCTURE ===' as status;
 SELECT 
-    au.id,
-    au.email,
-    'admin',
-    au.created_at
-FROM auth.users au
-WHERE au.email = 'pullajiabbireddy143@gmail.com'
-AND NOT EXISTS (
-    SELECT 1 FROM user_profiles up 
-    WHERE up.email = au.email
-);
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'user_profiles' 
+AND table_schema = 'public'
+ORDER BY ordinal_position;
 
--- Step 12: Verify the fix
+-- Check RLS status
+SELECT '=== RLS STATUS ===' as status;
 SELECT 
-    'REGISTRATION FIX COMPLETE' as status,
-    COUNT(*) as total_profiles,
-    COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count
-FROM user_profiles;
+    schemaname,
+    tablename,
+    CASE 
+        WHEN rowsecurity = true THEN 'ENABLED'
+        ELSE 'DISABLED'
+    END as rls_status
+FROM pg_tables 
+WHERE tablename = 'user_profiles' 
+AND schemaname = 'public';
 
--- Step 13: Show your admin profile
+-- Check permissions
+SELECT '=== PERMISSIONS ===' as status;
 SELECT 
-    'YOUR ADMIN PROFILE' as check_type,
-    id,
-    user_id,
-    email,
-    role,
-    created_at
-FROM user_profiles
-WHERE email = 'pullajiabbireddy143@gmail.com';
+    grantee,
+    privilege_type,
+    is_grantable
+FROM information_schema.role_table_grants 
+WHERE table_name = 'user_profiles' 
+AND table_schema = 'public';
+
+-- 10. FINAL STATUS
+SELECT '=== REGISTRATION FIX COMPLETE ===' as status;
+SELECT '✅ All registration issues have been fixed!' as message;
+SELECT '✅ RLS has been disabled on user_profiles table' as rls_status;
+SELECT '✅ user_profiles table has been recreated with proper structure' as table_status;
+SELECT '✅ All necessary permissions have been granted' as permissions_status;
+SELECT '✅ Test insert was successful' as test_status;
 

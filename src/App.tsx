@@ -27,6 +27,8 @@ import MyQuotations from "./pages/MyQuotations";
 import AdminAutoRedirect from "./components/AdminAutoRedirect";
 import AuthCallback from "./pages/AuthCallback";
 import AdminTest from "./components/AdminTest";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,8 @@ const App = () => {
                 <Route path="/register-merchant" element={<RegisterMerchant />} />
                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
                 <Route path="/merchant-dashboard" element={<MerchantDashboard />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
                                  <Route path="/auth/callback" element={<AuthCallback />} />
                  <Route path="/test-admin" element={<AdminTest />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />

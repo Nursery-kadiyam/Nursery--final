@@ -23,11 +23,260 @@ import {
 import { Navbar } from "@/components/ui/navbar";
 import { useCart } from '../contexts/CartContext';
 import { supabase } from "../lib/supabase";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 function safeString(val: unknown): string {
     return (typeof val === 'string') ? val : '';
 }
+
+// Product image mapping configuration
+const getProductImages = (productName: string, productCategory: string): Array<{
+    id: number;
+    src: string;
+    alt: string;
+    thumbnail: string;
+}> => {
+    const productNameLower = productName.toLowerCase();
+    const categoryLower = productCategory.toLowerCase();
+
+    // Ganuga tree specific images
+    if (productNameLower.includes('ganuga') || productNameLower.includes('pongamia')) {
+        return [
+            {
+                id: 1,
+                src: "/assets/ganuga.jpeg",
+                alt: "Ganuga Tree - Main View",
+                thumbnail: "/assets/ganuga.jpeg"
+            },
+            {
+                id: 2,
+                src: "/assets/ganuga1.jpeg",
+                alt: "Ganuga Tree - Close Up",
+                thumbnail: "/assets/ganuga1.jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.14 PM.jpeg",
+                alt: "Ganuga Tree - Growth Stage",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.14 PM.jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.15 PM.jpeg",
+                alt: "Ganuga Tree - Mature Plant",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.15 PM.jpeg"
+            }
+        ];
+    }
+
+    // Ashoka tree specific images
+    if (productNameLower.includes('ashoka') || productNameLower.includes('saraca')) {
+        return [
+        {
+            id: 1,
+            src: "/assets/Ashoka.jpeg",
+            alt: "Ashoka Tree - Main View",
+            thumbnail: "/assets/Ashoka.jpeg"
+        },
+        {
+            id: 2,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM.jpeg",
+                alt: "Ashoka Tree - Flowering",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM.jpeg"
+        },
+        {
+            id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM (1).jpeg",
+                alt: "Ashoka Tree - Close Up",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM (1).jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.18 PM.jpeg",
+                alt: "Ashoka Tree - Garden View",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.18 PM.jpeg"
+            }
+        ];
+    }
+
+    // Bamboo plants specific images
+    if (productNameLower.includes('bamboo') || productNameLower.includes('bambusa')) {
+        return [
+            {
+                id: 1,
+            src: "/assets/Bamboo plants.jpeg",
+                alt: "Bamboo Plants - Main View",
+            thumbnail: "/assets/Bamboo plants.jpeg"
+        },
+        {
+                id: 2,
+                src: "/assets/golden bamboo.jpeg",
+                alt: "Golden Bamboo - Variety",
+                thumbnail: "/assets/golden bamboo.jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.22 PM.jpeg",
+                alt: "Bamboo Grove",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.22 PM.jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.23 PM.jpeg",
+                alt: "Bamboo Plantation",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.23 PM.jpeg"
+            }
+        ];
+    }
+
+    // Cassia tree specific images
+    if (productNameLower.includes('cassia') || productNameLower.includes('senna')) {
+        return [
+            {
+                id: 1,
+            src: "/assets/Cassia Tree.jpeg",
+                alt: "Cassia Tree - Main View",
+            thumbnail: "/assets/Cassia Tree.jpeg"
+        },
+        {
+                id: 2,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.24 PM.jpeg",
+                alt: "Cassia Tree - Flowering",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.24 PM.jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.25 PM.jpeg",
+                alt: "Cassia Tree - Yellow Blooms",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.25 PM.jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.26 PM.jpeg",
+                alt: "Cassia Tree - Avenue Planting",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.26 PM.jpeg"
+            }
+        ];
+    }
+
+    // Croton plant specific images
+    if (productNameLower.includes('croton') || productNameLower.includes('codiaeum')) {
+        return [
+            {
+                id: 1,
+            src: "/assets/Croton plant.jpeg",
+                alt: "Croton Plant - Main View",
+            thumbnail: "/assets/Croton plant.jpeg"
+            },
+            {
+                id: 2,
+                src: "/assets/croton plant .jpeg",
+                alt: "Croton Plant - Colorful Leaves",
+                thumbnail: "/assets/croton plant .jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.26 PM (1).jpeg",
+                alt: "Croton Plant - Indoor Display",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.26 PM (1).jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.29 PM.jpeg",
+                alt: "Croton Plant - Garden View",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.29 PM.jpeg"
+            }
+        ];
+    }
+
+    // Balaji nimma specific images
+    if (productNameLower.includes('balaji') || productNameLower.includes('nimma')) {
+        return [
+            {
+                id: 1,
+                src: "/assets/Balaji nimma.jpeg",
+                alt: "Balaji Nimma Plant - Main View",
+                thumbnail: "/assets/Balaji nimma.jpeg"
+            },
+            {
+                id: 2,
+                src: "/assets/Balaji nimma1.jpeg",
+                alt: "Balaji Nimma Plant - Close Up",
+                thumbnail: "/assets/Balaji nimma1.jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.38 PM (1).jpeg",
+                alt: "Balaji Nimma Plant - Growth Stage",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.38 PM (1).jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.40 PM (1).jpeg",
+                alt: "Balaji Nimma Plant - Mature Plant",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.40 PM (1).jpeg"
+            }
+        ];
+    }
+
+    // Boston Fern specific images
+    if (productNameLower.includes('boston') || productNameLower.includes('fern')) {
+        return [
+            {
+                id: 1,
+                src: "/assets/Boston Fern.jpeg",
+                alt: "Boston Fern - Main View",
+                thumbnail: "/assets/Boston Fern.jpeg"
+            },
+            {
+                id: 2,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.41 PM.jpeg",
+                alt: "Boston Fern - Indoor Display",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.41 PM.jpeg"
+            },
+            {
+                id: 3,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.42 PM.jpeg",
+                alt: "Boston Fern - Hanging Basket",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.42 PM.jpeg"
+            },
+            {
+                id: 4,
+                src: "/assets/WhatsApp Image 2025-06-22 at 1.43.42 PM (1).jpeg",
+                alt: "Boston Fern - Close Up",
+                thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.42 PM (1).jpeg"
+            }
+        ];
+    }
+
+    // Default images for other products (generic plant images)
+    return [
+        {
+            id: 1,
+            src: "/assets/Ashoka.jpeg",
+            alt: `${productName} - Main View`,
+            thumbnail: "/assets/Ashoka.jpeg"
+        },
+        {
+            id: 2,
+            src: "/assets/Balaji nimma.jpeg",
+            alt: `${productName} - Growth Stage`,
+            thumbnail: "/assets/Balaji nimma.jpeg"
+        },
+        {
+            id: 3,
+            src: "/assets/Bamboo plants.jpeg",
+            alt: `${productName} - Garden View`,
+            thumbnail: "/assets/Bamboo plants.jpeg"
+        },
+        {
+            id: 4,
+            src: "/assets/Boston Fern.jpeg",
+            alt: `${productName} - Close Up`,
+            thumbnail: "/assets/Boston Fern.jpeg"
+        }
+    ];
+};
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -42,45 +291,13 @@ const ProductDetails = () => {
     const [descOpen, setDescOpen] = useState(false);
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-    const [currentMainImage, setCurrentMainImage] = useState("/assets/Ashoka.jpeg");
-    const [reviewImages] = useState([
-        {
-            id: 1,
-            src: "/assets/Ashoka.jpeg",
-            alt: "Ashoka Tree - Main View",
-            thumbnail: "/assets/Ashoka.jpeg"
-        },
-        {
-            id: 2,
-            src: "/assets/Balaji nimma.jpeg",
-            alt: "Balaji Nimma Plant",
-            thumbnail: "/assets/Balaji nimma.jpeg"
-        },
-        {
-            id: 3,
-            src: "/assets/Bamboo plants.jpeg",
-            alt: "Bamboo Plants",
-            thumbnail: "/assets/Bamboo plants.jpeg"
-        },
-        {
-            id: 4,
-            src: "/assets/Boston Fern.jpeg",
-            alt: "Boston Fern",
-            thumbnail: "/assets/Boston Fern.jpeg"
-        },
-        {
-            id: 5,
-            src: "/assets/Cassia Tree.jpeg",
-            alt: "Cassia Tree",
-            thumbnail: "/assets/Cassia Tree.jpeg"
-        },
-        {
-            id: 6,
-            src: "/assets/Croton plant.jpeg",
-            alt: "Croton Plant",
-            thumbnail: "/assets/Croton plant.jpeg"
-        }
-    ]);
+    const [currentMainImage, setCurrentMainImage] = useState("/assets/placeholder.svg");
+    const [reviewImages, setReviewImages] = useState<Array<{
+        id: number;
+        src: string;
+        alt: string;
+        thumbnail: string;
+    }>>([]);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -89,6 +306,15 @@ const ProductDetails = () => {
             const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
             if (!error && data) {
                 setPlant(data);
+                // Set the main image to the product's image_url
+                const mainImage = data.image_url && typeof data.image_url === 'string' && (data.image_url.startsWith('http') || data.image_url.startsWith('/assets/'))
+                    ? data.image_url
+                    : '/assets/placeholder.svg';
+                setCurrentMainImage(mainImage);
+                
+                // Get product-specific review images
+                const productImages = getProductImages(data.name, data.categories || '');
+                setReviewImages(productImages);
             }
             setLoading(false);
         };
@@ -97,8 +323,24 @@ const ProductDetails = () => {
 
     useEffect(() => {
         // Check if plant is in wishlist
-        const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-        setIsInWishlist(wishlist.some((item: any) => item.id === parseInt(id || "0")));
+        const checkWishlistStatus = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Check Supabase wishlist for logged-in user
+                const { data, error } = await supabase
+                    .from('wishlist')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('product_id', id)
+                    .single();
+                setIsInWishlist(!!data);
+            } else {
+                // Fallback to localStorage for guests
+                const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                setIsInWishlist(wishlist.some((item: any) => item.id === parseInt(id || "0")));
+            }
+        };
+        checkWishlistStatus();
     }, [id]);
 
     useEffect(() => {
@@ -200,7 +442,7 @@ const ProductDetails = () => {
         addToCart({
             id: String(plant.id),
             name: plant.name,
-            category: plant.category,
+                            category: plant.categories,
             price: plant.price,
             quantity: Number(quantity),
             image: plant.image_url && typeof plant.image_url === 'string' && (plant.image_url.startsWith('http') || plant.image_url.startsWith('/assets/'))
@@ -227,11 +469,11 @@ const ProductDetails = () => {
     };
 
     const nextImage = () => {
-        setSelectedImageIndex((prev) => (prev + 1) % reviewImages.length);
+        setSelectedImageIndex((prev) => (prev + 1) % (reviewImages.length + 1));
     };
 
     const prevImage = () => {
-        setSelectedImageIndex((prev) => (prev - 1 + reviewImages.length) % reviewImages.length);
+        setSelectedImageIndex((prev) => (prev - 1 + reviewImages.length + 1) % (reviewImages.length + 1));
     };
 
     const switchMainImage = (imageSrc: string) => {
@@ -245,12 +487,12 @@ const ProductDetails = () => {
             <Navbar />
 
             {/* Product Details */}
-            <section className="py-12 sm:py-20">
+            <section className="py-6 sm:py-12 lg:py-20">
                 <div className="container mx-auto px-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
                         {/* Product Image */}
-                        <div className="space-y-6">
-                            <div className="relative h-96 sm:h-[500px] rounded-lg overflow-hidden shadow-lg group cursor-pointer">
+                        <div className="space-y-4 sm:space-y-6">
+                            <div className="relative h-80 sm:h-80 lg:h-[500px] rounded-lg overflow-hidden shadow-lg group cursor-pointer">
                                 <img
                                     src={currentMainImage}
                                     alt={plant.name}
@@ -283,18 +525,9 @@ const ProductDetails = () => {
                             </div>
                             
                             {/* Professional Review Images Section */}
-                            <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-6 rounded-xl border border-emerald-100">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-xl font-bold text-emerald-800 flex items-center">
-                                        <Star className="w-5 h-5 mr-2 text-gold-500 fill-current" />
-                                        Product Images Gallery
-                                    </h3>
-                                    <Badge variant="outline" className="text-emerald-700 border-emerald-300">
-                                        {reviewImages.length} Images
-                                    </Badge>
-                                </div>
+                            <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 sm:p-6 rounded-xl border border-emerald-100">
                                 
-                                <div className="grid grid-cols-4 gap-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-w-full sm:max-w-md">
                                     {reviewImages.map((image, idx) => (
                                         <div 
                                             key={image.id}
@@ -308,10 +541,10 @@ const ProductDetails = () => {
                                             <img
                                                 src={image.thumbnail}
                                                 alt={image.alt}
-                                                className="w-full h-16 object-cover transition-transform duration-300 group-hover:scale-110"
+                                                className="w-full h-12 object-cover transition-transform duration-300 group-hover:scale-110"
                                                 onError={e => { 
                                                     e.currentTarget.src = '/assets/placeholder.svg';
-                                                    e.currentTarget.className = 'w-full h-16 object-cover opacity-50';
+                                                    e.currentTarget.className = 'w-full h-12 object-cover opacity-50';
                                                 }}
                                             />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
@@ -322,16 +555,12 @@ const ProductDetails = () => {
                                                     <span className="text-xs font-bold">✓</span>
                                                 </div>
                                             )}
-                                            <div className="absolute bottom-1 left-1 bg-white/90 rounded px-1 py-0.5">
-                                                <span className="text-xs font-medium text-emerald-800">Image {idx + 1}</span>
-                                            </div>
+
                                         </div>
                                     ))}
                                 </div>
                                 
-                                <p className="text-sm text-emerald-600 mt-3 italic">
-                                    Click any image to set as main display image
-                                </p>
+
                             </div>
                         </div>
 
@@ -339,7 +568,7 @@ const ProductDetails = () => {
                         <div className="space-y-6">
                             <div>
                                 <Badge variant="outline" className="text-emerald-700 border-emerald-200 mb-3">
-                                    {plant.category}
+                                    {plant.categories}
                                 </Badge>
                                 <h1 className="text-3xl sm:text-4xl font-bold text-emerald-800 mb-4 font-montserrat">
                                     {plant.name}
@@ -356,6 +585,9 @@ const ProductDetails = () => {
                                     <DialogContent className="max-w-2xl">
                                         <DialogHeader>
                                             <DialogTitle>About {plant.name}</DialogTitle>
+                                            <DialogDescription className="sr-only">
+                                                Detailed information about {plant.name} including care instructions and plant details
+                                            </DialogDescription>
                                         </DialogHeader>
                                         <div className="space-y-4 text-left">
                                             <div>
@@ -373,7 +605,7 @@ const ProductDetails = () => {
                                             <hr />
                                             <h2 className="text-lg font-bold">Why Choose {plant.botanicalName || plant.name}? 🪴</h2>
                                             <ul className="list-disc ml-6">
-                                                <li><b>Category:</b> {plant.category}</li>
+                                                <li><b>Category:</b> {plant.categories}</li>
                                                 <li><b>Family:</b> {plant.family || 'N/A'}</li>
                                                 <li><b>Title:</b> {plant.title || 'The Perfect Fast-Growing Tree for Shade, Beauty, and Privacy'}</li>
                                             </ul>
@@ -437,8 +669,8 @@ const ProductDetails = () => {
 
                             {/* Quantity, Year, and Size Selector */}
                             <div className="space-y-3">
-                                <div className="flex items-center gap-6">
-                                    <div>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+                                    <div className="w-full sm:w-auto">
                                         <label className="text-sm font-medium text-gray-700 block mb-1">Quantity:</label>
                                         <div className="flex items-center border border-emerald-200 rounded-lg">
                                             <input
@@ -449,18 +681,17 @@ const ProductDetails = () => {
                                                     const val = e.target.value;
                                                     if (val === "" || (/^\d+$/.test(val) && parseInt(val) > 0)) updateQuantity(val);
                                                 }}
-                                                className="w-24 text-center text-xl font-semibold border-0 focus:ring-0 focus:outline-none"
-                                                style={{ appearance: 'textfield', fontSize: '20px', fontWeight: '600' }}
+                                                className="w-full sm:w-24 text-center text-lg sm:text-xl font-semibold border-0 focus:ring-0 focus:outline-none"
+                                                style={{ appearance: 'textfield', fontWeight: '600' }}
                                             />
                                         </div>
                                     </div>
-                                    <div>
+                                    <div className="w-full sm:w-auto">
                                         <label className="text-sm font-medium text-gray-700 block mb-1">Year:</label>
                                         <select
                                             value={selectedYear}
                                             onChange={(e) => setSelectedYear(e.target.value)}
-                                            className="border border-emerald-200 rounded-lg px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
-                                            style={{ minWidth: 120 }}
+                                            className="w-full sm:w-auto border border-emerald-200 rounded-lg px-3 sm:px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
                                         >
                                             <option value="">Select year</option>
                                             <option value="1">1-year</option>
@@ -469,11 +700,10 @@ const ProductDetails = () => {
                                             <option value="4">4-year</option>
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="w-full sm:w-auto">
                                         <label className="text-sm font-medium text-gray-700 block mb-1">Size:</label>
                                         <select
-                                            className="border border-emerald-200 rounded-lg px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
-                                            style={{ minWidth: 120 }}
+                                            className="w-full sm:w-auto border border-emerald-200 rounded-lg px-3 sm:px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
                                             defaultValue="Medium"
                                         >
                                             <option value="Small">Small</option>
@@ -575,7 +805,7 @@ const ProductDetails = () => {
                                                 {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                             </div>
                                             <div className="text-emerald-800 font-semibold font-montserrat">
-                                                {value}
+                                            {String(value)}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -638,7 +868,7 @@ const ProductDetails = () => {
                     <Link to="/cart" className="flex flex-col items-center text-xs text-gray-700 relative">
                         <svg className="w-7 h-7 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
                         <span>Cart</span>
-                        {quantity > 0 && (
+                        {Number(quantity) > 0 && (
                             <span className="absolute -top-1 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">{quantity}</span>
                         )}
                     </Link>
