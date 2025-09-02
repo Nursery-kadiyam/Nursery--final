@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Merchant Function</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Merchant Quotation Function</h1>
+    <button onclick="testFunction()">Test Function</button>
+    <div id="result"></div>
+
+    <script>
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzI3MzEsImV4cCI6MjA3MTI0ODczMX0.jUvGwtvHII75px9cySp5_oxAf8-8aL8xKi9id8DvgF8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testFunction() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Test if the function exists by calling it with dummy data
+                const { data, error } = await supabase.rpc('submit_merchant_quotation', {
+                    p_quotation_code: 'TEST-CODE',
+                    p_merchant_code: 'TEST-MERCHANT',
+                    p_unit_prices: '[]',
+                    p_transport_cost: 0,
+                    p_custom_work_cost: 0,
+                    p_estimated_delivery_days: 7
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                    console.error('Function test error:', error);
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Function exists! Response: ${JSON.stringify(data)}</p>`;
+                    console.log('Function test success:', data);
+                }
+            } catch (catchError) {
+                resultDiv.innerHTML = `<p style="color: red;">Exception: ${catchError.message}</p>`;
+                console.error('Function test exception:', catchError);
+            }
+        }
+    </script>
+</body>
+</html>

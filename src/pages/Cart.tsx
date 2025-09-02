@@ -38,20 +38,7 @@ const Cart = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
 
-  // Helper function to get category display name
-  const getCategoryDisplayName = (category: string) => {
-    const categoryMap: { [key: string]: string } = {
-      'commercial': 'Commercial Plants',
-      'residential-indoor': 'Indoor Plants',
-      'residential-outdoor': 'Outdoor Plants',
-      'beautification': 'Beautification',
-      'industrial': 'Industrial Plants',
-      'landscaping-schools': 'Schools & Hospitals',
-      'landscaping-apartments': 'Apartments',
-      'landscaping-roads': 'Roads & Avenues'
-    };
-    return categoryMap[category] || category;
-  };
+
 
   // Fetch user on mount (for quotation)
   useEffect(() => {
@@ -75,17 +62,16 @@ const Cart = () => {
         name: item.name,
         price: item.price,
         category: item.category,
-        image: item.image
+        image: item.image,
+        year: item.year,
+        size: item.size
       }));
       
-      // Use the create_quotation function
-      const { data, error } = await supabase.rpc('create_quotation', {
+      // Use the new create_user_quotation_request function
+      const { data, error } = await supabase.rpc('create_user_quotation_request', {
         p_user_id: user.id,
-        p_items: items,
-        p_product_cost: null, // Will be calculated by admin
-        p_transport_cost: null, // Will be calculated by admin
-        p_custom_work_cost: null, // Will be calculated by admin
-        p_estimated_delivery_days: null // Will be set by admin
+        p_user_email: user.email,
+        p_items: items
       });
       
     if (error) {
@@ -94,7 +80,7 @@ const Cart = () => {
       } else if (data && data.success) {
         toast({ 
           title: "Quotation Requested", 
-          description: `Quotation ${data.quotation_code} has been submitted. Admin will review your request.` 
+          description: `Quotation ${data.quotation_code} has been submitted. Multiple merchants will respond with their prices.` 
         });
         clearCart();
     } else {
@@ -187,7 +173,7 @@ const Cart = () => {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Plant</TableHead>
-                              <TableHead>Category</TableHead>
+                              <TableHead>Specifications</TableHead>
                               <TableHead>Quantity</TableHead>
                               <TableHead></TableHead>
                             </TableRow>
@@ -209,9 +195,18 @@ const Cart = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="text-emerald-700">
-                                    {getCategoryDisplayName(item.category)}
-                                  </Badge>
+                                  <div className="space-y-1">
+                                    {item.year && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Year:</span> {item.year}-year
+                                      </div>
+                                    )}
+                                    {item.size && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Size:</span> {item.size}
+                                      </div>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center space-x-2">
@@ -278,9 +273,20 @@ const Cart = () => {
                                     <h3 className="font-semibold text-emerald-800 text-sm leading-tight mb-1 truncate">
                                       {item.name}
                                     </h3>
-                                    <Badge variant="outline" className="text-emerald-700 text-xs mb-2">
-                                      {getCategoryDisplayName(item.category)}
-                                    </Badge>
+                                    {(item.year || item.size) && (
+                                      <div className="space-y-1 mb-2">
+                                        {item.year && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Year:</span> {item.year}-year
+                                          </div>
+                                        )}
+                                        {item.size && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Size:</span> {item.size}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                   
                                   {/* Quantity Controls */}

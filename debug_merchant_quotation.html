@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Merchant Quotation</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Merchant Quotation Function</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Database Connection</h3>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Check if Function Exists</h3>
+        <button onclick="checkFunction()">Check Function</button>
+        <div id="function-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Check Quotations Table Structure</h3>
+        <button onclick="checkTable()">Check Table</button>
+        <div id="table-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Function with Real Data</h3>
+        <button onclick="testWithRealData()">Test with Real Data</button>
+        <div id="real-data-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Check Available Quotations</h3>
+        <button onclick="checkQuotations()">Check Quotations</button>
+        <div id="quotations-result"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzI3MzEsImV4cCI6MjA3MTI0ODczMX0.jUvGwtvHII75px9cySp5_oxAf8-8aL8xKi9id8DvgF8';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = 'Testing connection...';
+            
+            try {
+                const { data, error } = await supabase.from('quotations').select('count').limit(1);
+                if (error) {
+                    resultDiv.innerHTML = `<p class="error">❌ Connection failed: ${error.message}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="success">✅ Connection successful!</p>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<p class="error">❌ Exception: ${err.message}</p>`;
+            }
+        }
+
+        async function checkFunction() {
+            const resultDiv = document.getElementById('function-result');
+            resultDiv.innerHTML = 'Checking function...';
+            
+            try {
+                // Try to call the function with dummy data
+                const { data, error } = await supabase.rpc('submit_merchant_quotation', {
+                    p_quotation_code: 'TEST-CODE-123',
+                    p_merchant_code: 'TEST-MERCHANT',
+                    p_unit_prices: '[]',
+                    p_transport_cost: 0,
+                    p_custom_work_cost: 0,
+                    p_estimated_delivery_days: 7
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Function error: ${error.message}</p>
+                        <p class="info">This means the function exists but has an issue</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Function exists and responds!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Function doesn't exist or connection issue</p>
+                    <p class="info">Error: ${err.message}</p>
+                    <pre>${JSON.stringify(err, null, 2)}</pre>
+                `;
+            }
+        }
+
+        async function checkTable() {
+            const resultDiv = document.getElementById('table-result');
+            resultDiv.innerHTML = 'Checking table structure...';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('quotations')
+                    .select('*')
+                    .limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p class="error">❌ Table error: ${error.message}</p>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Table accessible!</p>
+                        <p class="info">Sample row structure:</p>
+                        <pre>${JSON.stringify(data[0] || {}, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<p class="error">❌ Exception: ${err.message}</p>`;
+            }
+        }
+
+        async function testWithRealData() {
+            const resultDiv = document.getElementById('real-data-result');
+            resultDiv.innerHTML = 'Testing with real quotation data...';
+            
+            try {
+                // First, get a real quotation
+                const { data: quotations, error: quoteError } = await supabase
+                    .from('quotations')
+                    .select('*')
+                    .limit(1);
+                
+                if (quoteError || !quotations || quotations.length === 0) {
+                    resultDiv.innerHTML = `<p class="error">❌ No quotations found: ${quoteError?.message || 'No data'}</p>`;
+                    return;
+                }
+
+                const quotation = quotations[0];
+                resultDiv.innerHTML = `<p class="info">Found quotation: ${quotation.quotation_code}</p>`;
+
+                // Test the function with real quotation code
+                const { data, error } = await supabase.rpc('submit_merchant_quotation', {
+                    p_quotation_code: quotation.quotation_code,
+                    p_merchant_code: 'DEBUG-MERCHANT',
+                    p_unit_prices: '[100, 200]',
+                    p_transport_cost: 50,
+                    p_custom_work_cost: 25,
+                    p_estimated_delivery_days: 7
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML += `
+                        <p class="error">❌ Function call failed: ${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML += `
+                        <p class="success">✅ Function call successful!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML += `<p class="error">❌ Exception: ${err.message}</p>`;
+            }
+        }
+
+        async function checkQuotations() {
+            const resultDiv = document.getElementById('quotations-result');
+            resultDiv.innerHTML = 'Checking available quotations...';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('quotations')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Found ${data.length} quotations</p>
+                        <p class="info">Recent quotations:</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<p class="error">❌ Exception: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

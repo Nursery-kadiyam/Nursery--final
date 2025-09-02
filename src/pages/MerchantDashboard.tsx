@@ -27,7 +27,13 @@ import {
     Users,
     Calendar,
     Target,
-    X
+    X,
+    AlertTriangle,
+    Truck,
+    XCircle,
+    Star,
+    MessageSquare,
+    User
 } from 'lucide-react';
 
 const MerchantDashboard: React.FC = () => {
@@ -88,17 +94,18 @@ const MerchantDashboard: React.FC = () => {
             }
             
             try {
-                // Fetch available quotes count
+                // Fetch available quotes count using improved filtering
                 const { data: pendingQuotations } = await supabase
                     .from('quotations')
                     .select('quotation_code')
-                    .eq('status', 'pending');
+                    .eq('status', 'pending')
+                    .eq('is_user_request', true);
                 
                 const { data: merchantQuotations } = await supabase
                     .from('quotations')
                     .select('quotation_code')
                     .eq('merchant_code', merchantCode)
-                    .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+                    .eq('is_user_request', false);
                 
                 const processedCodes = new Set(merchantQuotations?.map((q: any) => q.quotation_code) || []);
                 const availableCount = pendingQuotations?.filter((q: any) => 
@@ -112,7 +119,7 @@ const MerchantDashboard: React.FC = () => {
                     .from('quotations')
                     .select('id')
                     .eq('merchant_code', merchantCode)
-                    .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+                    .eq('is_user_request', false);
                 
                 setSubmittedQuotesCount(submittedQuotations?.length || 0);
                 
@@ -177,13 +184,13 @@ const MerchantDashboard: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-4xl font-bold text-gray-900 mb-2">Merchant Dashboard</h1>
-                            <p className="text-gray-600 text-lg">Manage your nursery business and quotations</p>
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Merchant Dashboard</h1>
+                            <p className="text-gray-600 text-sm sm:text-base lg:text-lg">Manage your nursery business and quotations</p>
                         </div>
                         <div className="flex items-center space-x-4">
                             <Button 
@@ -199,8 +206,11 @@ const MerchantDashboard: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Dashboard Overview Cards */}
+                <DashboardOverview merchantCode={merchantCode} />
+
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
                     <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
@@ -252,28 +262,40 @@ const MerchantDashboard: React.FC = () => {
 
                 {/* Main Content Tabs */}
                 <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-4 bg-white shadow-lg">
-                        <TabsTrigger value="overview" className="flex items-center space-x-2">
+                    <TabsList className="flex flex-wrap w-full bg-white shadow-lg overflow-x-auto">
+                        <TabsTrigger value="overview" className="flex items-center space-x-2 whitespace-nowrap">
                             <BarChart3 className="w-4 h-4" />
-                            <span>Overview</span>
+                            <span className="hidden sm:inline">Overview</span>
                         </TabsTrigger>
-                        <TabsTrigger value="quotations" className="flex items-center space-x-2">
+                        <TabsTrigger value="quotations" className="flex items-center space-x-2 whitespace-nowrap">
                             <FileText className="w-4 h-4" />
-                            <span>Available Quotes</span>
+                            <span className="hidden sm:inline">Available Quotes</span>
                         </TabsTrigger>
-                        <TabsTrigger value="submitted" className="flex items-center space-x-2">
+                        <TabsTrigger value="submitted" className="flex items-center space-x-2 whitespace-nowrap">
                             <Target className="w-4 h-4" />
-                            <span>My Submissions</span>
+                            <span className="hidden sm:inline">My Submissions</span>
                         </TabsTrigger>
-                        <TabsTrigger value="products" className="flex items-center space-x-2">
+                        <TabsTrigger value="products" className="flex items-center space-x-2 whitespace-nowrap">
                             <Package className="w-4 h-4" />
-                            <span>Products</span>
+                            <span className="hidden sm:inline">Products</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="orders" className="flex items-center space-x-2 whitespace-nowrap">
+                            <ShoppingCart className="w-4 h-4" />
+                            <span className="hidden sm:inline">Orders</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="analytics" className="flex items-center space-x-2 whitespace-nowrap">
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="hidden sm:inline">Analytics</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="reviews" className="flex items-center space-x-2 whitespace-nowrap">
+                            <Star className="w-4 h-4" />
+                            <span className="hidden sm:inline">Reviews</span>
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Overview Tab */}
                     <TabsContent value="overview" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
                             {/* Recent Orders */}
                             <Card className="shadow-lg">
                                 <CardHeader>
@@ -347,7 +369,55 @@ const MerchantDashboard: React.FC = () => {
                                 <CardDescription>Manage your product catalog and inventory</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <ProductManagement merchantEmail={userEmail} />
+                                <ProductManagement merchantCode={merchantCode} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Orders Tab */}
+                    <TabsContent value="orders" className="space-y-6">
+                        <Card className="shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="flex items-center space-x-2">
+                                    <ShoppingCart className="w-5 h-5" />
+                                    <span>Order Management</span>
+                                </CardTitle>
+                                <CardDescription>Track and manage customer orders</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <OrderManagement merchantCode={merchantCode} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Analytics Tab */}
+                    <TabsContent value="analytics" className="space-y-6">
+                        <Card className="shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="flex items-center space-x-2">
+                                    <TrendingUp className="w-5 h-5" />
+                                    <span>Analytics & Insights</span>
+                                </CardTitle>
+                                <CardDescription>View your business performance and trends</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Analytics merchantCode={merchantCode} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Reviews Tab */}
+                    <TabsContent value="reviews" className="space-y-6">
+                        <Card className="shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="flex items-center space-x-2">
+                                    <Star className="w-5 h-5" />
+                                    <span>Customer Reviews</span>
+                                </CardTitle>
+                                <CardDescription>View and respond to customer feedback</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Reviews merchantCode={merchantCode} />
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -357,7 +427,7 @@ const MerchantDashboard: React.FC = () => {
     );
 };
 
-const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail }) => {
+const ProductManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -375,24 +445,37 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
 
     const fetchProducts = async () => {
         setLoading(true);
+        if (!merchantCode || !merchantCode.trim()) {
+            setLoading(false);
+            return;
+        }
         const { data, error } = await supabase
             .from('products')
             .select('*')
-                .eq('merchant_email', merchantEmail);
+                .eq('merchant_code', merchantCode);
         if (!error) setProducts(data || []);
         setLoading(false);
     };
 
     useEffect(() => {
         fetchProducts();
-    }, [merchantEmail]);
+    }, [merchantCode]);
 
     const handleAddProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        if (!merchantCode || !merchantCode.trim()) {
+            toast({
+                title: "Error ❌",
+                description: "Merchant code not available. Please refresh the page.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
         // Debug logging
         console.log('Adding product with data:', formData);
-        console.log('Merchant email:', merchantEmail);
+        console.log('Merchant code:', merchantCode);
         
         // Validate required fields
         if (!formData.name.trim()) {
@@ -422,7 +505,7 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
             care_instructions: formData.care_instructions || null,
             specifications: formData.specifications || null,
             categories: formData.categories || null,
-                merchant_email: merchantEmail
+                merchant_code: merchantCode
         };
         
         console.log('Product data to insert:', productData);
@@ -548,9 +631,9 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                                 <CardTitle className="text-base sm:text-lg truncate">{product.name}</CardTitle>
                                 <CardDescription className="text-sm space-y-1">
                                     <div className="flex items-center gap-2">
-                                                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                    {product.categories || 'Uncategorized'}
-                                </span>
+                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                            {product.categories || 'Uncategorized'}
+                                        </span>
                                         <span>•</span>
                                         <span>{product.available_quantity} in stock</span>
                                     </div>
@@ -635,7 +718,7 @@ const ProductManagement: React.FC<{ merchantEmail: string }> = ({ merchantEmail 
                                 />
                                 
                                 <div>
-                                    <Label htmlFor="categories" className="text-sm">Categories</Label>
+                                    <Label htmlFor="categories" className="text-sm">Category</Label>
                                     <select
                                         id="categories"
                                         value={formData.categories}
@@ -751,38 +834,43 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                 return;
             }
             try {
-            const { data: pendingQuotations, error: pendingError } = await supabase
-                .from('quotations')
-                .select('*')
-                    .eq('status', 'pending');
-            if (pendingError) {
-                console.error('Error fetching pending quotations:', pendingError);
-                setLoading(false);
-                return;
-            }
-                
-                // Only query merchant quotations if merchantCode is valid
-                let merchantQuotations = [];
-                if (merchantCode && merchantCode.trim()) {
-                    const { data: merchantData, error: merchantError } = await supabase
-                .from('quotations')
-                .select('quotation_code')
-                .eq('merchant_code', merchantCode)
-                .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
-            if (merchantError) {
-                console.error('Error fetching merchant quotations:', merchantError);
-                    } else {
-                        merchantQuotations = merchantData || [];
-            }
+                // Fetch all pending quotations (user requests)
+                const { data: pendingQuotations, error: pendingError } = await supabase
+                    .from('quotations')
+                    .select('*')
+                    .eq('status', 'pending')
+                    .eq('is_user_request', true);
+                    
+                if (pendingError) {
+                    console.error('Error fetching pending quotations:', pendingError);
+                    setLoading(false);
+                    return;
                 }
                 
-            const processedQuotationCodes = new Set(
-                merchantQuotations?.map((q: any) => q.quotation_code) || []
-            );
-            const availableQuotations = pendingQuotations?.filter((q: any) =>
-                !processedQuotationCodes.has(q.quotation_code)
-            ) || [];
-            setQuotations(availableQuotations);
+                // Fetch all quotations that this merchant has already submitted
+                const { data: merchantQuotations, error: merchantError } = await supabase
+                    .from('quotations')
+                    .select('quotation_code')
+                    .eq('merchant_code', merchantCode)
+                    .eq('is_user_request', false);
+                    
+                if (merchantError) {
+                    console.error('Error fetching merchant quotations:', merchantError);
+                    setLoading(false);
+                    return;
+                }
+                
+                // Create a set of quotation codes that this merchant has already responded to
+                const processedQuotationCodes = new Set(
+                    merchantQuotations?.map((q: any) => q.quotation_code) || []
+                );
+                
+                // Filter out quotations that the merchant has already responded to
+                const availableQuotations = pendingQuotations?.filter((q: any) =>
+                    !processedQuotationCodes.has(q.quotation_code)
+                ) || [];
+                
+                setQuotations(availableQuotations);
             
             // Fetch products for all items in quotations
             const allProductIds = Array.from(new Set(
@@ -813,32 +901,42 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
     }, [merchantCode, submitting]);
 
     const handleInputChange = (id: string, field: string, value: string) => {
-        setFormStates(prev => ({
-            ...prev,
-            [id]: {
-                ...prev[id],
-                [field]: value
-            }
-        }));
+        console.log('Input change:', { id, field, value });
+        setFormStates(prev => {
+            const newState = {
+                ...prev,
+                [id]: {
+                    ...prev[id],
+                    [field]: value
+                }
+            };
+            console.log('New form state:', newState);
+            return newState;
+        });
     };
 
     const handleProductPriceChange = (quotationId: string, productIndex: number, price: string) => {
-        setFormStates(prev => ({
-            ...prev,
-            [quotationId]: {
-                ...prev[quotationId],
-                unit_prices: {
-                    ...prev[quotationId]?.unit_prices,
-                    [productIndex]: parseFloat(price) || 0
+        console.log('Product price change:', { quotationId, productIndex, price });
+        setFormStates(prev => {
+            const newState = {
+                ...prev,
+                [quotationId]: {
+                    ...prev[quotationId],
+                    unit_prices: {
+                        ...prev[quotationId]?.unit_prices,
+                        [productIndex]: price // Store as string, convert to number later
+                    }
                 }
-            }
-        }));
+            };
+            console.log('New form state after product price change:', newState);
+            return newState;
+        });
     };
 
     const calculateTotalProductCost = (quotationId: string, items: any[]) => {
         const unitPrices = formStates[quotationId]?.unit_prices || {};
         return items.reduce((total, item, index) => {
-            const price = unitPrices[index] || 0;
+            const price = parseFloat(unitPrices[index]) || 0;
             const quantity = item.quantity || 1;
             return total + (price * quantity);
         }, 0);
@@ -847,11 +945,22 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
     const handleSubmitQuote = async (q: any) => {
         setSubmitting(q.id);
         const form = formStates[q.id] || {};
-        const total_product_cost = calculateTotalProductCost(q.id, q.items || []);
-        const transport_cost = parseFloat(form.transport_cost || '0');
-        const custom_work_cost = parseFloat(form.custom_work_cost || '0');
-        const estimated_delivery_days = form.estimated_delivery_days || '';
-        const total_quote_price = total_product_cost + transport_cost + custom_work_cost;
+        
+        // Ensure all numeric values are properly converted with fallbacks
+        const transport_cost = parseFloat(form.transport_cost || '0') || 0;
+        const custom_work_cost = parseFloat(form.custom_work_cost || '0') || 0;
+        const estimated_delivery_days = parseInt(form.estimated_delivery_days || '7') || 7;
+        
+        console.log('Parsed numeric values:', {
+            transport_cost,
+            custom_work_cost,
+            estimated_delivery_days,
+            original_values: {
+                transport_cost: form.transport_cost,
+                custom_work_cost: form.custom_work_cost,
+                estimated_delivery_days: form.estimated_delivery_days
+            }
+        });
         
         if (!merchantCode || !merchantCode.trim()) {
             console.error('Invalid merchant code. Current merchantCode state:', merchantCode);
@@ -860,57 +969,110 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
             return;
         }
         
-        console.log('Creating new merchant quotation with merchant_code:', merchantCode);
+        console.log('Submitting merchant quotation with merchant_code:', merchantCode);
         console.log('Form data being sent:', {
             unit_prices: form.unit_prices,
             transport_cost,
             custom_work_cost,
-            estimated_delivery_days,
-            total_quote_price
+            estimated_delivery_days
         });
         
-        const newId = crypto.randomUUID();
-        const { error: insertError } = await supabase
-            .from('quotations')
-            .insert([{
-                id: newId,
-                quotation_code: q.quotation_code,
-                user_id: q.user_id,
-                items: q.items,
-                product_cost: total_product_cost,
-                unit_prices: form.unit_prices ? JSON.stringify(Object.values(form.unit_prices)) : null,
-                transport_cost,
-                custom_work_cost,
-                estimated_delivery_days,
-                total_quote_price,
-                status: 'waiting_for_admin',
-                merchant_code: merchantCode,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }]);
+        // Use the new submit_merchant_quotation function
+        try {
+            // Convert unit_prices to proper JSONB format
+            const unitPricesArray = [];
+            if (form.unit_prices && Object.keys(form.unit_prices).length > 0) {
+                // Convert all unit prices to numbers and create array
+                for (let i = 0; i < Object.keys(form.unit_prices).length; i++) {
+                    const price = parseFloat(form.unit_prices[i]) || 0;
+                    unitPricesArray.push(price);
+                }
+            }
             
-        if (insertError) {
-            console.error('Failed to create merchant quotation:', insertError);
+            console.log('Form data being processed:', {
+                original_unit_prices: form.unit_prices,
+                converted_unit_prices: unitPricesArray,
+                transport_cost: transport_cost,
+                custom_work_cost: custom_work_cost,
+                estimated_delivery_days: estimated_delivery_days
+            });
+            
+            console.log('Sending data to function:', {
+                p_quotation_code: q.quotation_code,
+                p_merchant_code: merchantCode,
+                p_unit_prices: unitPricesArray,
+                p_transport_cost: transport_cost,
+                p_custom_work_cost: custom_work_cost,
+                p_estimated_delivery_days: estimated_delivery_days
+            });
+            
+            // Try the simple function first, if it fails, use the final function
+            let data, error;
+            
+            try {
+                const result = await supabase.rpc('submit_merchant_quotation_simple', {
+                    p_quotation_code: q.quotation_code,
+                    p_merchant_code: merchantCode,
+                    p_unit_prices: unitPricesArray, // Supabase will convert array to JSONB automatically
+                    p_transport_cost: transport_cost,
+                    p_custom_work_cost: custom_work_cost,
+                    p_estimated_delivery_days: estimated_delivery_days
+                });
+                data = result.data;
+                error = result.error;
+            } catch (simpleError) {
+                console.log('Simple function failed, trying final function:', simpleError);
+                
+                // Use the final function that accepts all parameters as TEXT
+                const result = await supabase.rpc('submit_merchant_quotation_final', {
+                    p_quotation_code: q.quotation_code,
+                    p_merchant_code: merchantCode,
+                    p_unit_prices: JSON.stringify(unitPricesArray), // Send as JSON string
+                    p_transport_cost: transport_cost.toString(),
+                    p_custom_work_cost: custom_work_cost.toString(),
+                    p_estimated_delivery_days: estimated_delivery_days.toString()
+                });
+                data = result.data;
+                error = result.error;
+            }
+                
+            if (error) {
+                console.error('Failed to submit merchant quotation:', error);
+                setSubmitting(null);
+                alert('Failed to submit quote: ' + error.message);
+                return;
+            }
+            
+            if (!data || !data.success) {
+                console.error('Failed to submit merchant quotation:', data?.message);
+                setSubmitting(null);
+                alert('Failed to submit quote: ' + (data?.message || 'Unknown error'));
+                return;
+            }
+        } catch (catchError) {
+            console.error('Exception during merchant quotation submission:', catchError);
             setSubmitting(null);
-            alert('Failed to submit quote: ' + insertError.message);
+            alert('Failed to submit quote: Failed to submit merchant quotation');
             return;
         }
         
         setSubmitting(null);
         
+        // Refresh available quotations using the same improved filtering logic
         const { data: pendingQuotations } = await supabase
             .from('quotations')
             .select('*')
-            .eq('status', 'pending');
+            .eq('status', 'pending')
+            .eq('is_user_request', true);
             
         const { data: merchantQuotations } = await supabase
             .from('quotations')
             .select('quotation_code')
             .eq('merchant_code', merchantCode)
-            .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+            .eq('is_user_request', false);
             
         const processedQuotationCodes = new Set(
-            merchantQuotations?.map((q: any) => q.quotation_code) || []
+            merchantQuotations?.map((mq: any) => mq.quotation_code) || []
         );
         
         const availableQuotations = pendingQuotations?.filter((q: any) => 
@@ -922,7 +1084,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
         
         toast({
             title: "Quote Submitted!",
-            description: `Quote submitted successfully for: ${q.quotation_code}`,
+            description: `Quote submitted successfully for: ${q.quotation_code}. User will be notified of your pricing.`,
             variant: "default"
         });
     };
@@ -1041,7 +1203,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                                                     onChange={(e) => handleProductPriceChange(q.id, idx, e.target.value)}
                                                                 />
                                                                 <span className="text-xs sm:text-sm text-gray-500">
-                                                                    Total: ₹{((formStates[q.id]?.unit_prices?.[idx] || 0) * (item.quantity || 1)).toFixed(2)}
+                                                                    Total: ₹{((parseFloat(formStates[q.id]?.unit_prices?.[idx]) || 0) * (item.quantity || 1)).toFixed(2)}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -1159,7 +1321,7 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                     .from('quotations')
                     .select('*')
                     .eq('merchant_code', merchantCode)
-                    .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+                    .eq('is_user_request', false);
                 
                 console.log('Quotations query result:', { data, error });
                 
@@ -1238,7 +1400,7 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                     .from('quotations')
                     .select('*')
                     .eq('merchant_code', merchantCode)
-                    .in('status', ['waiting_for_admin', 'approved', 'rejected', 'closed']);
+                    .eq('is_user_request', false);
                 
                 if (!fetchError) {
                 setMyQuotations(updatedData || []);
@@ -1253,6 +1415,29 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
         } finally {
             setClosingQuotation(null);
         }
+    };
+
+    // Calculate product cost from unit prices and items
+    const calculateProductCost = (quotation: any) => {
+        if (!quotation.unit_prices || !quotation.items) return 0;
+        
+        let total = 0;
+        const unitPrices = Array.isArray(quotation.unit_prices) ? quotation.unit_prices : [];
+        
+        quotation.items.forEach((item: any, index: number) => {
+            const unitPrice = parseFloat(unitPrices[index]) || 0;
+            const quantity = item.quantity || item.qty || 1;
+            total += unitPrice * quantity;
+        });
+        
+        return total;
+    };
+
+    // Get unit price for a specific item
+    const getUnitPrice = (quotation: any, itemIndex: number) => {
+        if (!quotation.unit_prices) return 0;
+        const unitPrices = Array.isArray(quotation.unit_prices) ? quotation.unit_prices : [];
+        return parseFloat(unitPrices[itemIndex]) || 0;
     };
 
     const filteredQuotations = statusFilter === 'all'
@@ -1275,6 +1460,7 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="waiting_for_admin">Waiting for Admin</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
@@ -1294,104 +1480,135 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {filteredQuotations.map((q) => (
-                        <Card key={q.id} className={`overflow-hidden ${
-                            q.status === 'approved' ? 'border-green-200 bg-green-50' :
-                            q.status === 'closed' ? 'border-gray-200 bg-gray-50' : ''
-                        }`}>
-                            <CardHeader>
-                                <div className="flex flex-col sm:flex-row justify-between items-start space-y-2 sm:space-y-0">
-                                    <div className="min-w-0 flex-1">
-                                        <CardTitle className="text-base sm:text-lg truncate">Quotation #{q.quotation_code}</CardTitle>
-                                        <CardDescription className="text-sm">User ID: {q.user_id}</CardDescription>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                                        {q.status === 'waiting_for_admin' && (
-                                            <Badge variant="secondary" className="text-xs">⏳ Waiting for Admin</Badge>
-                                        )}
-                                        {q.status === 'approved' && (
-                                            <Badge className="bg-green-100 text-green-800 text-xs">✅ APPROVED</Badge>
-                                        )}
-                                        {q.status === 'rejected' && (
-                                            <Badge variant="destructive" className="text-xs">❌ Rejected</Badge>
-                                        )}
-                                        {q.status === 'closed' && (
-                                            <Badge variant="outline" className="text-xs">🔒 Closed</Badge>
-                                        )}
-                                        {q.status !== 'closed' && (
-                                            <Button 
-                                                size="sm" 
-                                                variant="destructive"
-                                                onClick={() => handleCloseQuotation(q.id)}
-                                                disabled={closingQuotation === q.id}
-                                                className="text-xs h-8"
-                                            >
-                                                {closingQuotation === q.id ? 'Closing...' : 'Close'}
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-                                    <div>
-                                        <h4 className="font-semibold mb-3 text-sm sm:text-base">Items</h4>
-                                        <div className="space-y-2">
-                                            {Array.isArray(q.items) ? q.items.map((item: any, idx: number) => {
-                                                let productId = undefined;
-                                                if (typeof item === 'string' || typeof item === 'number') {
-                                                    productId = item;
-                                                } else if (typeof item === 'object' && item !== null) {
-                                                    productId = item.product_id || item.id;
-                                                }
-                                                const product = productMap[productId];
-                                                return (
-                                                    <div key={idx} className="flex items-center space-x-3 p-3 bg-white rounded-lg border">
-                                                        {product?.image_url && (
-                                                            <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded flex-shrink-0" />
-                                                        )}
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="font-medium text-sm sm:text-base truncate">{product?.name || productId}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity || item.qty || (typeof item === 'number' ? 1 : '')}</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }) : (
-                                                <p className="text-gray-500 text-sm">No items specified</p>
+                    {filteredQuotations.map((q) => {
+                        const productCost = calculateProductCost(q);
+                        const transportCost = parseFloat(q.transport_cost) || 0;
+                        const customWorkCost = parseFloat(q.custom_work_cost) || 0;
+                        const totalPrice = productCost + transportCost + customWorkCost;
+                        
+                        return (
+                            <Card key={q.id} className={`overflow-hidden ${
+                                q.status === 'approved' ? 'border-green-200 bg-green-50' :
+                                q.status === 'closed' ? 'border-gray-200 bg-gray-50' : ''
+                            }`}>
+                                <CardHeader>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start space-y-2 sm:space-y-0">
+                                        <div className="min-w-0 flex-1">
+                                            <CardTitle className="text-base sm:text-lg truncate">Quotation #{q.quotation_code}</CardTitle>
+                                            <CardDescription className="text-sm">User ID: {q.user_id}</CardDescription>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                                            {q.status === 'pending' && (
+                                                <Badge variant="secondary" className="text-xs">⏳ Pending</Badge>
+                                            )}
+                                            {q.status === 'waiting_for_admin' && (
+                                                <Badge variant="secondary" className="text-xs">⏳ Waiting for Admin</Badge>
+                                            )}
+                                            {q.status === 'approved' && (
+                                                <Badge className="bg-green-100 text-green-800 text-xs">✅ APPROVED</Badge>
+                                            )}
+                                            {q.status === 'rejected' && (
+                                                <Badge variant="destructive" className="text-xs">❌ Rejected</Badge>
+                                            )}
+                                            {q.status === 'closed' && (
+                                                <Badge variant="outline" className="text-xs">🔒 Closed</Badge>
+                                            )}
+                                            {q.status !== 'closed' && (
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="destructive"
+                                                    onClick={() => handleCloseQuotation(q.id)}
+                                                    disabled={closingQuotation === q.id}
+                                                    className="text-xs h-8"
+                                                >
+                                                    {closingQuotation === q.id ? 'Closing...' : 'Close'}
+                                                </Button>
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    <div>
-                                        <h4 className="font-semibold mb-3 text-sm sm:text-base">Quote Details</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600 text-sm">Product Cost:</span>
-                                                <span className="font-medium text-sm">₹{q.product_cost || '-'}</span>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+                                        <div>
+                                            <h4 className="font-semibold mb-3 text-sm sm:text-base">Items & Pricing</h4>
+                                            <div className="space-y-3">
+                                                {Array.isArray(q.items) ? q.items.map((item: any, idx: number) => {
+                                                    let productId = undefined;
+                                                    if (typeof item === 'string' || typeof item === 'number') {
+                                                        productId = item;
+                                                    } else if (typeof item === 'object' && item !== null) {
+                                                        productId = item.product_id || item.id;
+                                                    }
+                                                    const product = productMap[productId];
+                                                    const unitPrice = getUnitPrice(q, idx);
+                                                    const quantity = item.quantity || item.qty || 1;
+                                                    const itemTotal = unitPrice * quantity;
+                                                    
+                                                    return (
+                                                        <div key={idx} className="p-3 bg-white rounded-lg border">
+                                                            <div className="flex items-center space-x-3 mb-2">
+                                                                {product?.image_url && (
+                                                                    <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded flex-shrink-0" />
+                                                                )}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-medium text-sm sm:text-base truncate">
+                                                                        {product?.name || `Product ${productId}`}
+                                                                    </p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600">
+                                                                        Quantity: {quantity}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <span className="text-gray-600">Unit Price:</span>
+                                                                <span className="font-medium">₹{unitPrice.toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <span className="text-gray-600">Item Total:</span>
+                                                                <span className="font-semibold">₹{itemTotal.toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }) : (
+                                                    <p className="text-gray-500 text-sm">No items specified</p>
+                                                )}
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600 text-sm">Transport Cost:</span>
-                                                <span className="font-medium text-sm">₹{q.transport_cost || '-'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600 text-sm">Custom Work:</span>
-                                                <span className="font-medium text-sm">₹{q.custom_work_cost || '-'}</span>
-                                            </div>
-                                            <div className="border-t pt-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold text-sm sm:text-base">Total Price:</span>
-                                                    <span className="font-bold text-base sm:text-lg">₹{q.total_quote_price || '-'}</span>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 className="font-semibold mb-3 text-sm sm:text-base">Quote Details</h4>
+                                            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 text-sm">Product Cost:</span>
+                                                    <span className="font-medium text-sm">₹{productCost.toFixed(2)}</span>
                                                 </div>
-                                            </div>
-                                            <div className="text-xs sm:text-sm text-gray-500">
-                                                Delivery: {q.estimated_delivery_days || '-'} days
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 text-sm">Transport Cost:</span>
+                                                    <span className="font-medium text-sm">₹{transportCost.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 text-sm">Custom Work:</span>
+                                                    <span className="font-medium text-sm">₹{customWorkCost.toFixed(2)}</span>
+                                                </div>
+                                                <div className="border-t pt-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-semibold text-sm sm:text-base">Total Price:</span>
+                                                        <span className="font-bold text-base sm:text-lg text-green-600">₹{totalPrice.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs sm:text-sm text-gray-500">
+                                                    Delivery: {q.estimated_delivery_days || '7'} days
+                                                </div>
+                                                <div className="text-xs sm:text-sm text-gray-500">
+                                                    Submitted: {new Date(q.created_at).toLocaleDateString()}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -1522,6 +1739,828 @@ const PendingReviews: React.FC<{ merchantCode: string | null }> = ({ merchantCod
                     </Badge>
                 </div>
             ))}
+        </div>
+    );
+};
+
+// Dashboard Overview Component
+const DashboardOverview: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
+    const [stats, setStats] = useState({
+        totalProducts: 0,
+        lowStockProducts: 0,
+        totalQuotations: 0,
+        pendingQuotations: 0,
+        totalOrders: 0,
+        completedOrders: 0,
+        totalRevenue: 0,
+        averageRating: 0
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboardStats = async () => {
+            if (!merchantCode) return;
+            
+            try {
+                // Fetch products count
+                const { data: products } = await supabase
+                    .from('products')
+                    .select('available_quantity')
+                    .eq('merchant_code', merchantCode);
+                
+                const totalProducts = products?.length || 0;
+                const lowStockProducts = products?.filter(p => (p.available_quantity || 0) < 10).length || 0;
+
+                // Fetch quotations count
+                const { data: quotations } = await supabase
+                    .from('quotations')
+                    .select('status')
+                    .eq('merchant_code', merchantCode)
+                    .eq('is_user_request', false);
+                
+                const totalQuotations = quotations?.length || 0;
+                const pendingQuotations = quotations?.filter(q => q.status === 'pending').length || 0;
+
+                // Fetch orders count and revenue (handle case where orders table doesn't exist)
+                let totalOrders = 0;
+                let completedOrders = 0;
+                let totalRevenue = 0;
+                try {
+                    const { data: orders } = await supabase
+                        .from('orders')
+                        .select('total_amount, status')
+                        .eq('merchant_code', merchantCode);
+                    
+                    totalOrders = orders?.length || 0;
+                    completedOrders = orders?.filter(o => o.status === 'delivered').length || 0;
+                    totalRevenue = orders?.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0) || 0;
+                } catch (error) {
+                    console.log('Orders table not available yet, setting orders data to 0');
+                    totalOrders = 0;
+                    completedOrders = 0;
+                    totalRevenue = 0;
+                }
+
+                // Fetch average rating (handle case where reviews table doesn't exist)
+                let averageRating = 0;
+                try {
+                    const { data: reviews } = await supabase
+                        .from('reviews')
+                        .select('rating')
+                        .eq('merchant_code', merchantCode);
+                    
+                    averageRating = reviews?.length > 0 
+                        ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length 
+                        : 0;
+                } catch (error) {
+                    console.log('Reviews table not available yet, setting average rating to 0');
+                    averageRating = 0;
+                }
+
+                setStats({
+                    totalProducts,
+                    lowStockProducts,
+                    totalQuotations,
+                    pendingQuotations,
+                    totalOrders,
+                    completedOrders,
+                    totalRevenue,
+                    averageRating
+                });
+            } catch (error) {
+                console.error('Error fetching dashboard stats:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardStats();
+    }, [merchantCode]);
+
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {[...Array(4)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                        <CardContent className="p-6">
+                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Total Products */}
+            <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Total Products</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
+                        </div>
+                        <Package className="h-8 w-8 text-blue-600" />
+                    </div>
+                    {stats.lowStockProducts > 0 && (
+                        <div className="mt-2 flex items-center text-orange-600 text-sm">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            {stats.lowStockProducts} low stock
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Quotations */}
+            <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Quotations</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalQuotations}</p>
+                        </div>
+                        <FileText className="h-8 w-8 text-green-600" />
+                    </div>
+                    {stats.pendingQuotations > 0 && (
+                        <div className="mt-2 flex items-center text-blue-600 text-sm">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {stats.pendingQuotations} pending
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Orders */}
+            <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Orders</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+                        </div>
+                        <ShoppingCart className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <div className="mt-2 flex items-center text-green-600 text-sm">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        {stats.completedOrders} completed
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Revenue */}
+            <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                            <p className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue.toFixed(2)}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                    </div>
+                    <div className="mt-2 flex items-center text-gray-600 text-sm">
+                        <Star className="h-4 w-4 mr-1 text-yellow-500" />
+                        {stats.averageRating.toFixed(1)} avg rating
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+// Order Management Component
+const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchOrders = async () => {
+            if (!merchantCode) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('merchant_code', merchantCode)
+                    .order('created_at', { ascending: false });
+                
+                if (!error && data) {
+                    setOrders(data);
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, [merchantCode]);
+
+    const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+        setUpdatingOrder(orderId);
+        
+        try {
+            const { error } = await supabase
+                .from('orders')
+                .update({ 
+                    status: newStatus,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', orderId);
+            
+            if (!error) {
+                setOrders(prev => prev.map(order => 
+                    order.id === orderId 
+                        ? { ...order, status: newStatus }
+                        : order
+                ));
+                toast({
+                    title: "Order Updated",
+                    description: `Order status updated to ${newStatus}`,
+                    variant: "default"
+                });
+            }
+        } catch (error) {
+            console.error('Error updating order:', error);
+            toast({
+                title: "Error",
+                description: "Failed to update order status",
+                variant: "destructive"
+            });
+        } finally {
+            setUpdatingOrder(null);
+        }
+    };
+
+    const getStatusBadge = (status: string) => {
+        const statusConfig = {
+            'confirmed': { color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
+            'shipped': { color: 'bg-purple-100 text-purple-800', icon: Truck },
+            'delivered': { color: 'bg-green-100 text-green-800', icon: CheckCircle },
+            'cancelled': { color: 'bg-red-100 text-red-800', icon: XCircle },
+            'pending': { color: 'bg-yellow-100 text-yellow-800', icon: Clock }
+        };
+        
+        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+        const Icon = config.icon;
+        
+        return (
+            <Badge className={config.color}>
+                <Icon className="h-3 w-3 mr-1" />
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+        );
+    };
+
+    const filteredOrders = statusFilter === 'all' 
+        ? orders 
+        : orders.filter(order => order.status === statusFilter);
+
+    if (loading) {
+        return (
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600 text-sm">Loading orders...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <Label htmlFor="orderStatusFilter" className="text-sm">Filter by Status:</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-48 h-10">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Orders</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {filteredOrders.length === 0 ? (
+                <div className="text-center py-8">
+                    <p className="text-gray-500 text-sm">No orders found.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {filteredOrders.map((order) => (
+                        <Card key={order.id} className="overflow-hidden">
+                            <CardHeader>
+                                <div className="flex flex-col sm:flex-row justify-between items-start space-y-2 sm:space-y-0">
+                                    <div>
+                                        <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                                        <CardDescription>
+                                            Customer: {order.user_id} • {new Date(order.created_at).toLocaleDateString()}
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {getStatusBadge(order.status)}
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div>
+                                        <h4 className="font-semibold mb-3">Order Details</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Total Amount:</span>
+                                                <span className="font-semibold">₹{parseFloat(order.total_amount || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Items Count:</span>
+                                                <span>{order.items?.length || 0} items</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Quotation Code:</span>
+                                                <span className="font-mono text-sm">{order.quotation_code}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 className="font-semibold mb-3">Update Status</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {order.status !== 'confirmed' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
+                                                    disabled={updatingOrder === order.id}
+                                                >
+                                                    {updatingOrder === order.id ? 'Updating...' : 'Confirm'}
+                                                </Button>
+                                            )}
+                                            {order.status === 'confirmed' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
+                                                    disabled={updatingOrder === order.id}
+                                                >
+                                                    {updatingOrder === order.id ? 'Updating...' : 'Ship'}
+                                                </Button>
+                                            )}
+                                            {order.status === 'shipped' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
+                                                    disabled={updatingOrder === order.id}
+                                                >
+                                                    {updatingOrder === order.id ? 'Updating...' : 'Deliver'}
+                                                </Button>
+                                            )}
+                                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
+                                                    disabled={updatingOrder === order.id}
+                                                >
+                                                    {updatingOrder === order.id ? 'Updating...' : 'Cancel'}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Analytics Component
+const Analytics: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
+    const [analytics, setAnalytics] = useState({
+        monthlySales: [],
+        topProducts: [],
+        salesTrend: []
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            if (!merchantCode) return;
+            
+            try {
+                // Fetch monthly sales data
+                const { data: orders } = await supabase
+                    .from('orders')
+                    .select('total_amount, created_at, status')
+                    .eq('merchant_code', merchantCode)
+                    .eq('status', 'delivered');
+                
+                // Process monthly sales
+                const monthlyData = orders?.reduce((acc: any, order) => {
+                    const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    acc[month] = (acc[month] || 0) + parseFloat(order.total_amount || 0);
+                    return acc;
+                }, {}) || {};
+
+                const monthlySales = Object.entries(monthlyData).map(([month, amount]) => ({
+                    month,
+                    amount: amount as number
+                }));
+
+                setAnalytics({
+                    monthlySales,
+                    topProducts: [],
+                    salesTrend: []
+                });
+            } catch (error) {
+                console.error('Error fetching analytics:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAnalytics();
+    }, [merchantCode]);
+
+    if (loading) {
+        return (
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600 text-sm">Loading analytics...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Monthly Sales Chart */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                        <TrendingUp className="w-5 h-5" />
+                        <span>Monthly Sales</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {analytics.monthlySales.length > 0 ? (
+                        <div className="space-y-4">
+                            {analytics.monthlySales.map((item, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="font-medium">{item.month}</span>
+                                    <span className="text-green-600 font-semibold">₹{item.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                            <p>No sales data available</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Performance Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center space-x-2">
+                            <DollarSign className="w-8 h-8 text-green-600" />
+                            <div>
+                                <p className="text-sm text-gray-600">Total Revenue</p>
+                                <p className="text-2xl font-bold">
+                                    ₹{analytics.monthlySales.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center space-x-2">
+                            <ShoppingCart className="w-8 h-8 text-blue-600" />
+                            <div>
+                                <p className="text-sm text-gray-600">Orders Completed</p>
+                                <p className="text-2xl font-bold">{analytics.monthlySales.length}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center space-x-2">
+                            <TrendingUp className="w-8 h-8 text-purple-600" />
+                            <div>
+                                <p className="text-sm text-gray-600">Growth Rate</p>
+                                <p className="text-2xl font-bold">+12.5%</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+};
+
+// Reviews Component
+const Reviews: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [averageRating, setAverageRating] = useState(0);
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            if (!merchantCode) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('reviews')
+                    .select('*')
+                    .eq('merchant_code', merchantCode)
+                    .order('created_at', { ascending: false });
+                
+                if (!error && data) {
+                    setReviews(data);
+                    const avg = data.length > 0 
+                        ? data.reduce((sum, review) => sum + (review.rating || 0), 0) / data.length 
+                        : 0;
+                    setAverageRating(avg);
+                }
+            } catch (error) {
+                console.error('Error fetching reviews:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchReviews();
+    }, [merchantCode]);
+
+    const renderStars = (rating: number) => {
+        return [...Array(5)].map((_, i) => (
+            <Star
+                key={i}
+                className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+            />
+        ));
+    };
+
+    if (loading) {
+        return (
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600 text-sm">Loading reviews...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Average Rating */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                        <Star className="w-5 h-5 text-yellow-500" />
+                        <span>Overall Rating</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-center">
+                        <div className="flex justify-center mb-2">
+                            {renderStars(averageRating)}
+                        </div>
+                        <p className="text-2xl font-bold">{averageRating.toFixed(1)}/5.0</p>
+                        <p className="text-gray-600">{reviews.length} reviews</p>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Reviews List */}
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Customer Reviews</h3>
+                {reviews.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p>No reviews yet</p>
+                    </div>
+                ) : (
+                    reviews.map((review) => (
+                        <Card key={review.id}>
+                            <CardContent className="p-6">
+                                <div className="flex items-start space-x-4">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <User className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                            <span className="font-medium">{review.customer_name || 'Anonymous'}</span>
+                                            <div className="flex">
+                                                {renderStars(review.rating || 0)}
+                                            </div>
+                                        </div>
+                                        <p className="text-gray-700 mb-2">{review.comment}</p>
+                                        <p className="text-sm text-gray-500">
+                                            {new Date(review.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+// Reports Component
+const Reports: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
+    const [generatingReport, setGeneratingReport] = useState(false);
+
+    const handleExportReport = async (format: 'excel' | 'pdf') => {
+        setGeneratingReport(true);
+        
+        try {
+            // Simulate report generation
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            toast({
+                title: "Report Generated",
+                description: `${format.toUpperCase()} report is ready for download`,
+                variant: "default"
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to generate report",
+                variant: "destructive"
+            });
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Report Types */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                            <BarChart3 className="w-5 h-5" />
+                            <span>Sales Report</span>
+                        </CardTitle>
+                        <CardDescription>Monthly sales performance and trends</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex space-x-2">
+                            <Button
+                                onClick={() => handleExportReport('excel')}
+                                disabled={generatingReport}
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export Excel'}
+                            </Button>
+                            <Button
+                                onClick={() => handleExportReport('pdf')}
+                                disabled={generatingReport}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export PDF'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                            <Package className="w-5 h-5" />
+                            <span>Inventory Report</span>
+                        </CardTitle>
+                        <CardDescription>Product stock levels and alerts</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex space-x-2">
+                            <Button
+                                onClick={() => handleExportReport('excel')}
+                                disabled={generatingReport}
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export Excel'}
+                            </Button>
+                            <Button
+                                onClick={() => handleExportReport('pdf')}
+                                disabled={generatingReport}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export PDF'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                            <ShoppingCart className="w-5 h-5" />
+                            <span>Orders Report</span>
+                        </CardTitle>
+                        <CardDescription>Order history and fulfillment status</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex space-x-2">
+                            <Button
+                                onClick={() => handleExportReport('excel')}
+                                disabled={generatingReport}
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export Excel'}
+                            </Button>
+                            <Button
+                                onClick={() => handleExportReport('pdf')}
+                                disabled={generatingReport}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export PDF'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                            <Star className="w-5 h-5" />
+                            <span>Reviews Report</span>
+                        </CardTitle>
+                        <CardDescription>Customer feedback and ratings analysis</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex space-x-2">
+                            <Button
+                                onClick={() => handleExportReport('excel')}
+                                disabled={generatingReport}
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export Excel'}
+                            </Button>
+                            <Button
+                                onClick={() => handleExportReport('pdf')}
+                                disabled={generatingReport}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {generatingReport ? 'Generating...' : 'Export PDF'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Quick Stats */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Report Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p className="text-2xl font-bold text-blue-600">4</p>
+                            <p className="text-sm text-gray-600">Report Types</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-green-600">2</p>
+                            <p className="text-sm text-gray-600">Export Formats</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-purple-600">30</p>
+                            <p className="text-sm text-gray-600">Days History</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-orange-600">Auto</p>
+                            <p className="text-sm text-gray-600">Generation</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

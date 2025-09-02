@@ -90,12 +90,16 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: `Failed to insert order items: ${orderItemsError.message}` }), { status: 400 });
     }
 
-    // Update product quantities in a loop
+    // Update product quantities using the stock management system
     for (const item of items) {
-        const { error: updateError } = await supabase
-            .from('products')
-            .update({ available_quantity: supabase.literal(`available_quantity - ${item.quantity}`) })
-            .eq('id', item.id);
+        const { error: updateError } = await supabase.rpc('update_product_stock', {
+            p_product_id: item.id,
+            p_quantity_change: -item.quantity, // Negative for purchase (decrease stock)
+            p_transaction_type: 'purchase',
+            p_order_id: newOrder.id,
+            p_reason: 'Order placed',
+            p_notes: `Stock decreased due to order placement - Order #${newOrder.id}`
+        });
         if (updateError) {
             return new Response(JSON.stringify({ error: `Failed to update product quantity: ${updateError.message}` }), { status: 400 });
         }

@@ -72,20 +72,20 @@ const getProductImages = (productName: string, productCategory: string): Array<{
     // Ashoka tree specific images
     if (productNameLower.includes('ashoka') || productNameLower.includes('saraca')) {
         return [
-        {
-            id: 1,
-            src: "/assets/Ashoka.jpeg",
-            alt: "Ashoka Tree - Main View",
-            thumbnail: "/assets/Ashoka.jpeg"
-        },
-        {
-            id: 2,
+            {
+                id: 1,
+                src: "/assets/Ashoka.jpeg",
+                alt: "Ashoka Tree - Main View",
+                thumbnail: "/assets/Ashoka.jpeg"
+            },
+            {
+                id: 2,
                 src: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM.jpeg",
                 alt: "Ashoka Tree - Flowering",
                 thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM.jpeg"
-        },
-        {
-            id: 3,
+            },
+            {
+                id: 3,
                 src: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM (1).jpeg",
                 alt: "Ashoka Tree - Close Up",
                 thumbnail: "/assets/WhatsApp Image 2025-06-22 at 1.43.16 PM (1).jpeg"
@@ -104,11 +104,11 @@ const getProductImages = (productName: string, productCategory: string): Array<{
         return [
             {
                 id: 1,
-            src: "/assets/Bamboo plants.jpeg",
+                src: "/assets/Bamboo plants.jpeg",
                 alt: "Bamboo Plants - Main View",
-            thumbnail: "/assets/Bamboo plants.jpeg"
-        },
-        {
+                thumbnail: "/assets/Bamboo plants.jpeg"
+            },
+            {
                 id: 2,
                 src: "/assets/golden bamboo.jpeg",
                 alt: "Golden Bamboo - Variety",
@@ -134,11 +134,11 @@ const getProductImages = (productName: string, productCategory: string): Array<{
         return [
             {
                 id: 1,
-            src: "/assets/Cassia Tree.jpeg",
+                src: "/assets/Cassia Tree.jpeg",
                 alt: "Cassia Tree - Main View",
-            thumbnail: "/assets/Cassia Tree.jpeg"
-        },
-        {
+                thumbnail: "/assets/Cassia Tree.jpeg"
+            },
+            {
                 id: 2,
                 src: "/assets/WhatsApp Image 2025-06-22 at 1.43.24 PM.jpeg",
                 alt: "Cassia Tree - Flowering",
@@ -164,9 +164,9 @@ const getProductImages = (productName: string, productCategory: string): Array<{
         return [
             {
                 id: 1,
-            src: "/assets/Croton plant.jpeg",
+                src: "/assets/Croton plant.jpeg",
                 alt: "Croton Plant - Main View",
-            thumbnail: "/assets/Croton plant.jpeg"
+                thumbnail: "/assets/Croton plant.jpeg"
             },
             {
                 id: 2,
@@ -283,6 +283,7 @@ const ProductDetails = () => {
     const navigate = useNavigate();
     const [quantity, setQuantity] = useState("");
     const [selectedYear, setSelectedYear] = useState("");
+    const [selectedSize, setSelectedSize] = useState("Medium");
     const [isInWishlist, setIsInWishlist] = useState(false);
     const { toast } = useToast();
     const { addToCart } = useCart();
@@ -313,7 +314,7 @@ const ProductDetails = () => {
                 setCurrentMainImage(mainImage);
                 
                 // Get product-specific review images
-                const productImages = getProductImages(data.name, data.categories || '');
+                const productImages = getProductImages(data.name, data.category || '');
                 setReviewImages(productImages);
             }
             setLoading(false);
@@ -442,12 +443,14 @@ const ProductDetails = () => {
         addToCart({
             id: String(plant.id),
             name: plant.name,
-                            category: plant.categories,
+            category: plant.category,
             price: plant.price,
             quantity: Number(quantity),
             image: plant.image_url && typeof plant.image_url === 'string' && (plant.image_url.startsWith('http') || plant.image_url.startsWith('/assets/'))
                 ? plant.image_url
-                : '/assets/placeholder.svg'
+                : '/assets/placeholder.svg',
+            year: selectedYear || undefined,
+            size: selectedSize || undefined
         }, Number(quantity));
         toast({
             title: "Added to Cart!",
@@ -568,7 +571,7 @@ const ProductDetails = () => {
                         <div className="space-y-6">
                             <div>
                                 <Badge variant="outline" className="text-emerald-700 border-emerald-200 mb-3">
-                                    {plant.categories}
+                                    {plant.category}
                                 </Badge>
                                 <h1 className="text-3xl sm:text-4xl font-bold text-emerald-800 mb-4 font-montserrat">
                                     {plant.name}
@@ -605,7 +608,7 @@ const ProductDetails = () => {
                                             <hr />
                                             <h2 className="text-lg font-bold">Why Choose {plant.botanicalName || plant.name}? 🪴</h2>
                                             <ul className="list-disc ml-6">
-                                                <li><b>Category:</b> {plant.categories}</li>
+                                                <li><b>Category:</b> {plant.category}</li>
                                                 <li><b>Family:</b> {plant.family || 'N/A'}</li>
                                                 <li><b>Title:</b> {plant.title || 'The Perfect Fast-Growing Tree for Shade, Beauty, and Privacy'}</li>
                                             </ul>
@@ -703,8 +706,9 @@ const ProductDetails = () => {
                                     <div className="w-full sm:w-auto">
                                         <label className="text-sm font-medium text-gray-700 block mb-1">Size:</label>
                                         <select
+                                            value={selectedSize}
+                                            onChange={(e) => setSelectedSize(e.target.value)}
                                             className="w-full sm:w-auto border border-emerald-200 rounded-lg px-3 sm:px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
-                                            defaultValue="Medium"
                                         >
                                             <option value="Small">Small</option>
                                             <option value="Medium">Medium</option>
@@ -797,21 +801,21 @@ const ProductDetails = () => {
                             Specifications
                         </h2>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            {plant.specifications && typeof plant.specifications === 'object'
-                                ? Object.entries(plant.specifications).map(([key, value]) => (
-                                    <Card key={key} className="border-emerald-200">
-                                        <CardContent className="p-4 text-center">
-                                            <div className="text-sm text-gray-500 font-medium mb-1">
-                                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                                            </div>
-                                            <div className="text-emerald-800 font-semibold font-montserrat">
+                                                    {plant.specifications && typeof plant.specifications === 'object'
+                            ? Object.entries(plant.specifications).map(([key, value]) => (
+                                <Card key={key} className="border-emerald-200">
+                                    <CardContent className="p-4 text-center">
+                                        <div className="text-sm text-gray-500 font-medium mb-1">
+                                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                        </div>
+                                        <div className="text-emerald-800 font-semibold font-montserrat">
                                             {String(value)}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                                : [<div key="no-specs" className="text-gray-500 col-span-full">No specifications available.</div>]
-                            }
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                            : [<div key="no-specs" className="text-gray-500 col-span-full">No specifications available.</div>]
+                        }
                         </div>
                     </div>
                 </div>
@@ -966,4 +970,4 @@ const ProductDetails = () => {
     );
 };
 
-export default ProductDetails; 
+export default ProductDetails;

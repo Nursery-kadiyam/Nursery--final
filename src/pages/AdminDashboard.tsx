@@ -39,11 +39,13 @@ const AdminDashboard: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [merchantQuotations, setMerchantQuotations] = useState<any[]>([]);
-    const [approvedPrice, setApprovedPrice] = useState<{ [id: string]: number }>({});
-    const [editingApprovedPriceId, setEditingApprovedPriceId] = useState<string | null>(null);
-    const [editedApprovedPrice, setEditedApprovedPrice] = useState<string>('');
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
     const [showOrderDetails, setShowOrderDetails] = useState<boolean>(false);
+    const [showQuotationDetails, setShowQuotationDetails] = useState<boolean>(false);
+    const [selectedQuotation, setSelectedQuotation] = useState<any | null>(null);
+    const [editingApprovedPriceId, setEditingApprovedPriceId] = useState<string | null>(null);
+    const [editedApprovedPrice, setEditedApprovedPrice] = useState<string>('');
+    const [approvedPrice, setApprovedPrice] = useState<{ [key: string]: number }>({});
 
     const handleCloseDashboard = () => {
         navigate('/');
@@ -179,9 +181,18 @@ const AdminDashboard: React.FC = () => {
                 
                 // Set merchant quotations
                 const merchantCodes = merchantsData?.map((m: any) => m.merchant_code).filter(Boolean) || [];
-                setMerchantQuotations((quotationsData || []).filter((q: any) => 
-                    merchantCodes.includes(q.merchant_code) && q.status === 'waiting_for_admin'
-                ));
+                const filteredQuotations = (quotationsData || []).filter((q: any) => 
+                    merchantCodes.includes(q.merchant_code) && q.status === 'pending'
+                );
+                setMerchantQuotations(filteredQuotations);
+                
+                // Debug logging
+                console.log('AdminDashboard - Merchant Quotations Debug:');
+                console.log('Merchant codes:', merchantCodes);
+                console.log('Total quotations:', quotationsData?.length || 0);
+                console.log('Quotations with merchant codes:', (quotationsData || []).filter((q: any) => merchantCodes.includes(q.merchant_code)).length);
+                console.log('Quotations with pending status:', (quotationsData || []).filter((q: any) => q.status === 'pending').length);
+                console.log('Filtered merchant quotations:', filteredQuotations.length);
                 
                 // Log any errors but don't fail completely
                 if (quotationsError) console.error('Quotations error:', quotationsError);
@@ -313,7 +324,7 @@ const AdminDashboard: React.FC = () => {
             setQuotations(quotationsData || []);
             const merchantCodes = merchants.map((m: any) => m.merchant_code).filter(Boolean);
             setMerchantQuotations(quotationsData?.filter((q: any) => 
-                merchantCodes.includes(q.merchant_code) && q.status === 'waiting_for_admin'
+                merchantCodes.includes(q.merchant_code) && q.status === 'pending'
             ) || []);
             toast({
                 title: "Quotation Approved!",
@@ -376,7 +387,7 @@ const AdminDashboard: React.FC = () => {
             setQuotations(quotationsData || []);
             const merchantCodes = merchants.map((m: any) => m.merchant_code).filter(Boolean);
             setMerchantQuotations(quotationsData?.filter((q: any) => 
-                merchantCodes.includes(q.merchant_code) && q.status === 'waiting_for_admin'
+                merchantCodes.includes(q.merchant_code) && q.status === 'pending'
             ) || []);
             toast({
                 title: "Quotation Rejected",
@@ -1063,6 +1074,35 @@ const AdminDashboard: React.FC = () => {
     const approvedMerchants = merchants.filter(m => m.status === 'approved').length;
     const pendingQuotations = merchantQuotations.length;
 
+    // New function to get quotation summary with merchant response counts
+    const getQuotationSummary = () => {
+        const userQuotations = quotations.filter(q => !q.merchant_code);
+        const merchantQuotations = quotations.filter(q => q.merchant_code);
+        
+        return userQuotations.map(userQuotation => {
+            const responses = merchantQuotations.filter(mq => 
+                mq.quotation_code === userQuotation.quotation_code
+            );
+            
+            return {
+                ...userQuotation,
+                merchantResponseCount: responses.length,
+                merchantResponses: responses
+            };
+        });
+    };
+
+    // Function to view quotation details
+    const handleViewQuotationDetails = (quotation: any) => {
+        setSelectedQuotation(quotation);
+        setShowQuotationDetails(true);
+    };
+
+    const handleCloseQuotationDetails = () => {
+        setSelectedQuotation(null);
+        setShowQuotationDetails(false);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1340,26 +1380,26 @@ const AdminDashboard: React.FC = () => {
                         </Card>
                     </TabsContent>
 
-                                        {/* Quotations Tab */}
+                    {/* Quotations Tab - Updated for Monitoring Only */}
                     <TabsContent value="quotations" className="space-y-6">
-                        {/* User Quotations Section */}
+                        {/* Quotation Monitoring Dashboard */}
                         <Card className="shadow-lg">
                             <CardHeader>
                                 <CardTitle className="flex items-center space-x-2">
                                     <FileText className="w-5 h-5" />
-                                    <span>User Quotations</span>
+                                    <span>Quotation Monitoring Dashboard</span>
                                 </CardTitle>
-                                <CardDescription>All quotations submitted by users</CardDescription>
+                                <CardDescription>Monitor user quotations and merchant responses</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {loading ? (
                                     <div className="text-center py-8">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                        <p className="mt-2 text-gray-600">Loading user quotations...</p>
+                                        <p className="mt-2 text-gray-600">Loading quotation data...</p>
                                     </div>
-                                ) : quotations.length === 0 ? (
+                                ) : getQuotationSummary().length === 0 ? (
                                     <div className="text-center py-8">
-                                        <p className="text-gray-500">No user quotations found.</p>
+                                        <p className="text-gray-500">No quotations found.</p>
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
@@ -1367,128 +1407,80 @@ const AdminDashboard: React.FC = () => {
                                             <thead className="bg-gray-50">
                                                 <tr>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quotation Code</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quotation ID</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items Count</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merchant Responses</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {quotations.filter(q => !q.merchant_code).map(q => (
-                                                    <tr key={q.id} className="hover:bg-gray-50">
+                                                {getQuotationSummary().map(quotation => (
+                                                    <tr key={quotation.id} className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="text-sm font-medium text-gray-900">{q.user_email || 'Unknown'}</div>
-                                                            <div className="text-sm text-gray-500">User ID: {q.user_id}</div>
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {quotation.user_email || 'Unknown'}
+                                                            </div>
+                                                            <div className="text-sm text-gray-500">
+                                                                User ID: {quotation.user_id}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="text-sm font-medium text-gray-900">{q.quotation_code}</div>
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {quotation.quotation_code}
+                                                            </div>
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-sm text-gray-900 max-w-xs">
-                                                                {Array.isArray(q.items) ? q.items.map((item, idx) => {
-                                                                    const product = products.find(p => p.id === item.product_id);
-                                                                    
-                                                                    // Find approved merchant quotation for this user quotation
-                                                                    const approvedQuotation = quotations.find(aq => 
-                                                                        aq.quotation_code === q.quotation_code && 
-                                                                        aq.merchant_code && 
-                                                                        aq.status === 'approved'
-                                                                    );
-                                                                    
-                                                                    // Get approved pricing if available
-                                                                    let approvedPricePerUnit = 0;
-                                                                    let approvedTotal = 0;
-                                                                    if (approvedQuotation && approvedQuotation.unit_prices) {
-            const unitPrices = typeof approvedQuotation.unit_prices === 'string'
-                ? JSON.parse(approvedQuotation.unit_prices || '{}')
-                : (approvedQuotation.unit_prices || {});
-                                                                                                                                                 approvedPricePerUnit = unitPrices[idx] || 0;
-                                                                        approvedTotal = approvedPricePerUnit * (item.quantity || 1);
-                                                                    }
-                                                                    
-                                                                    return (
-                                                                        <div key={idx} className="mb-2 p-2 bg-gray-50 rounded border">
-                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                {product?.image_url ? (
-                                                                                    <img 
-                                                                                        src={product.image_url} 
-                                                                                        alt={product.name || item.product_name || ''} 
-                                                                                        className="w-6 h-6 object-cover rounded" 
-                                                                                        onError={(e) => {
-                                                                                            e.currentTarget.style.display = 'none';
-                                                                                        }}
-                                                                                    />
-                                                                                ) : item.image_url ? (
-                                                                                    <img 
-                                                                                        src={item.image_url} 
-                                                                                        alt={item.product_name || ''} 
-                                                                                        className="w-6 h-6 object-cover rounded" 
-                                                                                        onError={(e) => {
-                                                                                            e.currentTarget.style.display = 'none';
-                                                                                        }}
-                                                                                    />
-                                                                                ) : null}
-                                                                                <span className="font-medium text-xs">
-                                                                                    {product?.name || item.product_name || item.product_id}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="text-xs text-gray-600 ml-2 space-y-1">
-                                                                                <div>Quantity: {item.quantity}</div>
-                                                                                {approvedQuotation ? (
-                                                                                    <>
-                                                                                        <div className="text-green-600 font-medium">
-                                                                                            Approved Price: ₹{approvedPricePerUnit.toFixed(2)} per unit
-                                                                                        </div>
-                                                                                        <div className="text-blue-600 font-medium">
-                                                                                            Total: ₹{approvedTotal.toFixed(2)}
-                                                                                        </div>
-                                                                                        <div className="text-xs text-gray-500">
-                                                                                            Merchant: {approvedQuotation.merchant_code}
-                                                                                        </div>
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <div className="text-orange-600 font-medium">
-                                                                                        No approved pricing yet
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                }) : '-'}
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm text-gray-900">
+                                                                {Array.isArray(quotation.items) ? quotation.items.length : 0} items
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Badge variant={
+                                                                    quotation.merchantResponseCount === 0 ? 'destructive' :
+                                                                    quotation.merchantResponseCount < 3 ? 'secondary' :
+                                                                    'default'
+                                                                }>
+                                                                    {quotation.merchantResponseCount} responses
+                                                                </Badge>
+                                                                {quotation.merchantResponseCount > 0 && (
+                                                                    <span className="text-xs text-gray-500">
+                                                                        from {quotation.merchantResponses.length} merchants
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <Badge variant={
-                                                                q.status === 'pending' ? 'secondary' :
-                                                                q.status === 'admin approved' ? 'default' :
-                                                                q.status === 'user order placed' ? 'default' :
-                                                                q.status === 'approved' ? 'default' :
-                                                                q.status === 'user_confirmed' ? 'outline' :
-                                                                q.status === 'rejected' ? 'destructive' :
+                                                                quotation.status === 'pending' ? 'secondary' :
+                                                                quotation.status === 'user_confirmed' ? 'default' :
+                                                                quotation.status === 'order_placed' ? 'default' :
                                                                 'outline'
                                                             }>
-                                                                {q.status === 'user_confirmed' ? 'User Confirmed' : 
-                                                                 q.status === 'admin approved' ? 'Admin Approved' : 
-                                                                 q.status === 'user order placed' ? 'User Order Placed' : 
-                                                                 (q.status || 'pending')}
+                                                                {quotation.status === 'user_confirmed' ? 'User Confirmed' : 
+                                                                 quotation.status === 'order_placed' ? 'Order Placed' : 
+                                                                 (quotation.status || 'pending')}
                                                             </Badge>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="text-sm text-gray-900">
-                                                                {new Date(q.created_at).toLocaleDateString()}
+                                                                {new Date(quotation.created_at).toLocaleDateString()}
                                                             </div>
                                                             <div className="text-xs text-gray-500">
-                                                                {new Date(q.created_at).toLocaleTimeString()}
+                                                                {new Date(quotation.created_at).toLocaleTimeString()}
                                                             </div>
-                                                            {q.status === 'admin approved' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    onClick={() => updateQuotationStatusToOrderPlaced(q.quotation_code)}
-                                                                    className="mt-2 bg-green-600 hover:bg-green-700 text-white"
-                                                                >
-                                                                    Mark Order Placed
-                                                                </Button>
-                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleViewQuotationDetails(quotation)}
+                                                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                            >
+                                                                View Details
+                                                            </Button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -1499,35 +1491,65 @@ const AdminDashboard: React.FC = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Merchant Quotations Section */}
+                        {/* Merchant Responses Summary */}
                         <Card className="shadow-lg">
                             <CardHeader>
                                 <CardTitle className="flex items-center space-x-2">
-                                    <FileText className="w-5 h-5" />
-                                    <span>Merchant Quotations (Pending Review)</span>
+                                    <Users className="w-5 h-5" />
+                                    <span>Merchant Responses Summary</span>
                                 </CardTitle>
-                                <CardDescription>Review and approve merchant quotations</CardDescription>
+                                <CardDescription>
+                                    Overview of all merchant quotations submitted ({merchantQuotations.length} responses)
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {loading ? (
                                     <div className="text-center py-8">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                        <p className="mt-2 text-gray-600">Loading merchant quotations...</p>
+                                        <p className="mt-2 text-gray-600">Loading merchant responses...</p>
                                     </div>
                                 ) : merchantQuotations.length === 0 ? (
                                     <div className="text-center py-8">
-                                        <p className="text-gray-500">No merchant quotations waiting for review.</p>
+                                        <p className="text-gray-500">No merchant responses found.</p>
+                                        <p className="text-sm text-gray-400 mt-2">Merchant responses will appear here when merchants submit quotations.</p>
                                     </div>
                                 ) : (
+                                    <>
+                                        {/* Summary Statistics */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                            <div className="bg-blue-50 p-4 rounded-lg">
+                                                <div className="text-2xl font-bold text-blue-600">{merchantQuotations.length}</div>
+                                                <div className="text-sm text-blue-600">Total Responses</div>
+                                            </div>
+                                            <div className="bg-green-50 p-4 rounded-lg">
+                                                <div className="text-2xl font-bold text-green-600">
+                                                    {merchantQuotations.filter(q => q.status === 'pending').length}
+                                                </div>
+                                                <div className="text-sm text-green-600">Pending Review</div>
+                                            </div>
+                                            <div className="bg-yellow-50 p-4 rounded-lg">
+                                                <div className="text-2xl font-bold text-yellow-600">
+                                                    {merchantQuotations.filter(q => q.status === 'user_confirmed').length}
+                                                </div>
+                                                <div className="text-sm text-yellow-600">User Confirmed</div>
+                                            </div>
+                                            <div className="bg-purple-50 p-4 rounded-lg">
+                                                <div className="text-2xl font-bold text-purple-600">
+                                                    {merchantQuotations.filter(q => q.status === 'order_placed').length}
+                                                </div>
+                                                <div className="text-sm text-purple-600">Orders Placed</div>
+                                            </div>
+                                        </div>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50">
                                                 <tr>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merchant</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quotation</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quotation Code</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Days</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
@@ -1539,100 +1561,33 @@ const AdminDashboard: React.FC = () => {
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="text-sm font-medium text-gray-900">{q.quotation_code}</div>
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-sm text-gray-900 max-w-xs">
-                                                                {Array.isArray(q.items) ? q.items.map((item, idx) => {
-                                                                                const unitPrices = typeof q.unit_prices === 'string'
-                                                                        ? JSON.parse(q.unit_prices || '{}') 
-                                                                        : (q.unit_prices || {});
-                                                                                                                                          const pricePerUnit = unitPrices[idx] || 0;
-                                                                    const totalForItem = pricePerUnit * (item.quantity || 1);
-                                                                    
-                                                                    const product = products.find(p => p.id === item.product_id);
-                                                                    
-                                                                    return (
-                                                                        <div key={idx} className="mb-2 p-2 bg-gray-50 rounded border">
-                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                {product?.image_url ? (
-                                                                                    <img 
-                                                                                        src={product.image_url} 
-                                                                                        alt={product.name || item.product_name || ''} 
-                                                                                        className="w-6 h-6 object-cover rounded" 
-                                                                                        onError={(e) => {
-                                                                                            e.currentTarget.style.display = 'none';
-                                                                                        }}
-                                                                                    />
-                                                                                ) : item.image_url ? (
-                                                                                    <img 
-                                                                                        src={item.image_url} 
-                                                                                        alt={item.product_name || ''} 
-                                                                                        className="w-6 h-6 object-cover rounded" 
-                                                                                        onError={(e) => {
-                                                                                            e.currentTarget.style.display = 'none';
-                                                                                        }}
-                                                                                    />
-                                                                                ) : null}
-                                                                                <span className="font-medium text-xs">
-                                                                                    {product?.name || item.product_name || item.product_id}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="text-xs text-gray-600 ml-2 space-y-1">
-                                                                                <div>Quantity: {item.quantity}</div>
-                                                                                <div className="text-green-600 font-medium">
-                                                                                    Price per unit: ₹{pricePerUnit || 'Not set'}
-                                                                                </div>
-                                                                                <div className="text-blue-600 font-medium">
-                                                                                    Total: ₹{totalForItem.toFixed(2)}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                }) : '-'}
-                                                            </div>
-                                                        </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="text-lg font-bold text-gray-900">₹{q.total_quote_price ?? '-'}</div>
-                                                            <div className="text-sm text-gray-500">{q.estimated_delivery_days ?? '-'} days</div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="space-y-3">
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                                        Approved Price (₹):
-                                                                    </label>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="Enter price"
-                                                                        value={approvedPrice[q.id] || ''}
-                                                                        onChange={e => setApprovedPrice(prev => ({ ...prev, [q.id]: Number(e.target.value) }))}
-                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                    />
-                                                                </div>
-                                                                <div className="flex space-x-2">
-                                                                    <Button 
-                                                                        size="sm" 
-                                                                        onClick={() => handleApproveMerchantQuotation(q)} 
-                                                                        disabled={actionLoading === q.id + 'approve' || !approvedPrice[q.id]}
-                                                                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
-                                                                    >
-                                                                        {actionLoading === q.id + 'approve' ? 'Approving...' : 'Approve'}
-                                                                    </Button>
-                                                                    <Button 
-                                                                        size="sm" 
-                                                                        variant="destructive" 
-                                                                        onClick={() => handleRejectMerchantQuotation(q)} 
-                                                                        disabled={actionLoading === q.id + 'reject'}
-                                                                    >
-                                                                        {actionLoading === q.id + 'reject' ? 'Rejecting...' : 'Reject'}
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
+                                                            <div className="text-sm text-gray-900">{q.estimated_delivery_days ?? '-'} days</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <Badge variant={
+                                                                q.status === 'pending' ? 'secondary' :
+                                                                q.status === 'user_confirmed' ? 'default' :
+                                                                q.status === 'order_placed' ? 'default' :
+                                                                'outline'
+                                                            }>
+                                                                {q.status === 'user_confirmed' ? 'User Confirmed' : 
+                                                                 q.status === 'order_placed' ? 'Order Placed' : 
+                                                                 (q.status || 'pending')}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {new Date(q.created_at).toLocaleString()}
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
+                                    </>
                                 )}
                             </CardContent>
                         </Card>
@@ -2139,6 +2094,214 @@ const AdminDashboard: React.FC = () => {
                                     </Button>
                                 </div>
                                 <Button variant="outline" onClick={handleCloseOrderDetails}>
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Quotation Details Dialog */}
+            <Dialog open={showQuotationDetails} onOpenChange={setShowQuotationDetails}>
+                <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                            <FileText className="w-5 h-5" />
+                            <span>Quotation Details - {selectedQuotation?.quotation_code}</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Complete details of quotation and all merchant responses
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {selectedQuotation && (
+                        <div className="space-y-6">
+                            {/* Quotation Information */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <h4 className="font-semibold text-gray-900">Quotation Code</h4>
+                                    <p className="text-sm text-gray-600">{selectedQuotation.quotation_code}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-gray-900">User</h4>
+                                    <p className="text-sm text-gray-600">{selectedQuotation.user_email || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-gray-900">Merchant Responses</h4>
+                                    <p className="text-lg font-bold text-blue-600">{selectedQuotation.merchantResponseCount}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-gray-900">Status</h4>
+                                    <Badge variant={
+                                        selectedQuotation.status === 'pending' ? 'secondary' :
+                                        selectedQuotation.status === 'user_confirmed' ? 'default' :
+                                        selectedQuotation.status === 'order_placed' ? 'default' :
+                                        'outline'
+                                    }>
+                                        {selectedQuotation.status === 'user_confirmed' ? 'User Confirmed' : 
+                                         selectedQuotation.status === 'order_placed' ? 'Order Placed' : 
+                                         (selectedQuotation.status || 'pending')}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-gray-900">Created At</h4>
+                                    <p className="text-sm text-gray-600">{new Date(selectedQuotation.created_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            {/* User's Requested Items */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">User's Requested Items</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {Array.isArray(selectedQuotation.items) && selectedQuotation.items.map((item: any, idx: number) => {
+                                                const product = products.find(p => p.id === item.product_id);
+                                                return (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center space-x-3">
+                                                                {product?.image_url && (
+                                                                    <img 
+                                                                        src={product.image_url} 
+                                                                        alt={product.name} 
+                                                                        className="w-12 h-12 object-cover rounded-md"
+                                                                        onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
+                                                                    />
+                                                                )}
+                                                                <span className="text-sm font-medium text-gray-900">
+                                                                    {product ? product.name : item.product_id}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {item.quantity}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {product?.categories || 'N/A'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Merchant Responses */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Merchant Responses ({selectedQuotation.merchantResponses.length})</h3>
+                                {selectedQuotation.merchantResponses.length === 0 ? (
+                                    <div className="text-center py-8 bg-yellow-50 rounded-lg">
+                                        <p className="text-yellow-800 font-medium">No merchant responses yet</p>
+                                        <p className="text-yellow-600 text-sm mt-1">Merchants will respond to this quotation request</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {selectedQuotation.merchantResponses.map((response: any, idx: number) => (
+                                            <div key={response.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900">Merchant: {response.merchant_code}</h4>
+                                                        <p className="text-sm text-gray-500">Submitted: {new Date(response.created_at).toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-2xl font-bold text-green-600">₹{response.total_quote_price || 0}</p>
+                                                        <p className="text-sm text-gray-500">{response.estimated_delivery_days || '-'} days delivery</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Merchant's Item Pricing */}
+                                                <div className="mt-4">
+                                                    <h5 className="font-medium text-gray-700 mb-2">Item Pricing:</h5>
+                                                    <div className="grid gap-2">
+                                                        {Array.isArray(response.items) && response.items.map((item: any, itemIdx: number) => {
+                                                            const product = products.find(p => p.id === item.product_id);
+                                                            const unitPrices = typeof response.unit_prices === 'string'
+                                                                ? JSON.parse(response.unit_prices || '{}')
+                                                                : (response.unit_prices || {});
+                                                            const pricePerUnit = unitPrices[itemIdx] || 0;
+                                                            const totalForItem = pricePerUnit * (item.quantity || 1);
+                                                            
+                                                            return (
+                                                                <div key={itemIdx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                                                    <div className="flex items-center space-x-2">
+                                                                        {product?.image_url && (
+                                                                            <img 
+                                                                                src={product.image_url} 
+                                                                                alt={product.name} 
+                                                                                className="w-8 h-8 object-cover rounded"
+                                                                                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
+                                                                            />
+                                                                        )}
+                                                                        <span className="text-sm font-medium">
+                                                                            {product ? product.name : item.product_id}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-500">
+                                                                            (Qty: {item.quantity})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm font-medium">₹{pricePerUnit.toFixed(2)} per unit</p>
+                                                                        <p className="text-sm text-green-600 font-bold">₹{totalForItem.toFixed(2)} total</p>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Additional Costs */}
+                                                {(response.transport_cost || response.custom_work_cost) && (
+                                                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                                        <h5 className="font-medium text-blue-800 mb-2">Additional Costs:</h5>
+                                                        <div className="space-y-1 text-sm">
+                                                            {response.transport_cost && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-blue-700">Transport Cost:</span>
+                                                                    <span className="font-medium">₹{response.transport_cost}</span>
+                                                                </div>
+                                                            )}
+                                                            {response.custom_work_cost && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-blue-700">Custom Work Cost:</span>
+                                                                    <span className="font-medium">₹{response.custom_work_cost}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Status */}
+                                                <div className="mt-4">
+                                                    <Badge variant={
+                                                        response.status === 'pending' ? 'secondary' :
+                                                        response.status === 'user_confirmed' ? 'default' :
+                                                        response.status === 'order_placed' ? 'default' :
+                                                        'outline'
+                                                    }>
+                                                        {response.status === 'user_confirmed' ? 'User Confirmed' : 
+                                                         response.status === 'order_placed' ? 'Order Placed' : 
+                                                         (response.status || 'pending')}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex justify-end pt-4 border-t border-gray-200">
+                                <Button variant="outline" onClick={handleCloseQuotationDetails}>
                                     Close
                                 </Button>
                             </div>

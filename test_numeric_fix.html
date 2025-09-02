@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Numeric Data Fix</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Numeric Data Fix</h1>
+    <p>This page tests that numeric data is being sent correctly to the database functions.</p>
+    
+    <div>
+        <h3>Test Data:</h3>
+        <p>Unit Prices: [10, 20, 30]</p>
+        <p>Transport Cost: 50</p>
+        <p>Custom Work Cost: 25</p>
+        <p>Delivery Days: 7</p>
+    </div>
+    
+    <button onclick="testSimpleFunction()">Test Simple Function</button>
+    <button onclick="testFinalFunction()">Test Final Function</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzI3MzEsImV4cCI6MjA3MTI0ODczMX0.jUvGwtvHII75px9cySp5_oxAf8-8aL8xKi9id8DvgF8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        async function testSimpleFunction() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing simple function...</p>';
+            
+            try {
+                const unitPricesArray = [10, 20, 30];
+                const transportCost = 50;
+                const customWorkCost = 25;
+                const deliveryDays = 7;
+                
+                console.log('Testing with data:', {
+                    unitPricesArray,
+                    transportCost,
+                    customWorkCost,
+                    deliveryDays
+                });
+                
+                const { data, error } = await supabase.rpc('submit_merchant_quotation_simple', {
+                    p_quotation_code: 'TEST-NUMERIC-001',
+                    p_merchant_code: 'TEST-MERCHANT',
+                    p_unit_prices: unitPricesArray,
+                    p_transport_cost: transportCost,
+                    p_custom_work_cost: customWorkCost,
+                    p_estimated_delivery_days: deliveryDays
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Simple Function Error: ${error.message}</p>`;
+                    console.error('Simple function error:', error);
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Simple Function Success: ${JSON.stringify(data)}</p>`;
+                    console.log('Simple function success:', data);
+                }
+            } catch (catchError) {
+                resultDiv.innerHTML = `<p style="color: red;">Simple Function Exception: ${catchError.message}</p>`;
+                console.error('Simple function exception:', catchError);
+            }
+        }
+        
+        async function testFinalFunction() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing final function...</p>';
+            
+            try {
+                const unitPricesArray = [10, 20, 30];
+                const transportCost = 50;
+                const customWorkCost = 25;
+                const deliveryDays = 7;
+                
+                console.log('Testing final function with data:', {
+                    unitPricesArray: JSON.stringify(unitPricesArray),
+                    transportCost: transportCost.toString(),
+                    customWorkCost: customWorkCost.toString(),
+                    deliveryDays: deliveryDays.toString()
+                });
+                
+                const { data, error } = await supabase.rpc('submit_merchant_quotation_final', {
+                    p_quotation_code: 'TEST-NUMERIC-002',
+                    p_merchant_code: 'TEST-MERCHANT',
+                    p_unit_prices: JSON.stringify(unitPricesArray),
+                    p_transport_cost: transportCost.toString(),
+                    p_custom_work_cost: customWorkCost.toString(),
+                    p_estimated_delivery_days: deliveryDays.toString()
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Final Function Error: ${error.message}</p>`;
+                    console.error('Final function error:', error);
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Final Function Success: ${JSON.stringify(data)}</p>`;
+                    console.log('Final function success:', data);
+                }
+            } catch (catchError) {
+                resultDiv.innerHTML = `<p style="color: red;">Final Function Exception: ${catchError.message}</p>`;
+                console.error('Final function exception:', catchError);
+            }
+        }
+    </script>
+</body>
+</html>
