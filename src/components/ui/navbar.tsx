@@ -284,7 +284,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
                       Dashboard
                     </Link>
                   )}
-                  {merchantStatus === 'approved' && (
+                  {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
                     <Link
                       to="/merchant-dashboard"
                       onClick={() => setIsOpen(false)}
@@ -372,7 +372,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
                 Dashboard
               </Link>
             )}
-            {merchantStatus === 'approved' && (
+            {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
               <Link
                 to="/merchant-dashboard"
                 className={`px-4 py-2 rounded-md font-montserrat text-base transition-all duration-200 ${location.pathname === "/merchant-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}

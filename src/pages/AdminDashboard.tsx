@@ -250,23 +250,60 @@ const AdminDashboard: React.FC = () => {
         fetchMerchants();
     }, [actionLoading]);
 
-    const handleMerchantStatus = async (id: string, status: 'approved' | 'rejected') => {
+    const handleMerchantStatus = async (id: string, status: 'approved' | 'rejected' | 'blocked') => {
         setActionLoading(id + status);
-        await supabase.from('merchants').update({ status }).eq('id', id);
-        setActionLoading(null);
-
-                if (status === 'approved') {
-                    toast({
-                        title: "Merchant Approved!",
-                        description: "Merchant can now access their dashboard.",
-                        variant: "default"
-                    });
-                } else if (status === 'rejected') {
-                    toast({
-                        title: "Merchant Rejected",
-                        description: "Merchant was rejected.",
-                        variant: "destructive"
-                    });
+        
+        try {
+            console.log('Updating merchant status:', { id, status });
+            
+            const { data, error } = await supabase
+                .from('merchants')
+                .update({ status })
+                .eq('id', id)
+                .select();
+            
+            if (error) {
+                console.error('Error updating merchant status:', error);
+                toast({
+                    title: "Error",
+                    description: `Failed to update merchant status: ${error.message}`,
+                    variant: "destructive"
+                });
+                setActionLoading(null);
+                return;
+            }
+            
+            console.log('Successfully updated merchant status:', data);
+            
+            if (status === 'approved') {
+                toast({
+                    title: "Merchant Approved!",
+                    description: "Merchant can now access their dashboard.",
+                    variant: "default"
+                });
+            } else if (status === 'rejected') {
+                toast({
+                    title: "Merchant Rejected",
+                    description: "Merchant was rejected.",
+                    variant: "destructive"
+                });
+            } else if (status === 'blocked') {
+                toast({
+                    title: "Merchant Blocked",
+                    description: "Merchant has been blocked and cannot access their dashboard.",
+                    variant: "destructive"
+                });
+            }
+            
+        } catch (err) {
+            console.error('Unexpected error updating merchant status:', err);
+            toast({
+                title: "Error",
+                description: "An unexpected error occurred while updating merchant status.",
+                variant: "destructive"
+            });
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -1284,7 +1321,48 @@ const AdminDashboard: React.FC = () => {
                                     <Users className="w-5 h-5" />
                                     <span>Merchants Management</span>
                                 </CardTitle>
-                                <CardDescription>Approve or reject merchant applications</CardDescription>
+                                <CardDescription>Approve, reject, or block merchant accounts</CardDescription>
+                                <div className="mt-2">
+                                    <Button 
+                                        onClick={async () => {
+                                            console.log('🔧 Testing database connection...');
+                                            try {
+                                                const { data, error } = await supabase
+                                                    .from('merchants')
+                                                    .select('id, full_name, status')
+                                                    .limit(3);
+                                                
+                                                if (error) {
+                                                    console.error('❌ Database error:', error);
+                                                    toast({
+                                                        title: "Database Error",
+                                                        description: `Error: ${error.message}`,
+                                                        variant: "destructive"
+                                                    });
+                                                } else {
+                                                    console.log('✅ Database connection successful:', data);
+                                                    toast({
+                                                        title: "Database Connected",
+                                                        description: `Found ${data?.length || 0} merchants`,
+                                                        variant: "default"
+                                                    });
+                                                }
+                                            } catch (err) {
+                                                console.error('❌ Unexpected error:', err);
+                                                toast({
+                                                    title: "Connection Error",
+                                                    description: "Failed to connect to database",
+                                                    variant: "destructive"
+                                                });
+                                            }
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-blue-600 hover:text-blue-800"
+                                    >
+                                        🔧 Test DB Connection
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent>
                         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -1297,6 +1375,7 @@ const AdminDashboard: React.FC = () => {
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
+                    <option value="blocked">Blocked</option>
                 </select>
                 <input
                     type="text"
@@ -1343,6 +1422,7 @@ const AdminDashboard: React.FC = () => {
                                                             <Badge variant={
                                                                 m.status === 'approved' ? 'default' :
                                                                 m.status === 'rejected' ? 'destructive' :
+                                                                m.status === 'blocked' ? 'destructive' :
                                                                 'secondary'
                                                             }>
                                                         {m.status}
@@ -1366,6 +1446,31 @@ const AdminDashboard: React.FC = () => {
                                                                 disabled={actionLoading === m.id + 'rejected'}
                                                             >
                                                     {actionLoading === m.id + 'rejected' ? 'Rejecting...' : 'Reject'}
+                                                </Button>
+                                                        </div>
+                                        )}
+                                        {m.status === 'approved' && (
+                                                        <div className="flex space-x-2">
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="destructive" 
+                                                                onClick={() => handleMerchantStatus(m.id, 'blocked')} 
+                                                                disabled={actionLoading === m.id + 'blocked'}
+                                                                className="bg-red-600 hover:bg-red-700"
+                                                            >
+                                                    {actionLoading === m.id + 'blocked' ? 'Blocking...' : 'Block'}
+                                                </Button>
+                                                        </div>
+                                        )}
+                                        {m.status === 'blocked' && (
+                                                        <div className="flex space-x-2">
+                                                            <Button 
+                                                                size="sm" 
+                                                                onClick={() => handleMerchantStatus(m.id, 'approved')} 
+                                                                disabled={actionLoading === m.id + 'approved'}
+                                                                className="bg-green-600 hover:bg-green-700"
+                                                            >
+                                                    {actionLoading === m.id + 'approved' ? 'Unblocking...' : 'Unblock'}
                                                 </Button>
                                                         </div>
                                         )}
@@ -2159,7 +2264,7 @@ const AdminDashboard: React.FC = () => {
                                             <tr>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specifications</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -2177,16 +2282,42 @@ const AdminDashboard: React.FC = () => {
                                                                         onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
                                                                     />
                                                                 )}
-                                                                <span className="text-sm font-medium text-gray-900">
-                                                                    {product ? product.name : item.product_id}
-                                                                </span>
+                                                                <div>
+                                                                    <span className="text-sm font-medium text-gray-900">
+                                                                        {product ? product.name : item.product_id}
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-500 block">
+                                                                        (Qty: {item.quantity})
+                                                                    </span>
+                                                                    {/* Specifications Display */}
+                                                                    {(item.year || item.size) && (
+                                                                        <div className="text-xs text-gray-600 mt-1">
+                                                                            {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                            {item.size && <span>Size: {item.size}</span>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                             {item.quantity}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                            {product?.categories || 'N/A'}
+                                                            <div className="space-y-1">
+                                                                {item.year && (
+                                                                    <div className="text-sm">
+                                                                        <span className="text-gray-500">Year:</span> {item.year}
+                                                                    </div>
+                                                                )}
+                                                                {item.size && (
+                                                                    <div className="text-sm">
+                                                                        <span className="text-gray-500">Size:</span> {item.size}
+                                                                    </div>
+                                                                )}
+                                                                {!item.year && !item.size && (
+                                                                    <span className="text-gray-400 text-sm">No specifications</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -2242,12 +2373,21 @@ const AdminDashboard: React.FC = () => {
                                                                                 onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
                                                                             />
                                                                         )}
-                                                                        <span className="text-sm font-medium">
-                                                                            {product ? product.name : item.product_id}
-                                                                        </span>
-                                                                        <span className="text-xs text-gray-500">
-                                                                            (Qty: {item.quantity})
-                                                                        </span>
+                                                                        <div>
+                                                                            <span className="text-sm font-medium">
+                                                                                {product ? product.name : item.product_id}
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500 block">
+                                                                                (Qty: {item.quantity})
+                                                                            </span>
+                                                                            {/* Specifications Display */}
+                                                                            {(item.year || item.size) && (
+                                                                                <div className="text-xs text-gray-600 mt-1">
+                                                                                    {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                                    {item.size && <span>Size: {item.size}</span>}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                     <div className="text-right">
                                                                         <p className="text-sm font-medium">₹{pricePerUnit.toFixed(2)} per unit</p>
@@ -2259,26 +2399,7 @@ const AdminDashboard: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 
-                                                {/* Additional Costs */}
-                                                {(response.transport_cost || response.custom_work_cost) && (
-                                                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                                        <h5 className="font-medium text-blue-800 mb-2">Additional Costs:</h5>
-                                                        <div className="space-y-1 text-sm">
-                                                            {response.transport_cost && (
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-blue-700">Transport Cost:</span>
-                                                                    <span className="font-medium">₹{response.transport_cost}</span>
-                                                                </div>
-                                                            )}
-                                                            {response.custom_work_cost && (
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-blue-700">Custom Work Cost:</span>
-                                                                    <span className="font-medium">₹{response.custom_work_cost}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
+
                                                 
                                                 {/* Status */}
                                                 <div className="mt-4">

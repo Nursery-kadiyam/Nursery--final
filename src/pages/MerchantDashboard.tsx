@@ -33,7 +33,8 @@ import {
     XCircle,
     Star,
     MessageSquare,
-    User
+    User,
+    RefreshCw
 } from 'lucide-react';
 
 const MerchantDashboard: React.FC = () => {
@@ -69,6 +70,7 @@ const MerchantDashboard: React.FC = () => {
 
             if (!error && merchantData) {
                 setMerchantStatus(merchantData.status);
+                
                 // Validate merchant code before setting it
                 if (merchantData.merchant_code && typeof merchantData.merchant_code === 'string') {
                     setMerchantCode(merchantData.merchant_code.trim());
@@ -170,6 +172,26 @@ const MerchantDashboard: React.FC = () => {
                         <CardTitle className="text-center text-red-600">❌ Application Rejected</CardTitle>
                         <CardDescription className="text-center">
                             Your merchant application has been rejected. Please contact support for more information.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <Button onClick={() => navigate('/')} className="w-full">
+                            Return to Home
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (merchantStatus === 'blocked') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle className="text-center text-red-600">🚫 Dashboard Access Blocked</CardTitle>
+                        <CardDescription className="text-center">
+                            Your dashboard access has been blocked by Admin. Please contact support.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="text-center">
@@ -947,8 +969,8 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
         const form = formStates[q.id] || {};
         
         // Ensure all numeric values are properly converted with fallbacks
-        const transport_cost = parseFloat(form.transport_cost || '0') || 0;
-        const custom_work_cost = parseFloat(form.custom_work_cost || '0') || 0;
+        const transport_cost = 0; // Merchants cannot set transport cost
+        const custom_work_cost = 0; // Merchants cannot set custom work cost
         const estimated_delivery_days = parseInt(form.estimated_delivery_days || '7') || 7;
         
         console.log('Parsed numeric values:', {
@@ -1187,6 +1209,13 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                                                     {product?.name || item.product_name || item.product_id}
                                                                 </p>
                                                                 <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
+                                                                {/* Specifications Display */}
+                                                                {(item.year || item.size) && (
+                                                                    <div className="mt-1 text-xs text-gray-500">
+                                                                        {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                        {item.size && <span>Size: {item.size}</span>}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
@@ -1224,30 +1253,8 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                     </div>
                                     
                                     <div>
-                                        <h4 className="font-semibold mb-3 text-sm sm:text-base">Additional Costs</h4>
+                                        <h4 className="font-semibold mb-3 text-sm sm:text-base">Additional Information</h4>
                                         <div className="space-y-3">
-                                            <div>
-                                                <Label htmlFor={`transport_cost_${q.id}`} className="text-xs sm:text-sm">Transport Cost (₹)</Label>
-                                                <Input
-                                                    id={`transport_cost_${q.id}`}
-                                                    type="number"
-                                                    placeholder="0.00"
-                                                    className="h-8 sm:h-10 text-sm"
-                                                    value={formStates[q.id]?.transport_cost || ''}
-                                                    onChange={(e) => handleInputChange(q.id, 'transport_cost', e.target.value)}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor={`custom_work_cost_${q.id}`} className="text-xs sm:text-sm">Custom Work Cost (₹)</Label>
-                                                <Input
-                                                    id={`custom_work_cost_${q.id}`}
-                                                    type="number"
-                                                    placeholder="0.00"
-                                                    className="h-8 sm:h-10 text-sm"
-                                                    value={formStates[q.id]?.custom_work_cost || ''}
-                                                    onChange={(e) => handleInputChange(q.id, 'custom_work_cost', e.target.value)}
-                                                />
-                                            </div>
                                             <div>
                                                 <Label htmlFor={`delivery_days_${q.id}`} className="text-xs sm:text-sm">Estimated Delivery Days</Label>
                                                 <Input
@@ -1263,9 +1270,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-semibold text-green-800 text-sm sm:text-base">Total Quote Price:</span>
                                                     <span className="font-bold text-base sm:text-lg text-green-800">
-                                                        ₹{(calculateTotalProductCost(q.id, q.items || []) + 
-                                                           parseFloat(formStates[q.id]?.transport_cost || '0') + 
-                                                           parseFloat(formStates[q.id]?.custom_work_cost || '0')).toFixed(2)}
+                                                        ₹{calculateTotalProductCost(q.id, q.items || []).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1371,6 +1376,46 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
             }
         };
         fetchMyQuotations();
+        
+        // Set up real-time subscription for quotation status changes
+        if (merchantCode) {
+            const quotationSubscription = supabase
+                .channel(`merchant_quotations_${merchantCode}`)
+                .on('postgres_changes', 
+                    { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'quotations',
+                        filter: `merchant_code=eq.${merchantCode}`
+                    }, 
+                    (payload) => {
+                        console.log('Quotation status changed:', payload);
+                        // Refresh quotations data when there's a change
+                        fetchMyQuotations();
+                        
+                        // Show notification for status changes
+                        if (payload.eventType === 'UPDATE') {
+                            const newStatus = payload.new.status;
+                            const oldStatus = payload.old.status;
+                            
+                            if (newStatus === 'user_confirmed' && oldStatus !== 'user_confirmed') {
+                                setToastMsg('👤 User confirmed your quotation!');
+                                setShowToast(true);
+                                setTimeout(() => setShowToast(false), 5000);
+                            } else if (newStatus === 'order_placed' && oldStatus !== 'order_placed') {
+                                setToastMsg('🛒 Order placed from your quotation!');
+                                setShowToast(true);
+                                setTimeout(() => setShowToast(false), 5000);
+                            }
+                        }
+                    }
+                )
+                .subscribe();
+                
+            return () => {
+                quotationSubscription.unsubscribe();
+            };
+        }
     }, [merchantCode]);
 
     const handleCloseQuotation = async (quotationId: string) => {
@@ -1463,6 +1508,8 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="waiting_for_admin">Waiting for Admin</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="user_confirmed">User Confirmed</SelectItem>
+                        <SelectItem value="order_placed">Order Placed</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="closed">Closed</SelectItem>
                     </SelectContent>
@@ -1482,9 +1529,7 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                 <div className="space-y-4">
                     {filteredQuotations.map((q) => {
                         const productCost = calculateProductCost(q);
-                        const transportCost = parseFloat(q.transport_cost) || 0;
-                        const customWorkCost = parseFloat(q.custom_work_cost) || 0;
-                        const totalPrice = productCost + transportCost + customWorkCost;
+                        const totalPrice = productCost;
                         
                         return (
                             <Card key={q.id} className={`overflow-hidden ${
@@ -1506,6 +1551,12 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                                             )}
                                             {q.status === 'approved' && (
                                                 <Badge className="bg-green-100 text-green-800 text-xs">✅ APPROVED</Badge>
+                                            )}
+                                            {q.status === 'user_confirmed' && (
+                                                <Badge className="bg-blue-100 text-blue-800 text-xs">👤 User Confirmed</Badge>
+                                            )}
+                                            {q.status === 'order_placed' && (
+                                                <Badge className="bg-purple-100 text-purple-800 text-xs">🛒 Order Placed</Badge>
                                             )}
                                             {q.status === 'rejected' && (
                                                 <Badge variant="destructive" className="text-xs">❌ Rejected</Badge>
@@ -1557,6 +1608,13 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                                                                     <p className="text-xs sm:text-sm text-gray-600">
                                                                         Quantity: {quantity}
                                                                     </p>
+                                                                    {/* Specifications Display */}
+                                                                    {(item.year || item.size) && (
+                                                                        <div className="mt-1 text-xs text-gray-500">
+                                                                            {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                            {item.size && <span>Size: {item.size}</span>}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-between items-center text-sm">
@@ -1581,14 +1639,6 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-gray-600 text-sm">Product Cost:</span>
                                                     <span className="font-medium text-sm">₹{productCost.toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600 text-sm">Transport Cost:</span>
-                                                    <span className="font-medium text-sm">₹{transportCost.toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600 text-sm">Custom Work:</span>
-                                                    <span className="font-medium text-sm">₹{customWorkCost.toFixed(2)}</span>
                                                 </div>
                                                 <div className="border-t pt-2">
                                                     <div className="flex justify-between items-center">
@@ -1628,27 +1678,23 @@ const RecentOrders: React.FC<{ merchantCode: string | null }> = ({ merchantCode 
             }
             
             try {
-                // Fetch orders related to this merchant's quotations
-                const { data: quotations } = await supabase
-                    .from('quotations')
-                    .select('quotation_code')
+                // Use the same simple approach as admin dashboard
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*')
                     .eq('merchant_code', merchantCode)
-                    .in('status', ['approved', 'delivered']);
+                    .order('created_at', { ascending: false })
+                    .limit(5);
                 
-                if (quotations && quotations.length > 0) {
-                    const quotationCodes = quotations.map(q => q.quotation_code);
-                    
-                    // Fetch orders that match these quotation codes
-                    const { data: ordersData } = await supabase
-                        .from('orders')
-                        .select('*')
-                        .in('quotation_code', quotationCodes)
-                        .limit(5);
-                    
+                if (ordersError) {
+                    console.error('Error fetching orders:', ordersError);
+                    setOrders([]);
+                } else {
                     setOrders(ordersData || []);
                 }
             } catch (error) {
                 console.error('Error fetching recent orders:', error);
+                setOrders([]);
             } finally {
                 setLoading(false);
             }
@@ -1668,18 +1714,37 @@ const RecentOrders: React.FC<{ merchantCode: string | null }> = ({ merchantCode 
     return (
         <div className="space-y-3">
             {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                        <p className="font-medium text-gray-900">Order #{order.id}</p>
+                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex-1">
+                        <p className="font-medium text-gray-900">Order #{order.id?.slice(0, 8)}...</p>
                         <p className="text-sm text-gray-500">₹{order.total_amount || 0}</p>
+                        <p className="text-xs text-gray-400">
+                            {order.quotation_code ? `Quote: ${order.quotation_code}` : 'Direct Order'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            {new Date(order.created_at).toLocaleDateString()}
+                        </p>
+                        {/* Show order items count */}
+                        <p className="text-xs text-gray-400">
+                            {(() => {
+                                // For recent orders, we'll show a simple count since we don't have order_items joined
+                                const itemCount = order.cart_items && Array.isArray(order.cart_items) 
+                                    ? order.cart_items.length 
+                                    : 1; // Default to 1 if we can't determine
+                                return `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
+                            })()}
+                        </p>
                     </div>
-                    <Badge variant={
-                        order.status === 'delivered' ? 'default' :
-                        order.status === 'processing' ? 'secondary' :
-                        'outline'
-                    }>
-                        {order.status || 'pending'}
-                    </Badge>
+                    <div className="text-right">
+                        <Badge variant={
+                            order.order_status === 'delivered' ? 'default' :
+                            order.order_status === 'shipped' ? 'secondary' :
+                            order.order_status === 'confirmed' ? 'secondary' :
+                            'outline'
+                        }>
+                            {order.order_status || order.status || 'pending'}
+                        </Badge>
+                    </div>
                 </div>
             ))}
         </div>
@@ -1932,26 +1997,107 @@ const DashboardOverview: React.FC<{ merchantCode: string | null }> = ({ merchant
 // Order Management Component
 const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCode }) => {
     const [orders, setOrders] = useState<any[]>([]);
+    const [orderItems, setOrderItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+    const [orderDetails, setOrderDetails] = useState<{[key: string]: any}>({});
 
     useEffect(() => {
         const fetchOrders = async () => {
-            if (!merchantCode) return;
+            
+            if (!merchantCode || !merchantCode.trim()) {
+                setLoading(false);
+                return;
+            }
             
             try {
-                const { data, error } = await supabase
+                setLoading(true);
+                
+                // Test database connection first
+                const { data: testData, error: testError } = await supabase
+                    .from('orders')
+                    .select('count', { count: 'exact', head: true });
+                
+                
+                // Use the same simple approach as admin dashboard - fetch orders and order_items separately
+                const { data: ordersData, error: ordersError } = await supabase
                     .from('orders')
                     .select('*')
                     .eq('merchant_code', merchantCode)
                     .order('created_at', { ascending: false });
                 
-                if (!error && data) {
-                    setOrders(data);
+                // Skip order_items query due to 403 permission error
+                // We'll use cart_items from orders table instead
+                let orderItemsData = [];
+                let orderItemsError = null;
+                
+                
+                
+                if (!ordersError) {
+                    setOrders(ordersData || []);
+                    setOrderItems(orderItemsData || []);
+                    
+                    
+                    // Fetch additional details for each order
+                    const detailsPromises = (ordersData || []).map(async (order) => {
+                        try {
+                            // Fetch user details if available
+                            let userInfo = null;
+                            if (order.user_id) {
+                                const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
+                                if (userData?.user) {
+                                    userInfo = {
+                                        email: userData.user.email,
+                                        name: userData.user.user_metadata?.full_name || 'Unknown User'
+                                    };
+                                }
+                            }
+                            
+                            // Since order_items are not accessible due to 403 error, always use cart_items
+                            let cartItems = [];
+                            if (order.cart_items) {
+                                try {
+                                    cartItems = typeof order.cart_items === 'string' 
+                                        ? JSON.parse(order.cart_items) 
+                                        : order.cart_items;
+                                } catch (e) {
+                                    console.log('Error parsing cart_items:', e);
+                                    cartItems = [];
+                                }
+                            }
+                            
+                            return {
+                                orderId: order.id,
+                                userInfo,
+                                items: cartItems
+                            };
+                        } catch (err) {
+                            console.error('Error fetching order details:', err);
+                            return {
+                                orderId: order.id,
+                                userInfo: null,
+                                items: order.cart_items || []
+                            };
+                        }
+                    });
+                    
+                    const details = await Promise.all(detailsPromises);
+                    const detailsMap = details.reduce((acc, detail) => {
+                        acc[detail.orderId] = detail;
+                        return acc;
+                    }, {});
+                    setOrderDetails(detailsMap);
+                    
+                } else {
+                    console.error('OrderManagement: Error fetching orders:', ordersError);
+                    setOrders([]);
+                    setOrderItems([]);
                 }
             } catch (error) {
-                console.error('Error fetching orders:', error);
+                console.error('OrderManagement: Unexpected error fetching orders:', error);
+                setOrders([]);
+                setOrderItems([]);
             } finally {
                 setLoading(false);
             }
@@ -1960,22 +2106,55 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
         fetchOrders();
     }, [merchantCode]);
 
+    const handleViewOrderDetails = (order: any) => {
+        // Since order_items are not accessible due to 403 error, always use cart_items
+        let cartItems = [];
+        if (order.cart_items) {
+            try {
+                cartItems = typeof order.cart_items === 'string' 
+                    ? JSON.parse(order.cart_items) 
+                    : order.cart_items;
+            } catch (e) {
+                console.log('Error parsing cart_items in view details:', e);
+                cartItems = [];
+            }
+        }
+        
+        const items = cartItems;
+        
+        // Create a detailed view of the order items
+        const orderDetails = {
+            orderCode: order.order_code || 'N/A',
+            totalAmount: order.total_amount || 0,
+            status: order.status || 'pending',
+            createdAt: new Date(order.created_at).toLocaleString(),
+            items: items.map((item: any) => ({
+                name: item.product?.name || item.name || 'Unknown Product',
+                quantity: item.quantity || 1,
+                price: item.total_price || item.unit_price || item.price || 0,
+                image: item.product?.image_url || item.image
+            }))
+        };
+        
+        // Show order details in an alert for now (you can replace this with a modal later)
+        alert(`Order Details:\n\nOrder Code: ${orderDetails.orderCode}\nTotal Amount: ₹${orderDetails.totalAmount}\nStatus: ${orderDetails.status}\nCreated: ${orderDetails.createdAt}\n\nItems:\n${orderDetails.items.map(item => `- ${item.name} (Qty: ${item.quantity}) - ₹${item.price}`).join('\n')}`);
+    };
+
     const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
         setUpdatingOrder(orderId);
         
         try {
-            const { error } = await supabase
-                .from('orders')
-                .update({ 
-                    status: newStatus,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', orderId);
+            // Use the update_order_delivery_status function for better control
+            const { data, error } = await supabase.rpc('update_order_delivery_status', {
+                p_order_id: orderId,
+                p_merchant_code: merchantCode,
+                p_delivery_status: newStatus
+            });
             
-            if (!error) {
+            if (!error && data?.success) {
                 setOrders(prev => prev.map(order => 
                     order.id === orderId 
-                        ? { ...order, status: newStatus }
+                        ? { ...order, order_status: newStatus, status: newStatus }
                         : order
                 ));
                 toast({
@@ -1983,6 +2162,8 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                     description: `Order status updated to ${newStatus}`,
                     variant: "default"
                 });
+            } else {
+                throw new Error(data?.message || 'Failed to update order');
             }
         } catch (error) {
             console.error('Error updating order:', error);
@@ -2018,7 +2199,8 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
 
     const filteredOrders = statusFilter === 'all' 
         ? orders 
-        : orders.filter(order => order.status === statusFilter);
+        : orders.filter(order => (order.order_status || order.status) === statusFilter);
+
 
     if (loading) {
         return (
@@ -2031,21 +2213,118 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <Label htmlFor="orderStatusFilter" className="text-sm">Filter by Status:</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48 h-10">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Orders</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="confirmed">Confirmed</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                </Select>
+            {/* Order Management Controls */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                    <Label htmlFor="orderStatusFilter" className="text-sm">Filter by Status:</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-48 h-10">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Orders</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="shipped">Shipped</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                <div className="flex space-x-2">
+                <Button
+                    onClick={() => {
+                        setLoading(true);
+                        // Re-fetch orders
+                        const fetchOrders = async () => {
+                            if (!merchantCode) return;
+                            
+                            try {
+                                    // Use the same simple approach as admin dashboard
+                                    const { data: ordersData, error: ordersError } = await supabase
+                                    .from('orders')
+                                    .select('*')
+                                    .eq('merchant_code', merchantCode)
+                                    .order('created_at', { ascending: false });
+                                
+                                                                    // Skip order_items query due to 403 permission error
+                                // We'll use cart_items from orders table instead
+                                let orderItemsData = [];
+                                let orderItemsError = null;
+                                
+                                    
+                                    if (!ordersError) {
+                                        setOrders(ordersData || []);
+                                        setOrderItems(orderItemsData || []);
+                                    // Re-fetch order details
+                                        const detailsPromises = (ordersData || []).map(async (order) => {
+                                        try {
+                                            let userInfo = null;
+                                            if (order.user_id) {
+                                                const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
+                                                if (userData?.user) {
+                                                    userInfo = {
+                                                        email: userData.user.email,
+                                                        name: userData.user.user_metadata?.full_name || 'Unknown User'
+                                                    };
+                                                }
+                                            }
+                                                
+                                            // Since order_items are not accessible due to 403 error, always use cart_items
+                                            let cartItems = [];
+                                            if (order.cart_items) {
+                                                try {
+                                                    cartItems = typeof order.cart_items === 'string' 
+                                                        ? JSON.parse(order.cart_items) 
+                                                        : order.cart_items;
+                                                } catch (e) {
+                                                    console.log('Error parsing cart_items in refresh:', e);
+                                                    cartItems = [];
+                                                }
+                                            }
+                                            
+                                            return {
+                                                orderId: order.id,
+                                                userInfo,
+                                                items: cartItems
+                                            };
+                                        } catch (err) {
+                                            return {
+                                                orderId: order.id,
+                                                userInfo: null,
+                                                    items: order.cart_items || []
+                                            };
+                                        }
+                                    });
+                                    
+                                    const details = await Promise.all(detailsPromises);
+                                    const detailsMap = details.reduce((acc, detail) => {
+                                        acc[detail.orderId] = detail;
+                                        return acc;
+                                    }, {});
+                                    setOrderDetails(detailsMap);
+                                }
+                            } catch (error) {
+                                console.error('Error refreshing orders:', error);
+                            } finally {
+                                setLoading(false);
+                            }
+                        };
+                        fetchOrders();
+                    }}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+                    ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh Orders
+                </Button>
+                </div>
             </div>
 
             {filteredOrders.length === 0 ? (
@@ -2053,91 +2332,97 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                     <p className="text-gray-500 text-sm">No orders found.</p>
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {filteredOrders.map((order) => (
-                        <Card key={order.id} className="overflow-hidden">
-                            <CardHeader>
-                                <div className="flex flex-col sm:flex-row justify-between items-start space-y-2 sm:space-y-0">
-                                    <div>
-                                        <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-                                        <CardDescription>
-                                            Customer: {order.user_id} • {new Date(order.created_at).toLocaleDateString()}
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        {getStatusBadge(order.status)}
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    <div>
-                                        <h4 className="font-semibold mb-3">Order Details</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Total Amount:</span>
-                                                <span className="font-semibold">₹{parseFloat(order.total_amount || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Items Count:</span>
-                                                <span>{order.items?.length || 0} items</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Quotation Code:</span>
-                                                <span className="font-mono text-sm">{order.quotation_code}</span>
-                                            </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Code</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Items</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredOrders.map(order => {
+                                const orderItemsForOrder = orderItems.filter(item => item.order_id === order.id);
+                                
+                                // Handle cart_items - parse if it's a JSON string
+                                let cartItems = [];
+                                if (order.cart_items) {
+                                    try {
+                                        cartItems = typeof order.cart_items === 'string' 
+                                            ? JSON.parse(order.cart_items) 
+                                            : order.cart_items;
+                                    } catch (e) {
+                                        console.log('Error parsing cart_items in table:', e);
+                                        cartItems = [];
+                                    }
+                                }
+                                
+                                return (
+                                    <tr key={order.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-900">{order.order_code || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-mono text-gray-900">{order.user_id || 'Guest'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900">
+                                                {(() => {
+                                                    // Since order_items are not accessible due to 403 error, always use cart_items
+                                                    const itemCount = cartItems && Array.isArray(cartItems) 
+                                                        ? cartItems.length 
+                                                        : 0;
+                                                    
+                                                    return (
+                                                        <div className="space-y-3">
+                                                            <div className="text-center p-3 bg-gray-50 rounded-lg">
+                                                                <div className="text-lg font-semibold text-gray-700">
+                                                                    {itemCount} {itemCount === 1 ? 'Item' : 'Items'}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    Click below to view details
+                                                            </div>
+                                                        </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                                onClick={() => handleViewOrderDetails(order)}
+                                                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 w-full"
+                                                >
+                                                                View Items
+                                                </Button>
                                         </div>
+                                                    );
+                                                })()}
                                     </div>
-                                    
-                                    <div>
-                                        <h4 className="font-semibold mb-3">Update Status</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {order.status !== 'confirmed' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
-                                                    disabled={updatingOrder === order.id}
-                                                >
-                                                    {updatingOrder === order.id ? 'Updating...' : 'Confirm'}
-                                                </Button>
-                                            )}
-                                            {order.status === 'confirmed' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
-                                                    disabled={updatingOrder === order.id}
-                                                >
-                                                    {updatingOrder === order.id ? 'Updating...' : 'Ship'}
-                                                </Button>
-                                            )}
-                                            {order.status === 'shipped' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                                                    disabled={updatingOrder === order.id}
-                                                >
-                                                    {updatingOrder === order.id ? 'Updating...' : 'Deliver'}
-                                                </Button>
-                                            )}
-                                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="destructive"
-                                                    onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
-                                                    disabled={updatingOrder === order.id}
-                                                >
-                                                    {updatingOrder === order.id ? 'Updating...' : 'Cancel'}
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-lg font-bold text-gray-900">₹{order.total_amount || 0}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <Badge variant={
+                                                order.status === 'pending' ? 'secondary' :
+                                                order.status === 'processing' ? 'default' :
+                                                order.status === 'shipped' ? 'outline' :
+                                                order.status === 'delivered' ? 'default' :
+                                                order.status === 'cancelled' ? 'destructive' :
+                                                'outline'
+                                            }>
+                                                {order.status || 'pending'}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(order.created_at).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>
