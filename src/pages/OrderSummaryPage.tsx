@@ -193,14 +193,11 @@ const OrderSummaryPage = () => {
         return sum + ((Number(item.price) || 0) * item.quantity);
     }, 0);
     
-    // Get quotation costs if this is a quotation-based order
+    // Check if this is a quotation-based order
     const hasQuotation = cartProducts.some((item: any) => item.quotation_id);
-    const quotationItem = hasQuotation ? cartProducts.find((item: any) => item.quotation_id) : null;
-    const transportCost = hasQuotation && quotationItem?.transport_cost ? Number(quotationItem.transport_cost) : 0;
-    const customWorkCost = hasQuotation && quotationItem?.custom_work_cost ? Number(quotationItem.custom_work_cost) : 0;
     
     const packaging = cartProducts.reduce((sum, item) => sum + ((Number(item.packagingFee) || 0) * item.quantity), 0);
-    const total = subtotal + transportCost + customWorkCost + packaging;
+    const total = subtotal + packaging;
 
     const handleSaveAddress = () => {
         if (editingAddressIdx !== null) {
@@ -626,12 +623,7 @@ const OrderSummaryPage = () => {
                                         </div>
                                     )}
                                     <div className="flex justify-between text-sm mb-1"><span>Price ({cartProducts.length} item{cartProducts.length > 1 ? 's' : ''})</span><span>₹{subtotal}</span></div>
-                                    {hasQuotation && transportCost > 0 && (
-                                        <div className="flex justify-between text-sm mb-1"><span>Transport Cost</span><span>₹{transportCost}</span></div>
-                                    )}
-                                    {hasQuotation && customWorkCost > 0 && (
-                                        <div className="flex justify-between text-sm mb-1"><span>Custom Work Cost</span><span>₹{customWorkCost}</span></div>
-                                    )}
+
                                     <div className="flex justify-between text-sm mb-1"><span>Packaging Charge</span><span>₹{packaging}</span></div>
                                     <div className="border-t my-2"></div>
                                     <div className="flex justify-between text-lg font-bold mb-2"><span>Total Payable</span><span>₹{total}</span></div>

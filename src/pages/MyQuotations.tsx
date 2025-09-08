@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +10,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/ui/navbar";
 import { useCart } from '../contexts/CartContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from '../contexts/AuthContext';
 
 const MyQuotations: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { clearCart } = useCart();
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth(); // Use the AuthContext instead of local state
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<{[key: string]: any}>({});
@@ -23,6 +24,9 @@ const MyQuotations: React.FC = () => {
   const [showMerchantResponses, setShowMerchantResponses] = useState<boolean>(false);
   const [selectedQuotation, setSelectedQuotation] = useState<any | null>(null);
   const [selectedMerchants, setSelectedMerchants] = useState<{[quotationId: string]: {[itemIndex: number]: string}}>({});
+  const [error, setError] = useState<string | null>(null);
+  const [loadingMerchantResponses, setLoadingMerchantResponses] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   // Status badge colors
   const statusColors: {[key: string]: string} = {
@@ -44,72 +48,132 @@ const MyQuotations: React.FC = () => {
     'order_placed': 'Order Placed'
   };
 
-  // Fetch user and quotations on mount
-  useEffect(() => {
-    const fetchUserAndQuotations = async () => {
-      setLoading(true);
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+  // Fetch user and quotations function
+  const fetchUserAndQuotations = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      setError('User not authenticated');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      // Fetch all quotations for the current user
+      const quotationsPromise = supabase
+        .from('quotations')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_user_request', true) // Only fetch user requests, not merchant responses
+        .order('created_at', { ascending: false });
+
+      const result = await Promise.race([
+        quotationsPromise,
+        timeoutPromise
+      ]) as any;
       
-      if (user) {
-        setUser(user);
+      const { data: quotationsData, error: quotationsError } = result;
+      
+      if (quotationsError) {
+        console.error('Error fetching quotations:', quotationsError);
+        setError(quotationsError.message);
+        toast({ title: "Error", description: quotationsError.message, variant: "destructive" });
+      } else if (quotationsData) {
+        setQuotations(quotationsData);
         
-        // Fetch all quotations (both user requests and merchant responses)
-        const { data: quotationsData, error: quotationsError } = await supabase
-          .from('quotations')
-          .select('*')
-          .or(`user_id.eq.${user.id},quotation_code.in.(${user.id})`)
-          .order('created_at', { ascending: false });
+        // Fetch product details for all items in quotations
+        const productIds = new Set<string>();
+        quotationsData.forEach(quotation => {
+          if (Array.isArray(quotation.items)) {
+            quotation.items.forEach((item: any) => {
+              if (item.product_id) {
+                productIds.add(item.product_id);
+              }
+            });
+          }
+        });
         
-        if (quotationsError) {
-          toast({ title: "Error", description: quotationsError.message, variant: "destructive" });
-        } else if (quotationsData) {
-          // Filter to show only user's quotation requests (not merchant responses)
-          const userQuotations = quotationsData.filter((quotation: any) => 
-            quotation.user_id === user.id && !quotation.merchant_code
-          );
+        // Fetch product details
+        if (productIds.size > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', Array.from(productIds));
           
-          setQuotations(userQuotations);
-          
-          // Fetch product details for all items in quotations
-          const productIds = new Set<string>();
-          userQuotations.forEach(quotation => {
-            if (Array.isArray(quotation.items)) {
-              quotation.items.forEach((item: any) => {
-                if (item.product_id) {
-                  productIds.add(item.product_id);
-                }
-              });
-            }
-          });
-          
-          // Fetch product details
-          if (productIds.size > 0) {
-            const { data: productsData } = await supabase
-              .from('products')
-              .select('*')
-              .in('id', Array.from(productIds));
-            
-            if (productsData) {
-              const productsMap: {[key: string]: any} = {};
-              productsData.forEach(product => {
-                productsMap[product.id] = product;
-              });
-              setProducts(productsMap);
-            }
+          if (productsError) {
+            console.error('Error fetching products:', productsError);
+            // Don't fail the entire request if products fail to load
+          } else if (productsData) {
+            const productsMap: {[key: string]: any} = {};
+            productsData.forEach(product => {
+              productsMap[product.id] = product;
+            });
+            setProducts(productsMap);
           }
         }
-      } else {
-        // Redirect to login if no user
-        toast({ title: "Login Required", description: "Please login to view your quotations", variant: "destructive" });
-        navigate('/');
       }
-      
+    } catch (error: any) {
+      console.error('Unexpected error:', error);
+      const errorMessage = error.message === 'Request timeout' 
+        ? 'Request timed out. Please check your connection and try again.'
+        : 'An unexpected error occurred';
+      setError(errorMessage);
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    } finally {
       setLoading(false);
-    };
+    }
+  }, [user, toast]);
+
+  // Fetch user and quotations on mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchUserAndQuotations();
+    } else {
+      setLoading(false);
+      setQuotations([]);
+      setProducts({});
+    }
+  }, [user, fetchUserAndQuotations]);
+
+  // Set up real-time subscription for quotation status changes
+  useEffect(() => {
+    if (!user) return;
     
-    fetchUserAndQuotations();
-  }, [toast, navigate]);
+      const quotationSubscription = supabase
+        .channel(`user_quotations_${user.id}`)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'quotations',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          (payload) => {
+            console.log('User quotation status changed:', payload);
+            // Refresh quotations data when there's a change
+            fetchUserAndQuotations();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        quotationSubscription.unsubscribe();
+      };
+  }, [user, fetchUserAndQuotations]);
+
+  // Redirect to login if no user
+  useEffect(() => {
+    if (!user && !loading) {
+      toast({ title: "Login Required", description: "Please login to view your quotations", variant: "destructive" });
+      navigate('/');
+    }
+  }, [user, loading, toast, navigate]);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -146,12 +210,22 @@ const MyQuotations: React.FC = () => {
     return responses || [];
   };
 
-  // View merchant responses
+    // View merchant responses
   const handleViewMerchantResponses = async (quotation: any) => {
-    setSelectedQuotation(quotation);
-    const responses = await getMerchantResponses(quotation.quotation_code);
-    setSelectedQuotation({ ...quotation, merchantResponses: responses });
-    setShowMerchantResponses(true);
+    try {
+      setLoadingMerchantResponses(true);
+      setSelectedQuotation(quotation);
+      const responses = await getMerchantResponses(quotation.quotation_code);
+      setSelectedQuotation({ ...quotation, merchantResponses: responses });
+      setShowMerchantResponses(true);
+      // Clear any previous errors when opening the dialog
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching merchant responses:', error);
+      toast({ title: "Error", description: "Failed to fetch merchant responses", variant: "destructive" });
+    } finally {
+      setLoadingMerchantResponses(false);
+    }
   };
 
   // Select merchant for a specific item
@@ -163,6 +237,8 @@ const MyQuotations: React.FC = () => {
         [itemIndex]: merchantCode
       }
     }));
+    // Clear any previous errors when a merchant is selected
+    setError(null);
   };
 
   // Place order with selected merchants
@@ -176,66 +252,194 @@ const MyQuotations: React.FC = () => {
     const hasSelections = Object.keys(selectedMerchantsForQuotation).length > 0;
 
     if (!hasSelections) {
+      setError("Please select merchants for your items");
       toast({ title: "Error", description: "Please select merchants for your items", variant: "destructive" });
       return;
     }
 
-    // Create cart items from selected merchants
-    const cartItems: any[] = [];
-    
-    quotation.items.forEach((item: any, itemIndex: number) => {
-      const selectedMerchantCode = selectedMerchantsForQuotation[itemIndex];
-      if (selectedMerchantCode) {
-        const merchantResponse = selectedQuotation.merchantResponses.find((r: any) => 
-          r.merchant_code === selectedMerchantCode
-        );
-        
-        if (merchantResponse) {
-          const product = products[item.product_id];
-          if (product) {
-            const unitPrices = typeof merchantResponse.unit_prices === 'string'
-              ? JSON.parse(merchantResponse.unit_prices || '{}')
-              : (merchantResponse.unit_prices || {});
-            const pricePerUnit = unitPrices[itemIndex] || 0;
-            const itemPrice = pricePerUnit * item.quantity;
+    // Clear any previous errors at the start
+    setError(null);
+    setPlacingOrder(true);
 
-            cartItems.push({
-              id: product.id,
-              name: product.name,
-              price: itemPrice,
-              unit_price: pricePerUnit,
-              image: product.image_url,
-              quantity: item.quantity,
-              category: product.categories || 'other',
-              quotation_id: quotation.id,
-              quotation_code: quotation.quotation_code,
-              selected_merchant: selectedMerchantCode,
-              transport_cost: merchantResponse.transport_cost || 0,
-              custom_work_cost: merchantResponse.custom_work_cost || 0
-            });
+    try {
+      // Step 1: Update quotation status to "user_confirmed" for selected merchants
+      const selectedMerchantCodes = Object.values(selectedMerchantsForQuotation);
+      
+      // Update user quotation status to "user_confirmed"
+      const { error: userQuotationError } = await supabase
+        .from('quotations')
+        .update({ 
+          status: 'user_confirmed',
+          selected_merchants: selectedMerchantCodes,
+          user_confirmed_at: new Date().toISOString()
+        })
+        .eq('quotation_code', quotation.quotation_code)
+        .eq('is_user_request', true);
+
+      if (userQuotationError) {
+        console.error('Error updating user quotation status:', userQuotationError);
+        setError(`Failed to update quotation status: ${userQuotationError.message}`);
+        toast({ title: "Error", description: "Failed to update quotation status", variant: "destructive" });
+        return;
+      }
+
+      // Update selected merchant quotations status to "user_confirmed"
+      const { error: merchantQuotationError } = await supabase
+        .from('quotations')
+        .update({ 
+          status: 'user_confirmed',
+          user_confirmed_at: new Date().toISOString()
+        })
+        .eq('quotation_code', quotation.quotation_code)
+        .in('merchant_code', selectedMerchantCodes);
+
+      if (merchantQuotationError) {
+        console.error('Error updating merchant quotation status:', merchantQuotationError);
+        setError(`Failed to update merchant quotation status: ${merchantQuotationError.message}`);
+        toast({ title: "Error", description: "Failed to update merchant quotation status", variant: "destructive" });
+        return;
+      }
+
+      // Step 2: Create cart items from selected merchants
+      const cartItems: any[] = [];
+      
+      quotation.items.forEach((item: any, itemIndex: number) => {
+        const selectedMerchantCode = selectedMerchantsForQuotation[itemIndex];
+        if (selectedMerchantCode) {
+          const merchantResponse = selectedQuotation.merchantResponses.find((r: any) => 
+            r.merchant_code === selectedMerchantCode
+          );
+          
+          if (merchantResponse) {
+            const product = products[item.product_id];
+            if (product) {
+              const unitPrices = typeof merchantResponse.unit_prices === 'string'
+                ? JSON.parse(merchantResponse.unit_prices || '{}')
+                : (merchantResponse.unit_prices || {});
+              const pricePerUnit = unitPrices[itemIndex] || 0;
+              const itemPrice = pricePerUnit * item.quantity;
+
+              cartItems.push({
+                id: product.id,
+                name: product.name,
+                price: itemPrice,
+                unit_price: pricePerUnit,
+                image: product.image_url,
+                quantity: item.quantity,
+                category: product.categories || 'other',
+                quotation_id: quotation.id,
+                quotation_code: quotation.quotation_code,
+                selected_merchant: selectedMerchantCode,
+                transport_cost: merchantResponse.transport_cost || 0,
+                custom_work_cost: merchantResponse.custom_work_cost || 0
+              });
+            }
           }
         }
+      });
+
+      if (cartItems.length === 0) {
+        setError("Could not create order items from selected merchants");
+        toast({ title: "Error", description: "Could not create order items from selected merchants", variant: "destructive" });
+        return;
       }
-    });
 
-    if (cartItems.length === 0) {
-      toast({ title: "Error", description: "Could not create order items from selected merchants", variant: "destructive" });
-      return;
+      // Step 3: Create order in database
+      if (!user) {
+        setError("Please log in to place order");
+        toast({ title: "Error", description: "Please log in to place order", variant: "destructive" });
+        return;
+      }
+
+      // Calculate total order amount
+      const totalAmount = cartItems.reduce((sum, item) => sum + item.price, 0);
+
+      // Create orders for each selected merchant
+      const orderPromises = cartItems.map(async (cartItem) => {
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            user_id: user.id,
+            quotation_code: quotation.quotation_code,
+            merchant_code: cartItem.selected_merchant, // Link order to specific merchant
+            total_amount: cartItem.price,
+            status: 'pending',
+            cart_items: [cartItem], // Store the specific item for this merchant
+            created_at: new Date().toISOString()
+          }])
+          .select('id')
+          .single();
+
+        if (orderError) {
+          throw new Error(`Failed to create order for merchant ${cartItem.selected_merchant}: ${orderError.message}`);
+        }
+
+        return orderData;
+      });
+
+      // Wait for all orders to be created
+      const createdOrders = await Promise.all(orderPromises);
+
+      if (createdOrders.length === 0) {
+        setError("Failed to create any orders");
+        toast({ title: "Error", description: "Failed to create any orders", variant: "destructive" });
+        return;
+      }
+
+      // Step 4: Update quotation status to "order_placed"
+      const { error: orderPlacedError } = await supabase
+        .from('quotations')
+        .update({ 
+          status: 'order_placed',
+          order_placed_at: new Date().toISOString()
+        })
+        .eq('quotation_code', quotation.quotation_code);
+
+      if (orderPlacedError) {
+        console.error('Error updating quotation to order_placed:', orderPlacedError);
+        // Continue even if this fails
+      }
+
+      // Step 5: Set cart and navigate to order summary
+      localStorage.setItem('cart', JSON.stringify(cartItems));
+      
+      // Clear any errors on success
+      setError(null);
+      
+      // Show success message
+      toast({ 
+        title: "Orders Placed Successfully!", 
+        description: `${createdOrders.length} order(s) created from quotation ${quotation.quotation_code}`,
+        variant: "default"
+      });
+
+      // Refresh quotations data to show updated statuses
+      await fetchUserAndQuotations();
+      
+      // Navigate to order summary
+      navigate('/order-summary');
+      
+    } catch (error: any) {
+      console.error('Error placing order:', error);
+      const errorMessage = error.message || "Failed to place order. Please try again.";
+      setError(errorMessage);
+      toast({ 
+        title: "Error", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    } finally {
+      setPlacingOrder(false);
     }
-
-    // Set cart with selected merchant items
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-    
-    // Navigate to order summary
-    navigate('/order-summary');
-    toast({ 
-      title: "Order Created", 
-      description: `Order created from quotation ${quotation.quotation_code} with selected merchants` 
-    });
   };
 
   // Place order from approved quotation (legacy function for backward compatibility)
   const placeOrder = (quotation: any) => {
+    if (!user) {
+      toast({ title: "Login Required", description: "Please login to place an order", variant: "destructive" });
+      return;
+    }
+
     if (quotation.status !== 'approved') {
       toast({ title: "Cannot Place Order", description: "You can only place orders for approved quotations", variant: "destructive" });
       return;
@@ -246,6 +450,7 @@ const MyQuotations: React.FC = () => {
       return;
     }
 
+    try {
     // Create cart items from quotation
     const cartItems = quotation.items.map((item: any, index: number) => {
       const product = products[item.product_id];
@@ -262,10 +467,13 @@ const MyQuotations: React.FC = () => {
             : (quotation.unit_prices || {});
         pricePerUnit = unitPrices[index] || 0;
         itemPrice = pricePerUnit * item.quantity; // Price per unit × quantity
-      } else {
+        } else if (quotation.approved_price) {
         // Fallback: distribute approved price equally
         pricePerUnit = quotation.approved_price / quotation.items.length;
         itemPrice = pricePerUnit * item.quantity;
+        } else {
+          toast({ title: "Error", description: "No pricing information available for this quotation", variant: "destructive" });
+          return null;
       }
 
       return {
@@ -279,7 +487,8 @@ const MyQuotations: React.FC = () => {
         quotation_id: quotation.id, // Reference to the quotation
         quotation_code: quotation.quotation_code,
         transport_cost: quotation.transport_cost || 0,
-        custom_work_cost: quotation.custom_work_cost || 0
+        custom_work_cost: quotation.custom_work_cost || 0,
+        selected_merchant: quotation.merchant_code || 'admin' // For legacy orders, use admin as default
       };
     }).filter(Boolean);
 
@@ -294,6 +503,10 @@ const MyQuotations: React.FC = () => {
     // Navigate to order summary
     navigate('/order-summary');
     toast({ title: "Order Created", description: `Order created from quotation ${quotation.quotation_code}` });
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({ title: "Error", description: "Failed to create order. Please try again.", variant: "destructive" });
+    }
   };
 
   return (
@@ -319,6 +532,25 @@ const MyQuotations: React.FC = () => {
               <div className="text-center py-16">
                 <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                 <p className="text-gray-600">Loading your quotations...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16">
+                <X className="w-16 h-16 text-red-500 mx-auto mb-6" />
+                <p className="text-red-600 font-medium">{error}</p>
+                <p className="text-gray-500 mt-2">Please try again or log in.</p>
+                <div className="flex gap-4 justify-center mt-4">
+                  <Button 
+                    onClick={() => fetchUserAndQuotations()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                  >
+                    Try Again
+                  </Button>
+                  <Link to="/">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2">
+                      Go to Home
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : quotations.length === 0 ? (
               <div className="text-center py-16">
@@ -362,9 +594,14 @@ const MyQuotations: React.FC = () => {
                               }}
                               variant="outline"
                               className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 border-blue-200"
+                              disabled={loadingMerchantResponses}
                             >
+                              {loadingMerchantResponses ? (
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                              ) : (
                               <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                              View Responses
+                              )}
+                              {loadingMerchantResponses ? 'Loading...' : 'View Responses'}
                             </Button>
                             
                             {quotation.status === 'approved' && (
@@ -397,7 +634,7 @@ const MyQuotations: React.FC = () => {
                                   <TableRow>
                                     <TableHead>Item</TableHead>
                                     <TableHead>Quantity</TableHead>
-                                    <TableHead>Category</TableHead>
+                                    <TableHead>Specifications</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -419,7 +656,23 @@ const MyQuotations: React.FC = () => {
                                           </div>
                                         </TableCell>
                                         <TableCell>{item.quantity}</TableCell>
-                                        <TableCell>{product?.categories || 'N/A'}</TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            {item.year && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Year:</span> {item.year}
+                                              </div>
+                                            )}
+                                            {item.size && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Size:</span> {item.size}
+                                              </div>
+                                            )}
+                                            {!item.year && !item.size && (
+                                              <span className="text-gray-400 text-sm">No specifications</span>
+                                            )}
+                                          </div>
+                                        </TableCell>
                                       </TableRow>
                                     );
                                   })}
@@ -472,7 +725,12 @@ const MyQuotations: React.FC = () => {
       </div>
 
       {/* Merchant Responses Dialog */}
-      <Dialog open={showMerchantResponses} onOpenChange={setShowMerchantResponses}>
+      <Dialog open={showMerchantResponses} onOpenChange={(open) => {
+        setShowMerchantResponses(open);
+        if (!open) {
+          setError(null); // Clear error when dialog closes
+        }
+      }}>
         <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
@@ -498,12 +756,23 @@ const MyQuotations: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900">Merchant Responses</h4>
-                  <p className="text-lg font-bold text-blue-600">{selectedQuotation.merchantResponses?.length || 0}</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    {loadingMerchantResponses ? (
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></div>
+                    ) : (
+                      selectedQuotation.merchantResponses?.length || 0
+                    )}
+                  </p>
                 </div>
               </div>
 
               {/* Merchant Responses */}
-              {selectedQuotation.merchantResponses && selectedQuotation.merchantResponses.length > 0 ? (
+              {loadingMerchantResponses ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading merchant responses...</p>
+                </div>
+              ) : selectedQuotation.merchantResponses && selectedQuotation.merchantResponses.length > 0 ? (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Available Merchant Responses</h3>
                   
@@ -560,26 +829,7 @@ const MyQuotations: React.FC = () => {
                         </div>
                       </div>
                       
-                      {/* Additional Costs */}
-                      {(response.transport_cost || response.custom_work_cost) && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                          <h5 className="font-medium text-blue-800 mb-2">Additional Costs:</h5>
-                          <div className="space-y-1 text-sm">
-                            {response.transport_cost && (
-                              <div className="flex justify-between">
-                                <span className="text-blue-700">Transport Cost:</span>
-                                <span className="font-medium">₹{response.transport_cost}</span>
-                              </div>
-                            )}
-                            {response.custom_work_cost && (
-                              <div className="flex justify-between">
-                                <span className="text-blue-700">Custom Work Cost:</span>
-                                <span className="font-medium">₹{response.custom_work_cost}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+
                     </div>
                   ))}
                   
@@ -646,12 +896,35 @@ const MyQuotations: React.FC = () => {
                       <Button
                         onClick={() => placeOrderWithSelectedMerchants(selectedQuotation)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2"
-                        disabled={Object.keys(selectedMerchants[selectedQuotation.id] || {}).length === 0}
+                        disabled={Object.keys(selectedMerchants[selectedQuotation.id] || {}).length === 0 || placingOrder}
                       >
-                        <ShoppingBag className="w-4 h-4 mr-2" />
-                        Place Order with Selected Merchants
+                        {placingOrder ? (
+                          <>
+                            <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Processing Order...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingBag className="w-4 h-4 mr-2" />
+                            Place Order with Selected Merchants
+                          </>
+                        )}
                       </Button>
                     </div>
+                    
+                    {/* Error Message */}
+                    {error && (
+                      <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <div className="flex items-start">
+                          <X className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h4 className="text-red-800 font-semibold mb-1">Order Placement Failed</h4>
+                            <p className="text-red-700 text-sm">{error}</p>
+                            <p className="text-red-600 text-xs mt-2">Please check the error details above and try again.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

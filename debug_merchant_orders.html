@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Merchant Orders</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Debug Merchant Orders</h1>
+    <div id="output"></div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzQ4MzEsImV4cCI6MjA1MDU1MDgzMX0.8Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function debugOrders() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Test 1: Check orders table structure
+                output.innerHTML += '<h2>1. Orders Table Structure</h2>';
+                const { data: orders, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .limit(5);
+                
+                if (ordersError) {
+                    output.innerHTML += `<p style="color: red;">Error: ${ordersError.message}</p>`;
+                } else {
+                    output.innerHTML += `<p>Found ${orders.length} orders</p>`;
+                    output.innerHTML += `<pre>${JSON.stringify(orders, null, 2)}</pre>`;
+                }
+
+                // Test 2: Check user_profiles table
+                output.innerHTML += '<h2>2. User Profiles Table</h2>';
+                const { data: profiles, error: profilesError } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .limit(3);
+                
+                if (profilesError) {
+                    output.innerHTML += `<p style="color: red;">Error: ${profilesError.message}</p>`;
+                } else {
+                    output.innerHTML += `<p>Found ${profiles.length} profiles</p>`;
+                    output.innerHTML += `<pre>${JSON.stringify(profiles, null, 2)}</pre>`;
+                }
+
+                // Test 3: Check merchants table
+                output.innerHTML += '<h2>3. Merchants Table</h2>';
+                const { data: merchants, error: merchantsError } = await supabase
+                    .from('merchants')
+                    .select('*')
+                    .limit(3);
+                
+                if (merchantsError) {
+                    output.innerHTML += `<p style="color: red;">Error: ${merchantsError.message}</p>`;
+                } else {
+                    output.innerHTML += `<p>Found ${merchants.length} merchants</p>`;
+                    output.innerHTML += `<pre>${JSON.stringify(merchants, null, 2)}</pre>`;
+                }
+
+                // Test 4: Check products table
+                output.innerHTML += '<h2>4. Products Table</h2>';
+                const { data: products, error: productsError } = await supabase
+                    .from('products')
+                    .select('*')
+                    .limit(3);
+                
+                if (productsError) {
+                    output.innerHTML += `<p style="color: red;">Error: ${productsError.message}</p>`;
+                } else {
+                    output.innerHTML += `<p>Found ${products.length} products</p>`;
+                    output.innerHTML += `<pre>${JSON.stringify(products, null, 2)}</pre>`;
+                }
+
+            } catch (error) {
+                output.innerHTML += `<p style="color: red;">Unexpected error: ${error.message}</p>`;
+            }
+        }
+
+        // Run debug when page loads
+        debugOrders();
+    </script>
+</body>
+</html>
+

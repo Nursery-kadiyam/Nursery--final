@@ -2042,14 +2042,27 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                     // Fetch additional details for each order
                     const detailsPromises = (ordersData || []).map(async (order) => {
                         try {
-                            // Fetch user details if available
+                            // Fetch user details if available - use user_profiles table instead of admin call
                             let userInfo = null;
                             if (order.user_id) {
-                                const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
-                                if (userData?.user) {
+                                try {
+                                    const { data: profileData } = await supabase
+                                        .from('user_profiles')
+                                        .select('first_name, last_name, email')
+                                        .eq('id', order.user_id)
+                                        .single();
+                                    
+                                    if (profileData) {
+                                        userInfo = {
+                                            email: profileData.email || 'No email',
+                                            name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User'
+                                        };
+                                    }
+                                } catch (profileError) {
+                                    console.log('Could not fetch user profile:', profileError);
                                     userInfo = {
-                                        email: userData.user.email,
-                                        name: userData.user.user_metadata?.full_name || 'Unknown User'
+                                        email: 'No email available',
+                                        name: 'Unknown User'
                                     };
                                 }
                             }
@@ -2262,11 +2275,24 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                         try {
                                             let userInfo = null;
                                             if (order.user_id) {
-                                                const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
-                                                if (userData?.user) {
+                                                try {
+                                                    const { data: profileData } = await supabase
+                                                        .from('user_profiles')
+                                                        .select('first_name, last_name, email')
+                                                        .eq('id', order.user_id)
+                                                        .single();
+                                                    
+                                                    if (profileData) {
+                                                        userInfo = {
+                                                            email: profileData.email || 'No email',
+                                                            name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User'
+                                                        };
+                                                    }
+                                                } catch (profileError) {
+                                                    console.log('Could not fetch user profile:', profileError);
                                                     userInfo = {
-                                                        email: userData.user.email,
-                                                        name: userData.user.user_metadata?.full_name || 'Unknown User'
+                                                        email: 'No email available',
+                                                        name: 'Unknown User'
                                                     };
                                                 }
                                             }
@@ -2364,10 +2390,15 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                 return (
                                     <tr key={order.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">{order.order_code || 'N/A'}</div>
+                                            <div className="text-sm font-medium text-gray-900">{order.order_code || order.id?.slice(0, 8) || 'N/A'}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-mono text-gray-900">{order.user_id || 'Guest'}</div>
+                                            <div className="text-sm text-gray-900">
+                                                {orderDetails[order.id]?.userInfo?.name || 'Unknown User'}
+                                                <div className="text-xs text-gray-500">
+                                                    {orderDetails[order.id]?.userInfo?.email || order.user_id || 'No email'}
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm text-gray-900">

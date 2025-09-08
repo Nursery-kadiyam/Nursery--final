@@ -357,6 +357,13 @@ const Orders = () => {
                                                                         `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
                                                                     )}
                                                                 </p>
+                                                                {/* Specifications Display */}
+                                                                {(item.year || item.size) && (
+                                                                    <div className="mt-1 text-xs text-gray-500">
+                                                                        {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                        {item.size && <span>Size: {item.size}</span>}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ))}
@@ -398,6 +405,13 @@ const Orders = () => {
                                                                     `Quantity: ${item.quantity} × ₹${item.price?.toFixed(2) || '0.00'} = ₹${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
                                                                 )}
                                                             </p>
+                                                            {/* Specifications Display */}
+                                                            {(item.year || item.size) && (
+                                                                <div className="mt-1 text-xs text-gray-500">
+                                                                    {item.year && <span className="mr-2">Year: {item.year}</span>}
+                                                                    {item.size && <span>Size: {item.size}</span>}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -429,23 +443,12 @@ const Orders = () => {
                                                                         <span className="text-gray-600">Products Total</span>
                                                                         <span className="font-medium">₹{itemsTotal.toFixed(2)}</span>
                                                                     </div>
-                                                                    {transportTotal > 0 && (
-                                                                        <div className="flex justify-between">
-                                                                            <span className="text-gray-600">Transport Cost</span>
-                                                                            <span className="font-medium">₹{transportTotal.toFixed(2)}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {customWorkTotal > 0 && (
-                                                                        <div className="flex justify-between">
-                                                                            <span className="text-gray-600">Custom Work Cost</span>
-                                                                            <span className="font-medium">₹{customWorkTotal.toFixed(2)}</span>
-                                                                        </div>
-                                                                    )}
+
                                                                     <div className="border-t border-gray-200 pt-2">
                                                                         <div className="flex justify-between">
                                                                             <span className="font-semibold text-gray-900">Total Amount</span>
                                                                             <span className="font-bold text-lg text-gray-900">
-                                                                                ₹{(itemsTotal + transportTotal + customWorkTotal).toFixed(2)}
+                                                                                ₹{itemsTotal.toFixed(2)}
                                                                             </span>
                                                                         </div>
                                                                     </div>
