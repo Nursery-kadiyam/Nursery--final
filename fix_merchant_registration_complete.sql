@@ -64,27 +64,31 @@ AS $$
 DECLARE
     v_merchant_code TEXT;
     v_year INTEGER;
-    v_count INTEGER;
-    v_next_number INTEGER;
+    v_timestamp TEXT;
+    v_random_suffix TEXT;
     v_result JSONB;
 BEGIN
-    -- Generate merchant code
-    v_year := EXTRACT(YEAR FROM NOW());
-    SELECT COALESCE(COUNT(*), 0) INTO v_count
-    FROM public.merchants
-    WHERE merchant_code LIKE 'MC-' || v_year || '-%';
-    v_next_number := v_count + 1;
-    v_merchant_code := 'MC-' || v_year || '-' || LPAD(v_next_number::TEXT, 4, '0');
-    
     -- Check if email already exists
     IF EXISTS (SELECT 1 FROM public.merchants WHERE email = p_email) THEN
         v_result := jsonb_build_object(
             'success', false,
             'error', 'Email already registered',
-            'message', 'This email is already registered as a merchant.'
+            'message', 'This email is already registered as a merchant. Please use a different email.'
         );
         RETURN v_result;
     END IF;
+    
+    -- Generate unique merchant code with timestamp and random suffix
+    v_year := EXTRACT(YEAR FROM NOW());
+    v_timestamp := EXTRACT(EPOCH FROM NOW())::TEXT;
+    v_random_suffix := UPPER(substring(md5(random()::text) from 1 for 4));
+    v_merchant_code := 'MC-' || v_year || '-' || v_random_suffix;
+    
+    -- Ensure merchant code is unique
+    WHILE EXISTS (SELECT 1 FROM public.merchants WHERE merchant_code = v_merchant_code) LOOP
+        v_random_suffix := UPPER(substring(md5(random()::text) from 1 for 4));
+        v_merchant_code := 'MC-' || v_year || '-' || v_random_suffix;
+    END LOOP;
     
     -- Insert into merchants table only (merchants don't need user_profiles entry)
     INSERT INTO public.merchants (
@@ -117,6 +121,28 @@ BEGIN
     RETURN v_result;
     
 EXCEPTION
+    WHEN unique_violation THEN
+        -- Handle unique constraint violations
+        IF SQLERRM LIKE '%email%' THEN
+            v_result := jsonb_build_object(
+                'success', false,
+                'error', 'Email already exists',
+                'message', 'This email is already registered. Please use a different email.'
+            );
+        ELSIF SQLERRM LIKE '%merchant_code%' THEN
+            v_result := jsonb_build_object(
+                'success', false,
+                'error', 'Merchant code conflict',
+                'message', 'There was a conflict with the merchant code. Please try again.'
+            );
+        ELSE
+            v_result := jsonb_build_object(
+                'success', false,
+                'error', 'Duplicate entry',
+                'message', 'This information already exists. Please use different details.'
+            );
+        END IF;
+        RETURN v_result;
     WHEN OTHERS THEN
         -- Return error result
         v_result := jsonb_build_object(

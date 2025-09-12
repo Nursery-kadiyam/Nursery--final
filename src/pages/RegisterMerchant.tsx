@@ -25,6 +25,18 @@ const RegisterMerchant: React.FC = () => {
         try {
             console.log('🔄 Submitting merchant registration...', data);
             
+            // Check if email already exists in merchants table
+            const { data: existingMerchant } = await supabase
+                .from('merchants')
+                .select('email')
+                .eq('email', data.email)
+                .single();
+            
+            if (existingMerchant) {
+                setError('This email is already registered as a merchant. Please use a different email.');
+                return;
+            }
+            
             // Get current user if logged in
             const { data: { user } } = await supabase.auth.getUser();
             
@@ -40,7 +52,11 @@ const RegisterMerchant: React.FC = () => {
             
             if (error) {
                 console.error('❌ Database function error:', error);
-                setError(`Database error: ${error.message}`);
+                if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+                    setError('This email or merchant code already exists. Please use different information.');
+                } else {
+                    setError(`Database error: ${error.message}`);
+                }
                 return;
             }
             

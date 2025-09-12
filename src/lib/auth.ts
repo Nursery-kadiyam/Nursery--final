@@ -166,6 +166,28 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
       return null;
     }
 
+    // First check if user is a merchant
+    const { data: merchantData, error: merchantError } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('email', user.email)
+      .single();
+
+    if (merchantData && !merchantError) {
+      // User is a merchant, return merchant profile data as UserProfile
+      return {
+        id: user.id,
+        first_name: merchantData.full_name?.split(' ')[0] || merchantData.full_name || '',
+        last_name: merchantData.full_name?.split(' ').slice(1).join(' ') || '',
+        email: merchantData.email,
+        phone: merchantData.phone_number,
+        role: 'merchant',
+        created_at: merchantData.created_at,
+        updated_at: merchantData.updated_at
+      } as UserProfile;
+    }
+
+    // If not a merchant, check user_profiles table
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')

@@ -92,14 +92,24 @@ const Index = () => {
         passwordLength: form.password.length 
       });
       
-      // Generate merchant code
-      const year = new Date().getFullYear();
-      const { count } = await supabase
+      // Check if email already exists in merchants table
+      const { data: existingMerchant } = await supabase
         .from('merchants')
-        .select('id', { count: 'exact', head: true })
-        .ilike('merchant_code', `MC-${year}-%`);
-      const nextNumber = (count || 0) + 1;
-      const merchantCode = `MC-${year}-${String(nextNumber).padStart(4, '0')}`;
+        .select('email')
+        .eq('email', form.email)
+        .single();
+      
+      if (existingMerchant) {
+        setFormError('This email is already registered as a merchant. Please use a different email.');
+        setFormLoading(false);
+        return;
+      }
+      
+      // Generate unique merchant code
+      const year = new Date().getFullYear();
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substr(2, 4).toUpperCase();
+      const merchantCode = `MC-${year}-${randomSuffix}`;
       
       console.log('📝 Generated merchant code:', merchantCode);
       
@@ -113,20 +123,25 @@ const Index = () => {
             full_name: form.fullName,
             nursery_name: form.nurseryName,
             phone_number: form.phoneNumber,
+            user_role: 'merchant'
           }
         }
       });
       
       if (authError) {
         console.error('❌ Auth signup error:', authError);
-        setFormError(`Authentication error: ${authError.message}`);
+        if (authError.message.includes('already registered')) {
+          setFormError('This email is already registered. Please use a different email or try logging in.');
+        } else {
+          setFormError(`Authentication error: ${authError.message}`);
+        }
         setFormLoading(false);
         return;
       }
       
       console.log('✅ Auth user created successfully:', authData);
       
-      // 2. Insert into merchants table (merchants don't need user_profiles entry)
+      // 2. Insert into merchants table with pending status
       console.log('🏪 Inserting into merchants table...');
       const { error: dbError } = await supabase.from('merchants').insert([
         {
@@ -143,14 +158,18 @@ const Index = () => {
       
       if (dbError) {
         console.error('❌ Database insert error:', dbError);
-        setFormError(`Database error: ${dbError.message}`);
+        if (dbError.message.includes('duplicate key') || dbError.message.includes('unique constraint')) {
+          setFormError('This email or merchant code already exists. Please use different information.');
+        } else {
+          setFormError(`Database error: ${dbError.message}`);
+        }
         setFormLoading(false);
         return;
       }
       
       console.log('✅ Merchant record created successfully');
       
-      setFormSuccess('Registration successful! Your account is pending approval.');
+      setFormSuccess('Registration successful! Your account has been submitted for admin approval. You will receive an email once approved.');
       setFormLoading(false);
       setForm({ fullName: '', nurseryName: '', phoneNumber: '', email: '', nurseryAddress: '', password: '' });
       
