@@ -899,7 +899,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                 availableQuotations.flatMap((q: any) => 
                     Array.isArray(q.items) ? q.items.map((item: any) => item.product_id) : []
                 )
-            ));
+            )).filter(id => id !== undefined && id !== null); // Filter out undefined and null values
             
             if (allProductIds.length > 0) {
                 const { data: productsData, error: productsError } = await supabase
@@ -1173,67 +1173,179 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
                                     <div>
                                         <h4 className="font-semibold mb-3 text-sm sm:text-base">Requested Items & Pricing</h4>
-                                        <div className="space-y-3">
+                                        <div className="space-y-4">
                                             {Array.isArray(q.items) ? q.items.map((item, idx) => {
+                                                // Debug: Log the item data to see what's available
+                                                console.log('Item data for merchant display:', item);
                                                 let productId = undefined;
+                                                let product = null;
+                                                
                                                 if (typeof item === 'string' || typeof item === 'number') {
                                                     productId = item;
+                                                    product = productMap[productId];
                                                 } else if (typeof item === 'object' && item !== null) {
-                                                    productId = item.product_id || item.id;
+                                                    productId = item.product_id;
+                                                    // Only try to look up product if we have a valid product ID
+                                                    if (productId && productId !== 'null' && productId !== null) {
+                                                        product = productMap[productId];
+                                                    }
                                                 }
-                                                const product = productMap[productId];
+                                                
+                                                // Determine if this is a catalog quotation (no product_id) or individual shop product
+                                                const isCatalogQuotation = !productId || productId === 'null' || productId === null;
                                                 return (
-                                                    <div key={idx} className="p-3 sm:p-4 bg-gray-50 rounded-lg border">
-                                                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
-                                                            {product?.image_url ? (
+                                                    <div key={idx} className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                                                        {/* Product Header */}
+                                                        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
+                                                            {(product?.image_url || item.image || item.image_url) ? (
                                                                 <img 
-                                                                    src={product.image_url} 
-                                                                    alt={product.name || ''} 
-                                                                    className="w-12 h-12 object-cover rounded self-start sm:self-center"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.style.display = 'none';
-                                                                    }}
-                                                                />
-                                                            ) : item.image_url ? (
-                                                                <img 
-                                                                    src={item.image_url} 
-                                                                    alt={item.product_name || ''} 
-                                                                    className="w-12 h-12 object-cover rounded self-start sm:self-center"
+                                                                    src={product?.image_url || item.image || item.image_url} 
+                                                                    alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || '') : (product?.name || item.name || item.title || '')} 
+                                                                    className="w-16 h-16 object-cover rounded-lg self-start sm:self-center"
                                                                     onError={(e) => {
                                                                         e.currentTarget.style.display = 'none';
                                                                     }}
                                                                 />
                                                             ) : null}
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="font-medium text-sm sm:text-base truncate">
-                                                                    {product?.name || item.product_name || item.product_id}
+                                                                <h4 className="font-semibold text-lg text-gray-800 mb-1">
+                                                                    {isCatalogQuotation ? (
+                                                                        item.product_name || 
+                                                                        item.name || 
+                                                                        item.title ||
+                                                                        item.plant_name ||
+                                                                        item.variety ||
+                                                                        `Product ${idx + 1}`
+                                                                    ) : (
+                                                                        product?.name || 
+                                                                        item.name || 
+                                                                        item.title ||
+                                                                        item.product_id ||
+                                                                        `Product ${idx + 1}`
+                                                                    )}
+                                                                </h4>
+                                                                <p className="text-sm text-gray-600 mb-2">
+                                                                    Quantity: <span className="font-medium text-blue-600">{item.quantity}</span>
                                                                 </p>
-                                                                <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
-                                                                {/* Specifications Display */}
-                                                                {(item.year || item.size) && (
-                                                                    <div className="mt-1 text-xs text-gray-500">
-                                                                        {item.year && <span className="mr-2">Year: {item.year}</span>}
-                                                                        {item.size && <span>Size: {item.size}</span>}
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         </div>
-                                                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                                                            <Label htmlFor={`product_price_${q.id}_${idx}`} className="text-xs sm:text-sm">
-                                                                Price per unit (₹):
-                                                            </Label>
+
+                                                        {/* Comprehensive Plant Details */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                            {/* Plant Information */}
+                                                            <div className="space-y-2">
+                                                                <h5 className="font-medium text-gray-700 text-sm">Plant Information</h5>
+                                                                <div className="space-y-1 text-sm">
+                                                                    {item.variety && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Variety:</span>
+                                                                            <span className="font-medium">{item.variety}</span>
+                                                                    </div>
+                                                                )}
+                                                                    {item.plant_type && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Type:</span>
+                                                                            <span className="font-medium">{item.plant_type}</span>
+                                                            </div>
+                                                                    )}
+                                                                    {item.age_category && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Age:</span>
+                                                                            <span className="font-medium">{item.age_category}</span>
+                                                        </div>
+                                                                    )}
+                                                                    {item.height_range && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Height:</span>
+                                                                            <span className="font-medium">{item.height_range}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Growth Details */}
+                                                            <div className="space-y-2">
+                                                                <h5 className="font-medium text-gray-700 text-sm">Growth Details</h5>
+                                                                <div className="space-y-1 text-sm">
+                                                                    {item.stem_thickness && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Stem Thickness:</span>
+                                                                            <span className="font-medium">{item.stem_thickness}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.bag_size && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Bag Size:</span>
+                                                                            <span className="font-medium">{item.bag_size}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Grafted:</span>
+                                                                        <span className="font-medium">{item.is_grafted ? 'Yes' : 'No'}</span>
+                                                                    </div>
+                                                                    {item.delivery_location && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Delivery:</span>
+                                                                            <span className="font-medium">
+                                                                                {typeof item.delivery_location === 'string' 
+                                                                                    ? item.delivery_location 
+                                                                                    : typeof item.delivery_location === 'object' 
+                                                                                        ? `${item.delivery_location.city || ''}, ${item.delivery_location.district || ''}, ${item.delivery_location.pinCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
+                                                                                        : String(item.delivery_location)
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Delivery Timeline */}
+                                                        {item.delivery_timeline && (
+                                                            <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                                                             <div className="flex items-center space-x-2">
+                                                                    <Clock className="w-4 h-4 text-yellow-600" />
+                                                                    <span className="text-sm font-medium text-yellow-800">
+                                                                        Delivery Timeline: {item.delivery_timeline}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Additional Notes */}
+                                                        {item.notes && (
+                                                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                                                <div className="flex items-start space-x-2">
+                                                                    <MessageSquare className="w-4 h-4 text-gray-600 mt-0.5" />
+                                                                    <div>
+                                                                        <span className="text-sm font-medium text-gray-700">Notes:</span>
+                                                                        <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Pricing Section */}
+                                                        <div className="border-t pt-4">
+                                                            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                                                <Label htmlFor={`product_price_${q.id}_${idx}`} className="text-sm font-medium text-gray-700">
+                                                                    Your Price per unit (₹):
+                                                                </Label>
+                                                                <div className="flex items-center space-x-3">
                                                                 <Input
                                                                     id={`product_price_${q.id}_${idx}`}
                                                                     type="number"
                                                                     placeholder="0.00"
-                                                                    className="w-20 sm:w-24 h-8 sm:h-10 text-sm"
+                                                                        className="w-24 h-10 text-sm"
                                                                     value={formStates[q.id]?.unit_prices?.[idx] || ''}
                                                                     onChange={(e) => handleProductPriceChange(q.id, idx, e.target.value)}
                                                                 />
-                                                                <span className="text-xs sm:text-sm text-gray-500">
+                                                                    <div className="text-sm text-gray-600">
+                                                                        <span className="font-medium">
                                                                     Total: ₹{((parseFloat(formStates[q.id]?.unit_prices?.[idx]) || 0) * (item.quantity || 1)).toFixed(2)}
                                                                 </span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1341,8 +1453,13 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                 }
                 prevApprovedIds.current = new Set(approvedNow.map((q: any) => q.id));
                 const allProductIds = Array.from(new Set(
-                    data.flatMap((q: any) => Array.isArray(q.items) ? q.items.map((item: any) => item.product_id) : [])
-                ));
+                    data.flatMap((q: any) => Array.isArray(q.items) ? q.items.map((item: any) => {
+                        // Handle different data structures:
+                        // - Individual shop products: item.product_id (actual product ID)
+                        // - Catalog quotations: item.product_id is null, no lookup needed
+                        return item.product_id;
+                    }) : [])
+                )).filter(id => id !== undefined && id !== null && id !== 'null'); // Filter out undefined, null, and 'null' values
                 console.log('Product IDs found:', allProductIds);
                 
                 if (allProductIds.length > 0) {
@@ -1585,45 +1702,166 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                                             <div className="space-y-3">
                                                 {Array.isArray(q.items) ? q.items.map((item: any, idx: number) => {
                                                     let productId = undefined;
+                                                    let product = null;
+                                                    
                                                     if (typeof item === 'string' || typeof item === 'number') {
                                                         productId = item;
+                                                        product = productMap[productId];
                                                     } else if (typeof item === 'object' && item !== null) {
-                                                        productId = item.product_id || item.id;
+                                                        productId = item.product_id;
+                                                        // Only try to look up product if we have a valid product ID
+                                                        if (productId && productId !== 'null' && productId !== null) {
+                                                            product = productMap[productId];
+                                                        }
                                                     }
-                                                    const product = productMap[productId];
+                                                    
+                                                    // Determine if this is a catalog quotation (no product_id) or individual shop product
+                                                    const isCatalogQuotation = !productId || productId === 'null' || productId === null;
                                                     const unitPrice = getUnitPrice(q, idx);
                                                     const quantity = item.quantity || item.qty || 1;
                                                     const itemTotal = unitPrice * quantity;
                                                     
                                                     return (
-                                                        <div key={idx} className="p-3 bg-white rounded-lg border">
-                                                            <div className="flex items-center space-x-3 mb-2">
-                                                                {product?.image_url && (
-                                                                    <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded flex-shrink-0" />
+                                                        <div key={idx} className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                                            {/* Product Header */}
+                                                            <div className="flex items-center space-x-3 mb-4">
+                                                                {(product?.image_url || item.image || item.image_url) && (
+                                                                    <img 
+                                                                        src={product?.image_url || item.image || item.image_url} 
+                                                                        alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || `Product ${idx + 1}`) : (product?.name || item.name || item.title || `Product ${productId || idx + 1}`)} 
+                                                                        className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.style.display = 'none';
+                                                                        }}
+                                                                    />
                                                                 )}
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className="font-medium text-sm sm:text-base truncate">
-                                                                        {product?.name || `Product ${productId}`}
+                                                                    <h4 className="font-semibold text-lg text-gray-800 mb-1">
+                                                                        {isCatalogQuotation ? (
+                                                                            item.product_name || 
+                                                                            item.name || 
+                                                                            item.title ||
+                                                                            item.plant_name ||
+                                                                            item.variety ||
+                                                                            `Product ${idx + 1}`
+                                                                        ) : (
+                                                                            product?.name || 
+                                                                            item.name || 
+                                                                            item.title ||
+                                                                            `Product ${productId || idx + 1}`
+                                                                        )}
+                                                                    </h4>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        Quantity: <span className="font-medium text-green-600">{quantity}</span>
                                                                     </p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600">
-                                                                        Quantity: {quantity}
-                                                                    </p>
-                                                                    {/* Specifications Display */}
-                                                                    {(item.year || item.size) && (
-                                                                        <div className="mt-1 text-xs text-gray-500">
-                                                                            {item.year && <span className="mr-2">Year: {item.year}</span>}
-                                                                            {item.size && <span>Size: {item.size}</span>}
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-sm">
+
+                                                            {/* Comprehensive Plant Details */}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                                {/* Plant Information */}
+                                                                <div className="space-y-2">
+                                                                    <h5 className="font-medium text-gray-700 text-sm">Plant Information</h5>
+                                                                    <div className="space-y-1 text-sm">
+                                                                        {item.variety && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Variety:</span>
+                                                                                <span className="font-medium">{item.variety}</span>
+                                                                        </div>
+                                                                    )}
+                                                                        {item.plant_type && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Type:</span>
+                                                                                <span className="font-medium">{item.plant_type}</span>
+                                                                </div>
+                                                                        )}
+                                                                        {item.age_category && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Age:</span>
+                                                                                <span className="font-medium">{item.age_category}</span>
+                                                            </div>
+                                                                        )}
+                                                                        {item.height_range && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Height:</span>
+                                                                                <span className="font-medium">{item.height_range}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Growth Details */}
+                                                                <div className="space-y-2">
+                                                                    <h5 className="font-medium text-gray-700 text-sm">Growth Details</h5>
+                                                                    <div className="space-y-1 text-sm">
+                                                                        {item.stem_thickness && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Stem Thickness:</span>
+                                                                                <span className="font-medium">{item.stem_thickness}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {item.bag_size && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Bag Size:</span>
+                                                                                <span className="font-medium">{item.bag_size}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-600">Grafted:</span>
+                                                                            <span className="font-medium">{item.is_grafted ? 'Yes' : 'No'}</span>
+                                                                        </div>
+                                                                        {item.delivery_location && (
+                                                                            <div className="flex justify-between">
+                                                                                <span className="text-gray-600">Delivery:</span>
+                                                                                <span className="font-medium">
+                                                                                    {typeof item.delivery_location === 'string' 
+                                                                                        ? item.delivery_location 
+                                                                                        : typeof item.delivery_location === 'object' 
+                                                                                            ? `${item.delivery_location.city || ''}, ${item.delivery_location.district || ''}, ${item.delivery_location.pinCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
+                                                                                            : String(item.delivery_location)
+                                                                                    }
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Delivery Timeline */}
+                                                            {item.delivery_timeline && (
+                                                                <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <Clock className="w-4 h-4 text-yellow-600" />
+                                                                        <span className="text-sm font-medium text-yellow-800">
+                                                                            Delivery Timeline: {item.delivery_timeline}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Additional Notes */}
+                                                            {item.notes && (
+                                                                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                                                    <div className="flex items-start space-x-2">
+                                                                        <MessageSquare className="w-4 h-4 text-gray-600 mt-0.5" />
+                                                                        <div>
+                                                                            <span className="text-sm font-medium text-gray-700">Notes:</span>
+                                                                            <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Pricing Information */}
+                                                            <div className="border-t pt-4">
+                                                                <div className="flex justify-between items-center text-sm mb-2">
                                                                 <span className="text-gray-600">Unit Price:</span>
                                                                 <span className="font-medium">₹{unitPrice.toFixed(2)}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-sm">
-                                                                <span className="text-gray-600">Item Total:</span>
-                                                                <span className="font-semibold">₹{itemTotal.toFixed(2)}</span>
+                                                                <div className="flex justify-between items-center text-base">
+                                                                    <span className="text-gray-700 font-medium">Item Total:</span>
+                                                                    <span className="font-bold text-green-600">₹{itemTotal.toFixed(2)}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );

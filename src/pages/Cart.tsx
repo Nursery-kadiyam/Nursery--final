@@ -38,6 +38,11 @@ const Cart = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
 
+  // Debug: Log cart items to see what data is available
+  useEffect(() => {
+    console.log('Cart items with specifications:', cartItems);
+  }, [cartItems]);
+
 
 
   // Fetch user on mount (for quotation)
@@ -64,8 +69,21 @@ const Cart = () => {
         category: item.category,
         image: item.image,
         year: item.year,
-        size: item.size
+        size: item.size,
+        // Include detailed plant information from ProductDetails form
+        variety: item.variety,
+        plant_type: item.plantType,
+        age_category: item.ageCategory,
+        height_range: item.heightRange,
+        stem_thickness: item.stemThickness,
+        bag_size: item.bagSize,
+        is_grafted: item.isGrafted,
+        delivery_location: item.deliveryLocation,
+        delivery_timeline: item.deliveryTimeline
       }));
+      
+      // Debug: Log the items being sent to the database
+      console.log('Items being sent to create_user_quotation_request:', items);
       
       // Use the new create_user_quotation_request function
       const { data, error } = await supabase.rpc('create_user_quotation_request', {
@@ -196,6 +214,7 @@ const Cart = () => {
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
+                                    {/* Basic specifications */}
                                     {item.year && (
                                       <div className="text-sm text-gray-600">
                                         <span className="font-medium">Year:</span> {item.year}-year
@@ -204,6 +223,60 @@ const Cart = () => {
                                     {item.size && (
                                       <div className="text-sm text-gray-600">
                                         <span className="font-medium">Size:</span> {item.size}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Detailed plant information */}
+                                    {item.variety && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Variety:</span> {item.variety}
+                                      </div>
+                                    )}
+                                    {item.plantType && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Type:</span> {item.plantType}
+                                      </div>
+                                    )}
+                                    {item.ageCategory && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Age:</span> {item.ageCategory}
+                                      </div>
+                                    )}
+                                    {item.heightRange && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Height:</span> {item.heightRange}
+                                      </div>
+                                    )}
+                                    {item.stemThickness && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Stem:</span> {item.stemThickness}
+                                      </div>
+                                    )}
+                                    {item.bagSize && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Bag Size:</span> {item.bagSize}
+                                      </div>
+                                    )}
+                                    {item.isGrafted !== undefined && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Grafted:</span> {item.isGrafted ? 'Yes' : 'No'}
+                                      </div>
+                                    )}
+                                    {item.deliveryLocation && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Delivery:</span> {item.deliveryLocation}
+                                      </div>
+                                    )}
+                                    {item.deliveryTimeline && (
+                                      <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Timeline:</span> {item.deliveryTimeline}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Show message if no specifications */}
+                                    {!item.year && !item.size && !item.variety && !item.plantType && !item.ageCategory && !item.heightRange && !item.stemThickness && !item.bagSize && item.isGrafted === undefined && !item.deliveryLocation && !item.deliveryTimeline && (
+                                      <div className="text-sm text-gray-400 italic">
+                                        No specifications
                                       </div>
                                     )}
                                   </div>
@@ -273,8 +346,9 @@ const Cart = () => {
                                     <h3 className="font-semibold text-emerald-800 text-sm leading-tight mb-1 truncate">
                                       {item.name}
                                     </h3>
-                                    {(item.year || item.size) && (
+                                    {(item.year || item.size || item.variety || item.plantType || item.ageCategory || item.heightRange || item.stemThickness || item.bagSize || item.isGrafted !== undefined || item.deliveryLocation || item.deliveryTimeline) && (
                                       <div className="space-y-1 mb-2">
+                                        {/* Basic specifications */}
                                         {item.year && (
                                           <div className="text-xs text-gray-600">
                                             <span className="font-medium">Year:</span> {item.year}-year
@@ -283,6 +357,53 @@ const Cart = () => {
                                         {item.size && (
                                           <div className="text-xs text-gray-600">
                                             <span className="font-medium">Size:</span> {item.size}
+                                          </div>
+                                        )}
+                                        
+                                        {/* Detailed plant information */}
+                                        {item.variety && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Variety:</span> {item.variety}
+                                          </div>
+                                        )}
+                                        {item.plantType && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Type:</span> {item.plantType}
+                                          </div>
+                                        )}
+                                        {item.ageCategory && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Age:</span> {item.ageCategory}
+                                          </div>
+                                        )}
+                                        {item.heightRange && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Height:</span> {item.heightRange}
+                                          </div>
+                                        )}
+                                        {item.stemThickness && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Stem:</span> {item.stemThickness}
+                                          </div>
+                                        )}
+                                        {item.bagSize && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Bag Size:</span> {item.bagSize}
+                                          </div>
+                                        )}
+                                        {item.isGrafted !== undefined && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Grafted:</span> {item.isGrafted ? 'Yes' : 'No'}
+                                          </div>
+                                        )}
+                                        {item.deliveryLocation && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Delivery:</span> {item.deliveryLocation}
+                                          </div>
+                                        )}
+                                        {item.deliveryTimeline && (
+                                          <div className="text-xs text-gray-600">
+                                            <span className="font-medium">Timeline:</span> {item.deliveryTimeline}
                                           </div>
                                         )}
                                       </div>

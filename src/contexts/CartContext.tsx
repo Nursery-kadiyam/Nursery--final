@@ -9,6 +9,16 @@ export interface CartItem {
     image: string;
     year?: string;
     size?: string;
+    // Detailed plant information from ProductDetails form
+    variety?: string;
+    plantType?: string;
+    ageCategory?: string;
+    heightRange?: string;
+    stemThickness?: string;
+    bagSize?: string;
+    isGrafted?: boolean;
+    deliveryLocation?: string;
+    deliveryTimeline?: string;
 }
 
 interface CartContextType {

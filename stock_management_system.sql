@@ -63,6 +63,12 @@ DECLARE
     new_stock INTEGER;
     transaction_id UUID;
 BEGIN
+    -- Skip stock update for quotation-based orders (product_id is null)
+    IF p_product_id IS NULL THEN
+        RAISE NOTICE 'Skipping stock update for quotation-based order item (product_id is null)';
+        RETURN TRUE;
+    END IF;
+    
     -- Get current stock
     SELECT available_quantity INTO current_stock
     FROM products
@@ -158,6 +164,12 @@ BEGIN
         FROM order_items oi
         WHERE oi.order_id = p_order_id
     LOOP
+        -- Skip stock update for quotation-based orders (product_id is null)
+        IF item_record.product_id IS NULL THEN
+            RAISE NOTICE 'Skipping stock update for quotation-based order item (product_id is null)';
+            CONTINUE;
+        END IF;
+        
         -- Update stock for each item
         PERFORM update_product_stock(
             item_record.product_id,

@@ -91,7 +91,14 @@ serve(async (req) => {
     }
 
     // Update product quantities using the stock management system
+    // Only update stock for items that have a valid product_id (not quotation-based orders)
     for (const item of items) {
+        // Skip stock update for quotation-based orders (product_id is null)
+        if (!item.id || item.id === null) {
+            console.log(`Skipping stock update for quotation-based item: ${item.name}`);
+            continue;
+        }
+        
         const { error: updateError } = await supabase.rpc('update_product_stock', {
             p_product_id: item.id,
             p_quantity_change: -item.quantity, // Negative for purchase (decrease stock)

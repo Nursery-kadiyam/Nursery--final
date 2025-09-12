@@ -3,6 +3,10 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
     ShoppingCart,
@@ -281,9 +285,6 @@ const getProductImages = (productName: string, productCategory: string): Array<{
 const ProductDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [quantity, setQuantity] = useState("");
-    const [selectedYear, setSelectedYear] = useState("");
-    const [selectedSize, setSelectedSize] = useState("Medium");
     const [isInWishlist, setIsInWishlist] = useState(false);
     const { toast } = useToast();
     const { addToCart } = useCart();
@@ -299,6 +300,22 @@ const ProductDetails = () => {
         alt: string;
         thumbnail: string;
     }>>([]);
+
+    // Plant information form state
+    const [quotationForm, setQuotationForm] = useState({
+        plantName: "",
+        variety: "",
+        plantType: "",
+        quantity: "",
+        ageCategory: "",
+        heightRange: "",
+        stemThickness: "",
+        bagSize: "",
+        isGrafted: false,
+        deliveryLocation: "",
+        deliveryTimeline: "",
+        notes: ""
+    });
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -316,6 +333,13 @@ const ProductDetails = () => {
                 // Get product-specific review images
                 const productImages = getProductImages(data.name, data.category || '');
                 setReviewImages(productImages);
+
+                // Initialize quotation form with product data
+                setQuotationForm(prev => ({
+                    ...prev,
+                    plantName: data.name || "",
+                    plantType: data.category || ""
+                }));
             }
             setLoading(false);
         };
@@ -360,24 +384,6 @@ const ProductDetails = () => {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [imageModalOpen, reviewImages.length]);
-
-    // Early return after all hooks
-    if (!plant) {
-        return (
-            <div className="min-h-screen bg-white font-montserrat">
-                <Navbar />
-                <div className="container mx-auto px-4 py-20 text-center">
-                    <h1 className="text-2xl font-bold text-gray-600 mb-4">Plant not found</h1>
-                    <Link to="/shop">
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Shop
-                        </Button>
-                    </Link>
-                </div>
-            </div>
-        );
-    }
 
     const addToWishlist = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -439,27 +445,54 @@ const ProductDetails = () => {
     };
 
     const addToCartHandler = () => {
-        if (!quantity || isNaN(Number(quantity)) || Number(quantity) < 1) return;
+        const cartQuantity = quotationForm.quantity;
+        if (!cartQuantity || isNaN(Number(cartQuantity)) || Number(cartQuantity) < 1) {
+            toast({
+                title: "Invalid Quantity",
+                description: "Please enter a valid quantity.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
+        // Debug: Log the form data being added to cart
+        console.log('Adding to cart with form data:', {
+            quotationForm,
+            cartQuantity
+        });
+        
         addToCart({
             id: String(plant.id),
             name: plant.name,
             category: plant.category,
             price: plant.price,
-            quantity: Number(quantity),
+            quantity: Number(cartQuantity),
             image: plant.image_url && typeof plant.image_url === 'string' && (plant.image_url.startsWith('http') || plant.image_url.startsWith('/assets/'))
                 ? plant.image_url
                 : '/assets/placeholder.svg',
-            year: selectedYear || undefined,
-            size: selectedSize || undefined
-        }, Number(quantity));
+            // Include form data for detailed specifications
+            plantType: quotationForm.plantType || undefined,
+            variety: quotationForm.variety || undefined,
+            ageCategory: quotationForm.ageCategory || undefined,
+            heightRange: quotationForm.heightRange || undefined,
+            stemThickness: quotationForm.stemThickness || undefined,
+            bagSize: quotationForm.bagSize || undefined,
+            isGrafted: quotationForm.isGrafted || false,
+            deliveryLocation: quotationForm.deliveryLocation || undefined,
+            deliveryTimeline: quotationForm.deliveryTimeline || undefined
+        }, Number(cartQuantity));
         toast({
             title: "Added to Cart!",
-            description: `${quantity} ${plant.name}${Number(quantity) > 1 ? 's' : ''} added to your cart.`,
+            description: `${cartQuantity} ${plant.name}${Number(cartQuantity) > 1 ? 's' : ''} added to your cart.`,
         });
     };
 
-    const updateQuantity = (newQuantity: string) => {
-        setQuantity(newQuantity);
+    // Quotation form handlers
+    const handleQuotationFormChange = (field: string, value: any) => {
+        setQuotationForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
     };
 
     const openImageModal = (index: number) => {
@@ -484,6 +517,24 @@ const ProductDetails = () => {
     };
 
 
+
+    // Early return if plant not found
+    if (!plant) {
+        return (
+            <div className="min-h-screen bg-white font-montserrat">
+                <Navbar />
+                <div className="container mx-auto px-4 py-20 text-center">
+                    <h1 className="text-2xl font-bold text-gray-600 mb-4">Plant not found</h1>
+                    <Link to="/shop">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Shop
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-white font-montserrat">
@@ -670,51 +721,222 @@ const ProductDetails = () => {
                                 )}
                             </div>
 
-                            {/* Quantity, Year, and Size Selector */}
-                            <div className="space-y-3">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-                                    <div className="w-full sm:w-auto">
-                                        <label className="text-sm font-medium text-gray-700 block mb-1">Quantity:</label>
-                                        <div className="flex items-center border border-emerald-200 rounded-lg">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                value={quantity}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (val === "" || (/^\d+$/.test(val) && parseInt(val) > 0)) updateQuantity(val);
-                                                }}
-                                                className="w-full sm:w-24 text-center text-lg sm:text-xl font-semibold border-0 focus:ring-0 focus:outline-none"
-                                                style={{ appearance: 'textfield', fontWeight: '600' }}
+                            {/* Plant Information Form */}
+                            <div className="space-y-6">
+                                {/* Plant Information Section */}
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Plant Information</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="plantName" className="text-sm font-medium text-gray-700">
+                                                Plant Name *
+                                            </Label>
+                                            <Input
+                                                id="plantName"
+                                                value={quotationForm.plantName}
+                                                onChange={(e) => handleQuotationFormChange('plantName', e.target.value)}
+                                                className="mt-1"
+                                                placeholder="Type to search plants..."
                                             />
                                         </div>
+                                        <div>
+                                            <Label htmlFor="variety" className="text-sm font-medium text-gray-700">
+                                                Variety / Hybrid
+                                            </Label>
+                                            <Input
+                                                id="variety"
+                                                value={quotationForm.variety}
+                                                onChange={(e) => handleQuotationFormChange('variety', e.target.value)}
+                                                className="mt-1"
+                                                placeholder="e.g., Banganapalli Mango, Hybrid Tea Rose, East Coast Tall Coconut"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="plantType" className="text-sm font-medium text-gray-700">
+                                                Plant Type
+                                            </Label>
+                                            <Select
+                                                value={quotationForm.plantType}
+                                                onValueChange={(value) => handleQuotationFormChange('plantType', value)}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Select plant type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Fruit">Fruit</SelectItem>
+                                                    <SelectItem value="Ornamental/Flowering">Ornamental/Flowering</SelectItem>
+                                                    <SelectItem value="Timber">Timber</SelectItem>
+                                                    <SelectItem value="Avenue">Avenue</SelectItem>
+                                                    <SelectItem value="Medicinal">Medicinal</SelectItem>
+                                                    <SelectItem value="Other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                    <div className="w-full sm:w-auto">
-                                        <label className="text-sm font-medium text-gray-700 block mb-1">Year:</label>
-                                        <select
-                                            value={selectedYear}
-                                            onChange={(e) => setSelectedYear(e.target.value)}
-                                            className="w-full sm:w-auto border border-emerald-200 rounded-lg px-3 sm:px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
-                                        >
-                                            <option value="">Select year</option>
-                                            <option value="1">1-year</option>
-                                            <option value="2">2-year</option>
-                                            <option value="3">3-year</option>
-                                            <option value="4">4-year</option>
-                                        </select>
+                                </div>
+
+                                {/* Growth / Age Details Section */}
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Growth / Age Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="ageCategory" className="text-sm font-medium text-gray-700">
+                                                Age Category
+                                            </Label>
+                                            <Select
+                                                value={quotationForm.ageCategory}
+                                                onValueChange={(value) => handleQuotationFormChange('ageCategory', value)}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Select age category" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="6 months">6 months</SelectItem>
+                                                    <SelectItem value="1 year">1 year</SelectItem>
+                                                    <SelectItem value="2 years">2 years</SelectItem>
+                                                    <SelectItem value="3+ years">3+ years</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="heightRange" className="text-sm font-medium text-gray-700">
+                                                Height Range
+                                            </Label>
+                                            <Select
+                                                value={quotationForm.heightRange}
+                                                onValueChange={(value) => handleQuotationFormChange('heightRange', value)}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Select height range" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="1–2 ft">1–2 ft</SelectItem>
+                                                    <SelectItem value="3–4 ft">3–4 ft</SelectItem>
+                                                    <SelectItem value="5–6 ft">5–6 ft</SelectItem>
+                                                      <SelectItem value=">6 ft">&gt;6 ft</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="stemThickness" className="text-sm font-medium text-gray-700">
+                                                Stem Thickness (Optional)
+                                            </Label>
+                                            <Input
+                                                id="stemThickness"
+                                                type="number"
+                                                value={quotationForm.stemThickness}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    // Allow empty string and numeric input
+                                                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                                        handleQuotationFormChange('stemThickness', value);
+                                                    }
+                                                }}
+                                                className="mt-1"
+                                                placeholder="Enter in cm/mm"
+                                                step="0.1"
+                                                min="0"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="bagSize" className="text-sm font-medium text-gray-700">
+                                                Bag/Pot Size
+                                            </Label>
+                                            <Select
+                                                value={quotationForm.bagSize}
+                                                onValueChange={(value) => handleQuotationFormChange('bagSize', value)}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Select bag/pot size" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="6 inches">6 inches</SelectItem>
+                                                    <SelectItem value="8 inches">8 inches</SelectItem>
+                                                    <SelectItem value="12 inches">12 inches</SelectItem>
+                                                    <SelectItem value="16 inches">16 inches</SelectItem>
+                                                    <SelectItem value="Ground-grown">Ground-grown</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                    <div className="w-full sm:w-auto">
-                                        <label className="text-sm font-medium text-gray-700 block mb-1">Size:</label>
-                                        <select
-                                            value={selectedSize}
-                                            onChange={(e) => setSelectedSize(e.target.value)}
-                                            className="w-full sm:w-auto border border-emerald-200 rounded-lg px-3 sm:px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gold-600 transition-colors hover:bg-emerald-50"
-                                        >
-                                            <option value="Small">Small</option>
-                                            <option value="Medium">Medium</option>
-                                            <option value="Large">Large</option>
-                                            <option value="Extra Large">Extra Large</option>
-                                        </select>
+                                </div>
+
+                                {/* Grafted / Seedling Section */}
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Grafted / Seedling</h3>
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="isGrafted"
+                                                checked={quotationForm.isGrafted}
+                                                onCheckedChange={(checked) => handleQuotationFormChange('isGrafted', checked)}
+                                            />
+                                            <Label htmlFor="isGrafted" className="text-sm font-medium text-gray-700">
+                                                Grafted Plant (Yes)
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="isSeedling"
+                                                checked={!quotationForm.isGrafted}
+                                                onCheckedChange={(checked) => handleQuotationFormChange('isGrafted', !checked)}
+                                            />
+                                            <Label htmlFor="isSeedling" className="text-sm font-medium text-gray-700">
+                                                Seedling (No)
+                                            </Label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Quantity & Delivery Section */}
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Quantity & Delivery</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
+                                                Quantity Required *
+                                            </Label>
+                                            <Input
+                                                id="quantity"
+                                                type="number"
+                                                value={quotationForm.quantity}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    // Allow empty string and any numeric input
+                                                    if (value === '' || /^\d*$/.test(value)) {
+                                                        handleQuotationFormChange('quantity', value);
+                                                    }
+                                                }}
+                                                className="mt-1"
+                                                placeholder="e.g., 250"
+                                                min="1"
+                                                step="1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="deliveryLocation" className="text-sm font-medium text-gray-700">
+                                                Delivery Location
+                                            </Label>
+                                            <Input
+                                                id="deliveryLocation"
+                                                value={quotationForm.deliveryLocation}
+                                                onChange={(e) => handleQuotationFormChange('deliveryLocation', e.target.value)}
+                                                className="mt-1"
+                                                placeholder="e.g., Vijayawada, Krishna District, 520001"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="deliveryTimeline" className="text-sm font-medium text-gray-700">
+                                                Delivery Timeline
+                                            </Label>
+                                            <Input
+                                                id="deliveryTimeline"
+                                                value={quotationForm.deliveryTimeline}
+                                                onChange={(e) => handleQuotationFormChange('deliveryTimeline', e.target.value)}
+                                                className="mt-1"
+                                                placeholder="e.g., Within 15 days"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -872,8 +1094,8 @@ const ProductDetails = () => {
                     <Link to="/cart" className="flex flex-col items-center text-xs text-gray-700 relative">
                         <svg className="w-7 h-7 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
                         <span>Cart</span>
-                        {Number(quantity) > 0 && (
-                            <span className="absolute -top-1 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">{quantity}</span>
+                        {Number(quotationForm.quantity) > 0 && (
+                            <span className="absolute -top-1 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">{quotationForm.quantity}</span>
                         )}
                     </Link>
                 </div>

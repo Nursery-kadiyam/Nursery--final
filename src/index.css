@@ -232,3 +232,7 @@ select:focus-visible,
 textarea:focus-visible {
   @apply outline-2 outline-offset-2 outline-emerald-600;
 }
+
+.hero-scroll {
+  animation: hero-scroll 180s linear infinite;
+}

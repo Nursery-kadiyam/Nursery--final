@@ -11,7 +11,6 @@ import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/components/ui/use-toast';
 
 
-const mockSavings = 3471;
 
 const AnimatedTick = () => (
     <svg width="80" height="80" viewBox="0 0 80 80" className="mx-auto mb-4">
@@ -82,6 +81,7 @@ const OrderSummaryPage = () => {
     });
     const [deliveryAddress, setDeliveryAddress] = useState(null);
     const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+    const [placingOrder, setPlacingOrder] = useState(false);
     const { clearCart } = useCart();
     const [cartProducts, setCartProducts] = useState<any[]>([]);
 
@@ -125,13 +125,17 @@ const OrderSummaryPage = () => {
     }, []);
 
     useEffect(() => {
+        console.log('OrderSummaryPage: Loading cart from localStorage...');
         const items = JSON.parse(localStorage.getItem('cart')) || [];
+        console.log('OrderSummaryPage: Cart items loaded:', items);
         setCart(items);
         
         // Check if this is a quotation-based order
         const hasQuotation = items.some((item: any) => item.quotation_id);
+        console.log('OrderSummaryPage: Has quotation:', hasQuotation);
         if (hasQuotation) {
             const quotationCode = items[0]?.quotation_code;
+            console.log('OrderSummaryPage: Quotation code:', quotationCode);
             toast({
                 title: "Quotation Order",
                 description: `You're placing an order from approved quotation ${quotationCode}`,
@@ -142,13 +146,46 @@ const OrderSummaryPage = () => {
 
     useEffect(() => {
         const fetchCartProducts = async () => {
+            console.log('OrderSummaryPage: fetchCartProducts called with cart:', cart);
             if (!cart || cart.length === 0) {
+                console.log('OrderSummaryPage: Cart is empty, setting cartProducts to empty array');
                 setCartProducts([]);
                 return;
             }
+            
+            // For quotation-based orders, we don't need to fetch from products table
+            const hasQuotation = cart.some((item: any) => item.quotation_id);
+            console.log('OrderSummaryPage: Has quotation items:', hasQuotation);
+            
+            if (hasQuotation) {
+                // For quotation-based orders, use cart items directly
+                console.log('OrderSummaryPage: Using quotation cart items directly');
+                const merged = cart.map(item => ({
+                    ...item,
+                    // Ensure all required fields are present
+                    id: item.id,
+                    name: item.name,
+                    title: item.name, // For compatibility
+                    price: Number(item.price || 0),
+                    quantity: item.quantity,
+                    image_url: item.image,
+                    image: item.image,
+                    quotation_id: item.quotation_id,
+                    quotation_code: item.quotation_code,
+                    transport_cost: item.transport_cost || 0,
+                    custom_work_cost: item.custom_work_cost || 0
+                }));
+                console.log('OrderSummaryPage: Merged quotation cart products:', merged);
+                setCartProducts(merged);
+                return;
+            }
+            
+            // For regular products, fetch from products table
             const ids = cart.map(item => item.id);
+            console.log('OrderSummaryPage: Fetching products with IDs:', ids);
             const { data, error } = await supabase.from('products').select('*').in('id', ids);
             if (!error && data) {
+                console.log('OrderSummaryPage: Fetched products from database:', data);
                 // Merge cart quantities with product details, but preserve quotation prices
                 const merged = cart.map(item => {
                     const product = data.find((p: any) => p.id === item.id);
@@ -173,7 +210,10 @@ const OrderSummaryPage = () => {
                     }
                     return item;
                 });
+                console.log('OrderSummaryPage: Final merged cart products:', merged);
                 setCartProducts(merged);
+            } else {
+                console.error('OrderSummaryPage: Error fetching products:', error);
             }
         };
         fetchCartProducts();
@@ -183,15 +223,28 @@ const OrderSummaryPage = () => {
     useEffect(() => {
         console.log('showOrderSuccess state changed to:', showOrderSuccess);
     }, [showOrderSuccess]);
+    
+    // Debug useEffect to monitor cartProducts changes
+    useEffect(() => {
+        console.log('OrderSummaryPage: cartProducts changed:', cartProducts);
+        console.log('OrderSummaryPage: cartProducts length:', cartProducts.length);
+    }, [cartProducts]);
 
     const subtotal = cartProducts.reduce((sum, item) => {
+        console.log('OrderSummaryPage: Calculating subtotal for item:', item);
         // For quotation-based items, use the calculated price (already includes quantity)
         if (item.quotation_id) {
-            return sum + Number(item.price || 0);
+            const itemTotal = Number(item.price || 0);
+            console.log('OrderSummaryPage: Quotation item total:', itemTotal);
+            return sum + itemTotal;
         }
         // For regular items, use the product price
-        return sum + ((Number(item.price) || 0) * item.quantity);
+        const itemTotal = (Number(item.price) || 0) * item.quantity;
+        console.log('OrderSummaryPage: Regular item total:', itemTotal);
+        return sum + itemTotal;
     }, 0);
+    
+    console.log('OrderSummaryPage: Final subtotal:', subtotal);
     
     // Check if this is a quotation-based order
     const hasQuotation = cartProducts.some((item: any) => item.quotation_id);
@@ -222,28 +275,8 @@ const OrderSummaryPage = () => {
         }
     };
 
-    const handleAddDemoItem = () => {
-        const newItem = {
-            id: Date.now(),
-            image: "https://rukminim2.flixcart.com/image/416/416/xif0q/shoe/2/0/0/10-rx4classic-10-bruton-black-original-imagz2y2gqzqzqzq.jpeg",
-            title: "RX4CLASSIC Stylish and Trendy Design ,Sport Walkin...",
-            description: "Size: 10, Black, 10",
-            seller: "PKCO",
-            originalPrice: 999,
-            price: 443,
-            discount: 55,
-            coupon: "1 coupon applied",
-            quantity: 1,
-            deliveryInfo: "Delivery by Wed Jul 9"
-        };
-        setCart(prev => {
-            const updated = [...prev, newItem];
-            localStorage.setItem("cartItems", JSON.stringify(updated));
-            return updated;
-        });
-    };
 
-    const handleMockOrderPlacement = async () => {
+    const handleOrderPlacement = async () => {
         // Strict user authentication check - no fallback
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -262,13 +295,18 @@ const OrderSummaryPage = () => {
         const quotationCode = hasQuotation ? cartProducts[0].quotation_code : null;
         const quotationId = hasQuotation ? cartProducts[0].quotation_id : null;
         
+        // Get merchant code for quotation-based orders
+        const merchantCode = hasQuotation ? cartProducts[0].selected_merchant : 'admin';
+        
         console.log('Has quotation:', hasQuotation);
         console.log('Quotation Code:', quotationCode);
         console.log('Quotation ID:', quotationId);
+        console.log('Merchant Code:', merchantCode);
         
         const orderPayload = {
             user_id: user.id,
             quotation_code: quotationCode, // Add quotation_code if this is a quotation order
+            merchant_code: merchantCode, // Add merchant_code (required field)
             delivery_address: deliveryAddress || {},
             shipping_address: deliveryAddress ? JSON.stringify(deliveryAddress) : 'Default Address',
             total_amount: total,
@@ -295,13 +333,26 @@ const OrderSummaryPage = () => {
         
         // Insert order_items for each cart item
         const orderId = orderData.id;
-        const orderItems = cartProducts.map(item => ({
-            order_id: orderId,
-            product_id: item.id,
-            quantity: item.quantity,
-            price: item.price,
-            unit_price: item.unit_price || Math.round(item.price / item.quantity) // Use unit_price from quotation or calculate from total
-        }));
+        const orderItems = cartProducts.map(item => {
+            // Create minimal order item with only required fields
+            const baseItem = {
+                order_id: orderId,
+                product_id: item.quotation_id ? null : item.id, // Use null for quotation-based orders
+                quantity: item.quantity,
+                price: item.price,
+                unit_price: item.unit_price || Math.round(item.price / item.quantity) // Use unit_price from quotation or calculate from total
+            };
+            
+            // Only add merchant_code if it exists in the schema
+            if (merchantCode && merchantCode !== 'admin') {
+                return {
+                    ...baseItem,
+                    merchant_code: merchantCode
+                };
+            }
+            
+            return baseItem;
+        });
         
         console.log('Order items to save:', orderItems);
         
@@ -311,7 +362,12 @@ const OrderSummaryPage = () => {
             
         if (orderItemsError) {
             console.error('Order items save error:', orderItemsError);
-            alert('Order items save failed: ' + orderItemsError.message);
+            console.error('Order items data:', orderItems);
+            toast({
+                title: "Order Items Error",
+                description: `Failed to save order items: ${orderItemsError.message}`,
+                variant: "destructive"
+            });
             return;
         }
         
@@ -369,18 +425,32 @@ const OrderSummaryPage = () => {
             return;
         }
         
-        // Direct call to order placement
-        handleMockOrderPlacement();
+        // Show loading state
+        setPlacingOrder(true);
+        
+        try {
+            // Place the order
+            await handleOrderPlacement();
+        } catch (error) {
+            console.error('Order placement failed:', error);
+            toast({
+                title: "Order Failed",
+                description: "Failed to place order. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setPlacingOrder(false);
+        }
     };
 
-    // Handler to clear cart and go home (for both close and button)
+    // Handler to clear cart and go to orders page (for both close and button)
     const handleOrderSuccessClose = () => {
-        console.log('Closing success dialog and navigating home...');
+        console.log('Closing success dialog and navigating to orders...');
         setShowOrderSuccess(false);
         setCart([]);
         localStorage.removeItem('cart');
         clearCart();
-        navigate('/');
+        navigate('/orders');
     };
 
     return (
@@ -627,7 +697,20 @@ const OrderSummaryPage = () => {
                                     <div className="flex justify-between text-sm mb-1"><span>Packaging Charge</span><span>₹{packaging}</span></div>
                                     <div className="border-t my-2"></div>
                                     <div className="flex justify-between text-lg font-bold mb-2"><span>Total Payable</span><span>₹{total}</span></div>
-                                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg font-semibold py-3 mt-2" onClick={handlePlaceOrderClick}>Place Order</Button>
+                                    <Button 
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg font-semibold py-3 mt-2" 
+                                        onClick={handlePlaceOrderClick}
+                                        disabled={placingOrder}
+                                    >
+                                        {placingOrder ? (
+                                            <>
+                                                <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Placing Order...
+                                            </>
+                                        ) : (
+                                            'Place Order'
+                                        )}
+                                    </Button>
                                 </CardContent>
                             </Card>
                         </div>
@@ -657,9 +740,9 @@ const OrderSummaryPage = () => {
                             Order confirmation dialog showing successful order placement
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="text-lg text-gray-700 mb-6">Your order will be delivered within 5 to 7 days.</div>
-                    <Button className="bg-gold-600 hover:bg-gold-700 text-white font-bold px-8 py-3 text-lg rounded-lg" onClick={handleOrderSuccessClose}>
-                        Close
+                    <div className="text-lg text-gray-700 mb-6">Your order has been placed successfully! You can view your order details in the Orders page.</div>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 text-lg rounded-lg" onClick={handleOrderSuccessClose}>
+                        View My Orders
                     </Button>
                 </DialogContent>
             </Dialog>

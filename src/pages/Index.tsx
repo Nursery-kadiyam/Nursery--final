@@ -161,17 +161,8 @@ const Index = () => {
     }
   };
 
-  // CSS for infinite scroll animation
-  const scrollAnimation = `
-    @keyframes hero-scroll {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-  `;
-
   return (
     <div className="min-h-screen bg-white font-montserrat">
-      <style>{scrollAnimation}</style>
       {/* Header */}
       <Navbar />
 
@@ -293,11 +284,13 @@ const Index = () => {
         </div>
         {/* Right: Animated Images Row */}
         <div className="w-full md:w-[520px] flex-shrink-0 flex flex-col items-center justify-center relative z-20 mt-8 md:mt-0">
-          <div className="overflow-hidden w-full h-64 relative">
+          <div className="overflow-hidden w-full h-64 relative" style={{ backfaceVisibility: 'hidden', perspective: '1000px' }}>
             <div
               className="flex gap-0 items-center animate-marquee"
               style={{
-                width: `calc(${heroImages.length * 2} * 16rem)`
+                width: `calc(${heroImages.length * 2} * 16rem)`,
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)'
               }}
             >
               {[...heroImages, ...heroImages].map((img, idx) => (
@@ -307,7 +300,11 @@ const Index = () => {
                   alt=""
                   className="h-64 w-64 object-cover rounded-xl shadow-lg border-4 border-white bg-white"
                   draggable="false"
-                  style={{ userSelect: 'none' }}
+                  style={{ 
+                    userSelect: 'none',
+                    backfaceVisibility: 'hidden',
+                    transform: 'translateZ(0)'
+                  }}
                   loading="eager"
                   decoding="async"
                 />
@@ -318,10 +315,11 @@ const Index = () => {
             {`
               @keyframes marquee {
                 0% { transform: translateX(0); }
-                100% { transform: translateX(-${heroImages.length * 16}rem); }
+                100% { transform: translateX(-50%); }
               }
               .animate-marquee {
                 animation: marquee 60s linear infinite;
+                will-change: transform;
               }
             `}
           </style>

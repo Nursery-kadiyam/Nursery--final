@@ -185,6 +185,41 @@ const MyQuotations: React.FC = () => {
     });
   };
 
+  // Get default plant image based on plant name
+  const getDefaultPlantImage = (plantName: string) => {
+    if (!plantName) return null;
+    
+    // Map common plant names to their corresponding images
+    const plantImageMap: {[key: string]: string} = {
+      'akalifa pink': '/assets/akalifa pink.jpeg',
+      'arkeliform': '/assets/Arkeliform.jpeg',
+      'ashoka': '/assets/Ashoka.jpeg',
+      'bamboo': '/assets/Bamboo plants.jpeg',
+      'boston fern': '/assets/Boston Fern.jpeg',
+      'cassia': '/assets/Cassia Tree.jpeg',
+      'croton': '/assets/Croton plant.jpeg',
+      'gulmohar': '/assets/Gulmohar.jpeg',
+      'neem': '/assets/Neem.jpeg',
+      'rose': '/assets/Rose Bush.jpeg',
+      'spider lily': '/assets/Spider lilly.jpeg',
+      'star fruit': '/assets/Star fruit .jpeg',
+      'terminalia': '/assets/Terminalia green.jpeg',
+      'thailand ixora': '/assets/Thailand ixora.jpeg',
+      'tiwan pink jama': '/assets/Tiwan pink jama.jpeg',
+      'ujenia avenue': '/assets/Ujenia avenue.jpeg',
+      'vepa': '/assets/Vepa.jpeg'
+    };
+    
+    const lowerPlantName = plantName.toLowerCase();
+    for (const [key, imagePath] of Object.entries(plantImageMap)) {
+      if (lowerPlantName.includes(key)) {
+        return imagePath;
+      }
+    }
+    
+    return null;
+  };
+
   // Toggle expanded quotation
   const toggleExpand = (id: string) => {
     if (expandedQuotation === id) {
@@ -644,20 +679,76 @@ const MyQuotations: React.FC = () => {
                                       <TableRow key={index}>
                                         <TableCell>
                                           <div className="flex items-center space-x-3">
-                                            {product && product.image_url && (
+                                            {(product && product.image_url) || item.image_url || getDefaultPlantImage(item.product_name) ? (
                                               <img 
-                                                src={product.image_url} 
-                                                alt={product.name} 
+                                                src={product?.image_url || item.image_url || getDefaultPlantImage(item.product_name)} 
+                                                alt={product ? product.name : (item.product_name || 'Plant')} 
                                                 className="w-12 h-12 object-cover rounded-md"
                                                 onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
                                               />
+                                            ) : (
+                                              <div className="w-12 h-12 bg-emerald-100 rounded-md flex items-center justify-center">
+                                                <span className="text-emerald-600 text-lg">🌱</span>
+                                              </div>
                                             )}
-                                            <span>{product ? product.name : item.product_id}</span>
+                                            <span>{product ? product.name : (item.product_name || item.product_id || 'Unknown Product')}</span>
                                           </div>
                                         </TableCell>
                                         <TableCell>{item.quantity}</TableCell>
                                         <TableCell>
                                           <div className="space-y-1">
+                                            {/* Plant Information */}
+                                            {item.variety && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Variety:</span> {item.variety}
+                                              </div>
+                                            )}
+                                            {item.plant_type && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Type:</span> {item.plant_type}
+                                              </div>
+                                            )}
+                                            {item.age_category && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Age:</span> {item.age_category}
+                                              </div>
+                                            )}
+                                            {item.height_range && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Height:</span> {item.height_range}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Growth Details */}
+                                            {item.stem_thickness && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Stem Thickness:</span> {item.stem_thickness}
+                                              </div>
+                                            )}
+                                            {item.bag_size && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Bag Size:</span> {item.bag_size}
+                                              </div>
+                                            )}
+                                            {item.is_grafted !== undefined && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Grafted:</span> {item.is_grafted ? 'Yes' : 'No'}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Delivery Information */}
+                                            {item.delivery_location && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Delivery:</span> {item.delivery_location}
+                                              </div>
+                                            )}
+                                            {item.delivery_timeline && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Timeline:</span> {item.delivery_timeline}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Legacy fields for backward compatibility */}
                                             {item.year && (
                                               <div className="text-sm">
                                                 <span className="text-gray-500">Year:</span> {item.year}
@@ -668,7 +759,19 @@ const MyQuotations: React.FC = () => {
                                                 <span className="text-gray-500">Size:</span> {item.size}
                                               </div>
                                             )}
-                                            {!item.year && !item.size && (
+                                            
+                                            {/* Notes */}
+                                            {item.notes && (
+                                              <div className="text-sm">
+                                                <span className="text-gray-500">Notes:</span> {item.notes}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Show "No specifications" only if none of the above fields are present */}
+                                            {!item.variety && !item.plant_type && !item.age_category && !item.height_range && 
+                                             !item.stem_thickness && !item.bag_size && item.is_grafted === undefined &&
+                                             !item.delivery_location && !item.delivery_timeline && 
+                                             !item.year && !item.size && !item.notes && (
                                               <span className="text-gray-400 text-sm">No specifications</span>
                                             )}
                                           </div>
@@ -804,16 +907,20 @@ const MyQuotations: React.FC = () => {
                             return (
                               <div key={itemIdx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                                 <div className="flex items-center space-x-2">
-                                  {product?.image_url && (
+                                  {(product?.image_url) || item.image_url || getDefaultPlantImage(item.product_name) ? (
                                     <img 
-                                      src={product.image_url} 
-                                      alt={product.name} 
+                                      src={product?.image_url || item.image_url || getDefaultPlantImage(item.product_name)} 
+                                      alt={product ? product.name : (item.product_name || 'Plant')} 
                                       className="w-8 h-8 object-cover rounded"
                                       onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
                                     />
+                                  ) : (
+                                    <div className="w-8 h-8 bg-emerald-100 rounded flex items-center justify-center">
+                                      <span className="text-emerald-600 text-sm">🌱</span>
+                                    </div>
                                   )}
                                   <span className="text-sm font-medium">
-                                    {product ? product.name : item.product_id}
+                                            {product ? product.name : (item.product_name || item.product_id || 'Unknown Product')}
                                   </span>
                                   <span className="text-xs text-gray-500">
                                     (Qty: {item.quantity})
@@ -846,21 +953,88 @@ const MyQuotations: React.FC = () => {
                         <div key={itemIdx} className="mb-4 p-3 bg-white rounded-lg border">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                              {product?.image_url && (
+                              {(product?.image_url) || item.image_url || getDefaultPlantImage(item.product_name) ? (
                                 <img 
-                                  src={product.image_url} 
-                                  alt={product.name} 
+                                  src={product?.image_url || item.image_url || getDefaultPlantImage(item.product_name)} 
+                                  alt={product ? product.name : (item.product_name || 'Plant')} 
                                   className="w-8 h-8 object-cover rounded"
                                   onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder.svg'; }}
                                 />
+                              ) : (
+                                <div className="w-8 h-8 bg-emerald-100 rounded flex items-center justify-center">
+                                  <span className="text-emerald-600 text-sm">🌱</span>
+                                </div>
                               )}
-                              <span className="font-medium">{product ? product.name : item.product_id}</span>
+                                    <span className="font-medium">{product ? product.name : (item.product_name || item.product_id || 'Unknown Product')}</span>
                               <span className="text-sm text-gray-500">(Qty: {item.quantity})</span>
                             </div>
                             {selectedMerchantCode && (
                               <Badge className="bg-emerald-600 text-white">Selected: {selectedMerchantCode}</Badge>
                             )}
                           </div>
+                          
+                          {/* Plant Specifications */}
+                          {(item.variety || item.plant_type || item.age_category || item.height_range || item.stem_thickness || item.bag_size || item.is_grafted !== undefined || item.delivery_location || item.delivery_timeline) && (
+                            <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                              <h4 className="font-medium text-gray-700 text-sm mb-2">Plant Specifications:</h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                {item.variety && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Variety:</span>
+                                    <span className="font-medium">{item.variety}</span>
+                                  </div>
+                                )}
+                                {item.plant_type && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Type:</span>
+                                    <span className="font-medium">{item.plant_type}</span>
+                                  </div>
+                                )}
+                                {item.age_category && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Age:</span>
+                                    <span className="font-medium">{item.age_category}</span>
+                                  </div>
+                                )}
+                                {item.height_range && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Height:</span>
+                                    <span className="font-medium">{item.height_range}</span>
+                                  </div>
+                                )}
+                                {item.stem_thickness && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Stem:</span>
+                                    <span className="font-medium">{item.stem_thickness}</span>
+                                  </div>
+                                )}
+                                {item.bag_size && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Bag Size:</span>
+                                    <span className="font-medium">{item.bag_size}</span>
+                                  </div>
+                                )}
+                                {item.is_grafted !== undefined && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Grafted:</span>
+                                    <span className="font-medium">{item.is_grafted ? 'Yes' : 'No'}</span>
+                                  </div>
+                                )}
+                                {item.delivery_location && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Delivery:</span>
+                                    <span className="font-medium">{item.delivery_location}</span>
+                                  </div>
+                                )}
+                                {item.delivery_timeline && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Timeline:</span>
+                                    <span className="font-medium">{item.delivery_timeline}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             {selectedQuotation.merchantResponses.map((response: any) => {

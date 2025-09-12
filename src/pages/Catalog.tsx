@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Leaf, Star, Filter, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { ArrowRight, Leaf, Star, Filter, Plus, Trash2, ShoppingCart, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/ui/navbar";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Catalog = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -13,72 +16,128 @@ const Catalog = () => {
     {
       id: Date.now(),
       plantName: "",
+      variety: "",
+      plantType: "",
+      ageCategory: "",
+      heightRange: "",
+      stemThickness: "",
+      isGrafted: false,
+      bagSize: "",
       quantity: 1,
-      yearOld: "",
-      size: ""
+      deliveryLocation: "",
+      deliveryTimeline: "",
+      notes: ""
     }
   ]);
   const [cartItems, setCartItems] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [searchInputs, setSearchInputs] = useState<{[key: number]: string}>({});
+  const [showDropdowns, setShowDropdowns] = useState<{[key: number]: boolean}>({});
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  // Plant data with properties
-  const plantData = [
-    {
-      id: 1,
-      name: "Ashoka Tree",
-      hasYearOld: true,
-      hasSize: true,
-      description: "Sacred tree with beautiful flowers, perfect for gardens and temples"
-    },
-    {
-      id: 2,
-      name: "Bamboo Plant",
-      hasYearOld: false,
-      hasSize: true,
-      description: "Fast-growing bamboo for privacy screens and landscaping"
-    },
-    {
-      id: 3,
-      name: "Boston Fern",
-      hasYearOld: false,
-      hasSize: false,
-      description: "Air-purifying fern perfect for indoor spaces"
-    },
-    {
-      id: 4,
-      name: "Cassia Tree",
-      hasYearOld: true,
-      hasSize: true,
-      description: "Beautiful flowering tree with yellow blooms"
-    },
-    {
-      id: 5,
-      name: "Croton Plant",
-      hasYearOld: false,
-      hasSize: true,
-      description: "Colorful foliage plant for tropical gardens"
-    },
-    {
-      id: 6,
-      name: "Gulmohar Tree",
-      hasYearOld: true,
-      hasSize: true,
-      description: "Stunning orange-red flowering tree for avenue planting"
-    },
-    {
-      id: 7,
-      name: "Money Plant",
-      hasYearOld: false,
-      hasSize: false,
-      description: "Popular indoor plant for good luck and air purification"
-    },
-    {
-      id: 8,
-      name: "Neem Tree",
-      hasYearOld: true,
-      hasSize: true,
-      description: "Medicinal tree with natural pest control properties"
+  // Fetch real-time products from Supabase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('name');
+        
+        if (error) {
+          console.error('Error fetching products:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load products. Please try again.",
+            variant: "destructive"
+          });
+        } else {
+          setProducts(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load products. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [toast]);
+
+  // Initialize search input state for all plants
+  useEffect(() => {
+    if (selectedPlants.length > 0) {
+      const newSearchInputs: {[key: number]: string} = {};
+      const newShowDropdowns: {[key: number]: boolean} = {};
+      
+      selectedPlants.forEach(plant => {
+        newSearchInputs[plant.id] = plant.plantName || "";
+        newShowDropdowns[plant.id] = false;
+      });
+      
+      setSearchInputs(newSearchInputs);
+      setShowDropdowns(newShowDropdowns);
     }
-  ];
+  }, [selectedPlants.length]);
+
+  // Filter products based on search input
+  const getFilteredProducts = (searchTerm: string) => {
+    if (!searchTerm) return products;
+    return products.filter(product => 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (plantId: number, value: string) => {
+    setSearchInputs(prev => ({ ...prev, [plantId]: value }));
+    setShowDropdowns(prev => ({ ...prev, [plantId]: true }));
+    
+    // Find the index of the plant with this ID
+    const plantIndex = selectedPlants.findIndex(p => p.id === plantId);
+    if (plantIndex !== -1) {
+      updatePlantSelection(plantIndex, "plantName", value);
+    }
+  };
+
+  // Handle plant selection from dropdown
+  const handlePlantSelect = (plantId: number, plantName: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    setSearchInputs(prev => ({ ...prev, [plantId]: plantName }));
+    setShowDropdowns(prev => ({ ...prev, [plantId]: false }));
+    
+    // Find the index of the plant with this ID
+    const plantIndex = selectedPlants.findIndex(p => p.id === plantId);
+    if (plantIndex !== -1) {
+      updatePlantSelection(plantIndex, "plantName", plantName);
+    }
+  };
+
+  // Handle input focus
+  const handleInputFocus = (plantId: number) => {
+    setShowDropdowns(prev => ({ ...prev, [plantId]: true }));
+  };
+
+  // Handle input blur (with delay to allow clicking on dropdown items)
+  const handleInputBlur = (plantId: number) => {
+    setTimeout(() => {
+      setShowDropdowns(prev => ({ ...prev, [plantId]: false }));
+    }, 300);
+  };
 
   const categories = [
     {
@@ -159,14 +218,48 @@ const Catalog = () => {
     ? categories
     : categories.filter(cat => cat.id === selectedCategory);
 
+  // Check if a plant form is completely filled
+  const isPlantFormComplete = (plant: any) => {
+    return plant.plantName && plant.quantity > 0;
+  };
+
+  // Check if we can add another plant (current plant must be complete)
+  const canAddPlant = () => {
+    if (selectedPlants.length === 0) return true;
+    const lastPlant = selectedPlants[selectedPlants.length - 1];
+    return isPlantFormComplete(lastPlant);
+  };
+
   const addPlantToSelection = () => {
+    if (!canAddPlant()) {
+      toast({
+        title: "Complete Current Plant",
+        description: "Please fill in the plant name and quantity for the current plant before adding another.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newId = Date.now();
     setSelectedPlants([...selectedPlants, {
-      id: Date.now(),
+      id: newId,
       plantName: "",
+      variety: "",
+      plantType: "",
+      ageCategory: "",
+      heightRange: "",
+      stemThickness: "",
+      isGrafted: false,
+      bagSize: "",
       quantity: 1,
-      yearOld: "",
-      size: ""
+      deliveryLocation: "",
+      deliveryTimeline: "",
+      notes: ""
     }]);
+    
+    // Initialize search input state for the new plant
+    setSearchInputs(prev => ({ ...prev, [newId]: "" }));
+    setShowDropdowns(prev => ({ ...prev, [newId]: false }));
   };
 
   const removePlantFromSelection = (index: number) => {
@@ -179,33 +272,116 @@ const Catalog = () => {
     setSelectedPlants(updatedPlants);
   };
 
-  const addToCart = () => {
+  const showQuotationSummary = () => {
     const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity > 0);
-    if (validPlants.length === 0) return;
+    if (validPlants.length === 0) {
+      toast({
+        title: "Invalid Selection",
+        description: "Please select at least one plant with valid details.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowSummary(true);
+  };
 
-    const newCartItems = validPlants.map(plant => {
-      return {
-        id: Date.now() + Math.random(),
-        name: plant.plantName,
-        quantity: plant.quantity,
-        yearOld: plant.yearOld || null,
-        size: plant.size || null
+  const submitQuotation = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to submit quotations.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity > 0);
+    if (validPlants.length === 0) {
+      toast({
+        title: "Invalid Selection",
+        description: "Please select at least one plant with valid details.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Create a single quotation with multiple items
+      const quotationData = {
+        items: validPlants.map(plant => ({
+          product_id: null, // No specific product ID for catalog quotations
+          product_name: plant.plantName,
+          variety: plant.variety,
+          plant_type: plant.plantType,
+          age_category: plant.ageCategory,
+          height_range: plant.heightRange,
+          stem_thickness: plant.stemThickness,
+          is_grafted: plant.isGrafted,
+          bag_size: plant.bagSize,
+          quantity: plant.quantity,
+          delivery_location: plant.deliveryLocation,
+          delivery_timeline: plant.deliveryTimeline,
+          notes: plant.notes
+        }))
       };
-    });
 
-    setCartItems([...cartItems, ...newCartItems]);
-    setSelectedPlants([{
-      id: Date.now(),
-      plantName: "",
-      quantity: 1,
-      yearOld: "",
-      size: ""
-    }]);
+      // Call the quotation creation function (same as individual plant flow)
+      const { data, error } = await supabase.rpc('create_user_quotation_request', {
+        p_user_id: user.id,
+        p_user_email: user.email,
+        p_items: quotationData.items
+      });
+
+      if (error) {
+        console.error('Error creating quotation request:', error);
+        throw error;
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.message || "Failed to submit quotation request.");
+      }
+
+      toast({
+        title: "Quotation Request Submitted!",
+        description: `Your quotation request with ${validPlants.length} plant${validPlants.length > 1 ? 's' : ''} has been submitted. Merchants will respond with their prices.`,
+      });
+
+      // Reset form
+      const newId = Date.now();
+      setSelectedPlants([{
+        id: newId,
+        plantName: "",
+        variety: "",
+        plantType: "",
+        ageCategory: "",
+        heightRange: "",
+        stemThickness: "",
+        isGrafted: false,
+        bagSize: "",
+        quantity: 1,
+        deliveryLocation: "",
+        deliveryTimeline: "",
+        notes: ""
+      }]);
+      setShowSummary(false);
+      
+      // Reset search states
+      setSearchInputs({ [newId]: "" });
+      setShowDropdowns({ [newId]: false });
+
+    } catch (error) {
+      console.error('Error submitting quotation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit quotation request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const removeFromCart = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  };
 
   return (
     <div className="min-h-screen bg-white font-montserrat">
@@ -253,7 +429,7 @@ const Catalog = () => {
                 🌱 Multi-Plant Selection Form
               </h2>
               <p className="text-gray-600 mb-6">
-                Select multiple plants with dynamic fields based on plant properties
+                Submit comprehensive quotations for multiple plants with detailed specifications
               </p>
               <Button
                 onClick={() => setShowPlantForm(!showPlantForm)}
@@ -272,7 +448,8 @@ const Catalog = () => {
                     </h3>
                     <Button
                       onClick={addPlantToSelection}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      disabled={!canAddPlant()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Plant
@@ -302,26 +479,190 @@ const Catalog = () => {
                               </Button>
                             </div>
 
-                            {/* Plant Name - Separate Row */}
-                            <div className="mb-4">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Plant Name *
+                            {/* Plant Information Section */}
+                            <div className="space-y-4">
+                              <h5 className="text-lg font-semibold text-emerald-800 border-b border-emerald-200 pb-2">
+                                Plant Information
+                              </h5>
+                              
+                              {/* Plant Name - Searchable Input */}
+                              <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Plant Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={searchInputs[plant.id] || plant.plantName || ""}
+                                  onChange={(e) => handleSearchInputChange(plant.id, e.target.value)}
+                                  onFocus={() => handleInputFocus(plant.id)}
+                                  onBlur={() => handleInputBlur(plant.id)}
+                                  placeholder="Type to search plants..."
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                                
+                                {/* Dropdown with filtered results */}
+                                {showDropdowns[plant.id] && getFilteredProducts(searchInputs[plant.id] || "").length > 0 && (
+                                  <div 
+                                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                  >
+                                    {getFilteredProducts(searchInputs[plant.id] || "").map((product) => (
+                                      <div
+                                        key={product.id}
+                                        onMouseDown={(e) => handlePlantSelect(plant.id, product.name, e)}
+                                        className="px-3 py-2 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <div className="font-medium text-gray-900">{product.name}</div>
+                                        {product.category && (
+                                          <div className="text-sm text-gray-500">{product.category}</div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                
+                                {/* No results message */}
+                                {showDropdowns[plant.id] && searchInputs[plant.id] && getFilteredProducts(searchInputs[plant.id]).length === 0 && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                    <div className="px-3 py-2 text-gray-500 text-sm">
+                                      No plants found matching "{searchInputs[plant.id]}"
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Variety and Plant Type */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Variety / Hybrid
                               </label>
                               <input
                                 type="text"
-                                value={plant.plantName || ""}
-                                onChange={(e) => updatePlantSelection(index, "plantName", e.target.value)}
-                                placeholder="Enter plant name"
+                                    value={plant.variety}
+                                    onChange={(e) => updatePlantSelection(index, "variety", e.target.value)}
+                                    placeholder="e.g., Banganapalli Mango"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                               />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Plant Type
+                                  </label>
+                                  <select
+                                    value={plant.plantType}
+                                    onChange={(e) => updatePlantSelection(index, "plantType", e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="">Select type</option>
+                                    <option value="Fruit">Fruit</option>
+                                    <option value="Ornamental/Flowering">Ornamental/Flowering</option>
+                                    <option value="Timber">Timber</option>
+                                    <option value="Avenue">Avenue</option>
+                                    <option value="Medicinal">Medicinal</option>
+                                    <option value="Other">Other</option>
+                                  </select>
+                                </div>
+                              </div>
                             </div>
 
-                            {/* Other Fields in Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Quantity */}
+                            {/* Growth/Age Details Section */}
+                            <div className="space-y-4">
+                              <h5 className="text-lg font-semibold text-emerald-800 border-b border-emerald-200 pb-2">
+                                Growth / Age Details
+                              </h5>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Quantity *
+                                    Age Category
+                                  </label>
+                                  <select
+                                    value={plant.ageCategory}
+                                    onChange={(e) => updatePlantSelection(index, "ageCategory", e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="">Select age</option>
+                                    <option value="6 months">6 months</option>
+                                    <option value="1 year">1 year</option>
+                                    <option value="2 years">2 years</option>
+                                    <option value="3+ years">3+ years</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Height Range
+                                  </label>
+                                  <select
+                                    value={plant.heightRange}
+                                    onChange={(e) => updatePlantSelection(index, "heightRange", e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="">Select height</option>
+                                    <option value="1-2 ft">1-2 ft</option>
+                                    <option value="3-4 ft">3-4 ft</option>
+                                    <option value="5-6 ft">5-6 ft</option>
+                                    <option value=">6 ft">&gt;6 ft</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Stem Thickness (optional)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={plant.stemThickness}
+                                    onChange={(e) => updatePlantSelection(index, "stemThickness", e.target.value)}
+                                    placeholder="e.g., 2-3 cm"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Bag/Pot Size
+                                  </label>
+                                  <select
+                                    value={plant.bagSize}
+                                    onChange={(e) => updatePlantSelection(index, "bagSize", e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="">Select size</option>
+                                      <option value="6&quot;">6&quot;</option>
+                                      <option value="8&quot;">8&quot;</option>
+                                      <option value="12&quot;">12&quot;</option>
+                                      <option value="16&quot;">16&quot;</option>
+                                    <option value="ground-grown">Ground-grown</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`grafted-${index}`}
+                                  checked={plant.isGrafted}
+                                  onChange={(e) => updatePlantSelection(index, "isGrafted", e.target.checked)}
+                                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor={`grafted-${index}`} className="text-sm font-medium text-gray-700">
+                                  Grafted / Seedling
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Quantity & Delivery Section */}
+                            <div className="space-y-4">
+                              <h5 className="text-lg font-semibold text-emerald-800 border-b border-emerald-200 pb-2">
+                                Quantity & Delivery
+                              </h5>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Quantity Required *
                                 </label>
                                 <input
                                   type="number"
@@ -329,44 +670,50 @@ const Catalog = () => {
                                   value={plant.quantity}
                                   onChange={(e) => updatePlantSelection(index, "quantity", parseInt(e.target.value) || 1)}
                                   className="w-full px-4 py-3 text-lg font-semibold border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                  style={{ fontSize: '18px', fontWeight: '600' }}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Delivery Timeline
+                                </label>
+                                <select
+                                    value={plant.deliveryTimeline}
+                                    onChange={(e) => updatePlantSelection(index, "deliveryTimeline", e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                >
+                                    <option value="">Select timeline</option>
+                                    <option value="Within 7 days">Within 7 days</option>
+                                    <option value="Within 15 days">Within 15 days</option>
+                                    <option value="Within 1 month">Within 1 month</option>
+                                    <option value="Flexible">Flexible</option>
+                                </select>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Delivery Location
+                                </label>
+                                <input
+                                  type="text"
+                                  value={plant.deliveryLocation}
+                                  onChange={(e) => updatePlantSelection(index, "deliveryLocation", e.target.value)}
+                                  placeholder="City, District, Pin Code"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 />
                               </div>
 
-                              {/* Year Old - Always shown but optional */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Year-old
+                                  Notes (Optional)
                                 </label>
-                                <select
-                                  value={plant.yearOld}
-                                  onChange={(e) => updatePlantSelection(index, "yearOld", e.target.value)}
+                                <textarea
+                                  value={plant.notes}
+                                  onChange={(e) => updatePlantSelection(index, "notes", e.target.value)}
+                                  placeholder="e.g., Require uniform height, bulk plantation use, roadside landscaping"
+                                  rows={3}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                >
-                                  <option value="">Select year</option>
-                                  <option value="1">1-year</option>
-                                  <option value="2">2-year</option>
-                                  <option value="3">3-year</option>
-                                  <option value="4">4-year</option>
-                                </select>
-                              </div>
-
-                              {/* Size - Always shown but optional */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Size
-                                </label>
-                                <select
-                                  value={plant.size}
-                                  onChange={(e) => updatePlantSelection(index, "size", e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                >
-                                  <option value="">Select size</option>
-                                  <option value="Small">Small</option>
-                                  <option value="Medium">Medium</option>
-                                  <option value="Large">Large</option>
-                                  <option value="Extra Large">Extra Large</option>
-                                </select>
+                                />
                               </div>
                             </div>
 
@@ -380,16 +727,154 @@ const Catalog = () => {
                   {selectedPlants.length > 0 && (
                     <div className="mt-6 flex justify-end">
                       <Button
-                        onClick={addToCart}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={showQuotationSummary}
+                        disabled={loading}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                       >
                         <ShoppingCart className="w-4 h-4 mr-2" />
-                        Add to Cart
+                        Review & Submit Quotation
                       </Button>
                     </div>
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Quotation Summary Modal */}
+            {showSummary && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-emerald-800">
+                        Quotation Summary
+                      </h2>
+                      <Button
+                        onClick={() => setShowSummary(false)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {selectedPlants.filter(plant => plant.plantName && plant.quantity > 0).map((plant, index) => (
+                        <div key={plant.id} className="border border-emerald-200 rounded-lg p-4 bg-emerald-50">
+                          <h3 className="text-lg font-semibold text-emerald-800 mb-4">
+                            Plant {index + 1}: {plant.plantName}
+                          </h3>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              {plant.variety && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Variety:</span>
+                                  <span className="font-medium">{plant.variety}</span>
+                                </div>
+                              )}
+                              {plant.plantType && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Type:</span>
+                                  <span className="font-medium">{plant.plantType}</span>
+                                </div>
+                              )}
+                              {plant.ageCategory && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Age:</span>
+                                  <span className="font-medium">{plant.ageCategory}</span>
+                                </div>
+                              )}
+                              {plant.heightRange && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Height:</span>
+                                  <span className="font-medium">{plant.heightRange}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              {plant.stemThickness && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Stem Thickness:</span>
+                                  <span className="font-medium">{plant.stemThickness}</span>
+                                </div>
+                              )}
+                              {plant.bagSize && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Bag Size:</span>
+                                  <span className="font-medium">{plant.bagSize}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Grafted:</span>
+                                <span className="font-medium">{plant.isGrafted ? 'Yes' : 'No'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Quantity:</span>
+                                <span className="font-bold text-emerald-600">{plant.quantity}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {(plant.deliveryLocation || plant.deliveryTimeline) && (
+                            <div className="mt-4 pt-4 border-t border-emerald-200">
+                              <h4 className="font-semibold text-emerald-800 mb-2">Delivery Details</h4>
+                              <div className="space-y-1">
+                                {plant.deliveryLocation && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Location:</span>
+                                    <span className="font-medium">{plant.deliveryLocation}</span>
+                                  </div>
+                                )}
+                                {plant.deliveryTimeline && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Timeline:</span>
+                                    <span className="font-medium">{plant.deliveryTimeline}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {plant.notes && (
+                            <div className="mt-4 pt-4 border-t border-emerald-200">
+                              <h4 className="font-semibold text-emerald-800 mb-2">Notes</h4>
+                              <p className="text-gray-700">{plant.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 flex justify-end space-x-3">
+                      <Button
+                        onClick={() => setShowSummary(false)}
+                        variant="outline"
+                      >
+                        Edit Quotation
+                      </Button>
+                      <Button
+                        onClick={submitQuotation}
+                        disabled={submitting}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4 mr-2" />
+                            Submit Quotation
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Cart Table */}
