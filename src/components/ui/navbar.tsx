@@ -49,8 +49,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
     { name: "Shop", href: "/shop" },
     { name: "Contact", href: "/contact" },
     { name: "My Orders", href: "/orders" },
-            { name: "Quotations", href: "/my-quotations" },
-    // { name: "Register as Merchant", href: "/register-merchant" } // Remove this from navigation array
+    { name: "Quotations", href: "/my-quotations" },
   ]
 
   useEffect(() => {
@@ -149,30 +148,6 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
       }
     }
     fetchApprovedQuotations()
-
-    // Disabled real-time listener to prevent WebSocket errors
-    // if (user) {
-    //   const channel = supabase
-    //     .channel('quotations_changes')
-    //     .on(
-    //       'postgres_changes',
-    //       {
-    //         event: '*',
-    //         schema: 'public',
-    //         table: 'quotations',
-    //         filter: `user_id=eq.${user.id}`
-    //       },
-    //       () => {
-    //         // Refresh approved quotations count when quotations change
-    //         fetchApprovedQuotations()
-    //       }
-    //     )
-    //     .subscribe()
-
-    //   return () => {
-    //     supabase.removeChannel(channel)
-    //   }
-    // }
   }, [user])
 
   // Refresh quotations count when navigating to quotations page
@@ -214,204 +189,209 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
 
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-emerald-100 sticky top-0 z-50">
-      <div className={`max-w-[1300px] mx-auto px-4 py-2 flex items-center ${logoLeft ? 'justify-start items-start' : 'justify-between'}`}>
-        {/* Mobile Hamburger Menu - Left */}
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 text-emerald-800 hover:text-gold-600 hover:bg-emerald-50 transition-all duration-200"
-            >
-              <Menu className="h-7 w-6 mr-7" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-[300px] bg-white border-r border-emerald-100 animate-slide-in-left p-0"
-          >
-            <div className="flex flex-col">
-              <div className="text-center py-6 border-b border-emerald-100">
-                <h2 className="text-2xl font-bold font-montserrat leading-tight">
-                  {/* <span className="text-orange-600">Kadiyam</span>{" "} */}
-                  <span className="text-emerald-800">Nursery</span>
-                </h2>
-                <p className="text-base text-gold-600 mt-1 font-lora italic">Kadiyam</p>
-              </div>
-              {!hideNavigationLinks && (
-                <div className="flex-1 flex flex-col gap-2 py-4 px-2">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === item.href ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
-                      style={{ minHeight: 44 }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {item.name}
-                        {item.name === "Quotations" && approvedQuotationsCount > 0 && (
-                          <Badge className="bg-emerald-600 text-white text-xs px-2 py-1">
-                            {approvedQuotationsCount}
-                          </Badge>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                  {role === 'admin' && (
-                    <Link
-                      to="/admin-dashboard"
-                      onClick={() => {
-                        console.log('Mobile Admin Dashboard link clicked!');
-                        setIsOpen(false);
-                      }}
-                      className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
-                      style={{ minHeight: 44 }}
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
-                    <Link
-                      to="/merchant-dashboard"
-                      onClick={() => setIsOpen(false)}
-                      className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === "/merchant-dashboard" ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
-                      style={{ minHeight: 44 }}
-                    >
-                      Merchant Dashboard
-                    </Link>
-                  )}
-                </div>
-              )}
-              <div className="py-4 border-t border-emerald-100 px-4">
-                {!hideCart && (
-                  <Link to="/cart" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full bg-gold-600 hover:bg-gold-700 text-white font-montserrat transition-all duration-200 relative min-h-[44px] flex items-center justify-center">
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Cart {cartCount > 0 && `(${cartCount})`}
-                      {cartCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 bg-emerald-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs p-0">
-                          {cartCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </Link>
-                )}
-                <div className="flex gap-2 mt-3">
-                  {!hideWishlist && (
-                    <Link to="/wishlist" onClick={() => setIsOpen(false)} className="flex-1">
-                      <Button variant="outline" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-montserrat flex items-center justify-center">
-                        <Heart className="w-4 h-4 mr-2" />
-                        Wishlist
-                      </Button>
-                    </Link>
-                  )}
-                  {!hideLogin && (
-                    <Button
-                      variant="outline"
-                      className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-montserrat flex items-center justify-center"
-                      onClick={handleUserIconClick}
-                    >
-                      <User className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Logo */}
-        <Link to="/" className="flex flex-col items-start min-w-[70px] mr-5">
-          <span className="text-2xl font-bold font-montserrat leading-tight mr-5">
-            <span className="text-emerald-800">Nursery</span>
-          </span>
-          <span className="text-base text-gold-600 font-lora italic border-b border-gold-600/30 hover:border-gold-600 transition-all duration-300 leading-snug">
-            Kadiyam
-          </span>
-        </Link>
-
-        {/* Desktop Navigation */}
-        {!hideNavigationLinks && (
-          <nav className="hidden md:flex items-center flex-1 justify-center gap-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`px-4 py-2 rounded-md font-montserrat text-base transition-all duration-200 ${location.pathname === item.href ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
-              >
-                <div className="flex items-center gap-2">
-                  {item.name}
-                  {item.name === "Quotations" && approvedQuotationsCount > 0 && (
-                    <Badge className="bg-emerald-600 text-white text-xs px-2 py-1">
-                      {approvedQuotationsCount}
-                    </Badge>
-                  )}
-                </div>
-              </Link>
-            ))}
-            {role === 'admin' && (
-              <Link
-                to="/admin-dashboard"
-                className={`px-4 py-2 rounded-md font-montserrat text-base transition-all duration-200 ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
-                onClick={() => console.log('Admin Dashboard link clicked!')}
-              >
-                Dashboard
-              </Link>
-            )}
-            {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
-              <Link
-                to="/merchant-dashboard"
-                className={`px-4 py-2 rounded-md font-montserrat text-base transition-all duration-200 ${location.pathname === "/merchant-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
-              >
-                Merchant Dashboard
-              </Link>
-            )}
-          </nav>
-        )}
-
-        {/* Right side actions */}
-        <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
-          {/* Wishlist (Heart) Icon */}
-          {!hideWishlist && (
-            <Link to="/wishlist">
+      <div className="max-w-[1300px] mx-auto px-4 py-2">
+        {/* Main navbar container with flex layout */}
+        <div className="flex items-center justify-between w-full">
+          
+          {/* Mobile Hamburger Menu */}
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild className="md:hidden">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-emerald-700 hover:text-gold-600 hover:bg-gold-50 transition-all duration-200 ml-6"
+                className="h-10 w-10 text-emerald-800 hover:text-gold-600 hover:bg-emerald-50 transition-all duration-200"
               >
-                <Heart className="w-5 h-5 ml-6" />
-                <span className="sr-only">Wishlist</span>
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle menu</span>
               </Button>
-            </Link>
-          )}
-          {/* User Profile Icon */}
-          {!hideLogin && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-emerald-700 hover:text-gold-600 hover:bg-gold-50 transition-all duration-200"
-              onClick={handleUserIconClick}
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[300px] bg-white border-r border-emerald-100 animate-slide-in-left p-0"
             >
-              <User className="w-5 h-5" />
-              <span className="sr-only">User Profile</span>
-            </Button>
-          )}
-          {/* Desktop Cart Button */}
-          {!hideCart && (
-            <Link to="/cart">
-              <Button className="relative bg-gold-600 hover:bg-gold-700 text-white px-2 font-semibold transition-all duration-200 shadow-sm min-h-[40px] font-montserrat flex items-center mt-1">
-                <ShoppingCart className="w-2 h-3 mr-2" />
-                Cart
-                {cartCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs p-0 border-2 border-white">
-                    {cartCount}
-                  </Badge>
+              <div className="flex flex-col">
+                <div className="text-center py-6 border-b border-emerald-100">
+                  <h2 className="text-2xl font-bold font-montserrat leading-tight">
+                    <span className="text-emerald-800">Nursery</span>
+                  </h2>
+                  <p className="text-base text-gold-600 mt-1 font-lora italic">Kadiyam</p>
+                </div>
+                {!hideNavigationLinks && (
+                  <div className="flex-1 flex flex-col gap-2 py-4 px-2">
+                    {navigation.map((item) => (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === item.href ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
+                        style={{ minHeight: 44 }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {item.name}
+                          {item.name === "Quotations" && approvedQuotationsCount > 0 && (
+                            <Badge className="bg-emerald-600 text-white text-xs px-2 py-1">
+                              {approvedQuotationsCount}
+                            </Badge>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                    {role === 'admin' && (
+                      <Link
+                        to="/admin-dashboard"
+                        onClick={() => {
+                          console.log('Mobile Admin Dashboard link clicked!');
+                          setIsOpen(false);
+                        }}
+                        className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
+                        style={{ minHeight: 44 }}
+                      >
+                        Dashboard
+                      </Link>
+                    )}
+                    {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
+                      <Link
+                        to="/merchant-dashboard"
+                        onClick={() => setIsOpen(false)}
+                        className={`block w-full text-left px-4 py-3 rounded-md font-montserrat text-lg transition-all duration-200 ${location.pathname === "/merchant-dashboard" ? "text-gold-600 font-semibold bg-gold-50 border-l-4 border-gold-600" : "text-emerald-700 hover:text-gold-600 hover:bg-emerald-50"}`}
+                        style={{ minHeight: 44 }}
+                      >
+                        Merchant Dashboard
+                      </Link>
+                    )}
+                  </div>
                 )}
-              </Button>
-            </Link>
+                <div className="py-4 border-t border-emerald-100 px-4">
+                  {!hideCart && (
+                    <Link to="/cart" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-gold-600 hover:bg-gold-700 text-white font-montserrat transition-all duration-200 relative min-h-[44px] flex items-center justify-center">
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Cart {cartCount > 0 && `(${cartCount})`}
+                        {cartCount > 0 && (
+                          <Badge className="absolute -top-1 -right-1 bg-emerald-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs p-0">
+                            {cartCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </Link>
+                  )}
+                  <div className="flex gap-2 mt-3">
+                    {!hideWishlist && (
+                      <Link to="/wishlist" onClick={() => setIsOpen(false)} className="flex-1">
+                        <Button variant="outline" className="w-full border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-montserrat flex items-center justify-center">
+                          <Heart className="w-4 h-4 mr-2" />
+                          Wishlist
+                        </Button>
+                      </Link>
+                    )}
+                    {!hideLogin && (
+                      <Button
+                        variant="outline"
+                        className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-montserrat flex items-center justify-center"
+                        onClick={handleUserIconClick}
+                      >
+                        <User className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Logo */}
+          <Link to="/" className="flex flex-col items-start min-w-[70px]">
+            <span className="text-2xl font-bold font-montserrat leading-tight">
+              <span className="text-emerald-800">Nursery</span>
+            </span>
+            <span className="text-base text-gold-600 font-lora italic border-b border-gold-600/30 hover:border-gold-600 transition-all duration-300 leading-snug">
+              Kadiyam
+            </span>
+          </Link>
+
+          {/* Desktop Navigation Links - Centered */}
+          {!hideNavigationLinks && (
+            <nav className="hidden md:flex items-center gap-6">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`px-3 py-2 rounded-md font-montserrat text-sm font-medium transition-all duration-200 whitespace-nowrap ${location.pathname === item.href ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
+                >
+                  <div className="flex items-center gap-1">
+                    {item.name}
+                    {item.name === "Quotations" && approvedQuotationsCount > 0 && (
+                      <Badge className="bg-emerald-600 text-white text-xs px-1.5 py-0.5 ml-1">
+                        {approvedQuotationsCount}
+                      </Badge>
+                    )}
+                  </div>
+                </Link>
+              ))}
+              {role === 'admin' && (
+                <Link
+                  to="/admin-dashboard"
+                  className={`px-3 py-2 rounded-md font-montserrat text-sm font-medium transition-all duration-200 whitespace-nowrap ${location.pathname === "/admin-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
+                  onClick={() => console.log('Admin Dashboard link clicked!')}
+                >
+                  Dashboard
+                </Link>
+              )}
+              {(merchantStatus === 'approved' || merchantStatus === 'blocked') && (
+                <Link
+                  to="/merchant-dashboard"
+                  className={`px-3 py-2 rounded-md font-montserrat text-sm font-medium transition-all duration-200 whitespace-nowrap ${location.pathname === "/merchant-dashboard" ? "text-gold-600 font-semibold" : "text-emerald-700 hover:text-gold-600"}`}
+                >
+                  Merchant Dashboard
+                </Link>
+              )}
+            </nav>
           )}
+
+          {/* Right side actions - Icons and Cart */}
+          <div className="flex items-center gap-2">
+            {/* Wishlist Icon */}
+            {!hideWishlist && (
+              <Link to="/wishlist">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-emerald-700 hover:text-gold-600 hover:bg-gold-50 transition-all duration-200"
+                >
+                  <Heart className="w-5 h-5" />
+                  <span className="sr-only">Wishlist</span>
+                </Button>
+              </Link>
+            )}
+            
+            {/* User Profile Icon */}
+            {!hideLogin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-emerald-700 hover:text-gold-600 hover:bg-gold-50 transition-all duration-200"
+                onClick={handleUserIconClick}
+              >
+                <User className="w-5 h-5" />
+                <span className="sr-only">User Profile</span>
+              </Button>
+            )}
+            
+            {/* Cart Button */}
+            {!hideCart && (
+              <Link to="/cart">
+                <Button className="relative bg-gold-600 hover:bg-gold-700 text-white px-4 py-2 font-semibold transition-all duration-200 shadow-sm h-10 font-montserrat flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4" />
+                  <span className="hidden sm:inline">Cart</span>
+                  {cartCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs p-0 border-2 border-white">
+                      {cartCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
       <MyProfilePopup isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
