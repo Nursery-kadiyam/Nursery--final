@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Product Linking Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            background: #f3f9ff;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status.success { background: #e8f5e8; color: #2e7d32; }
+        .status.error { background: #ffebee; color: #c62828; }
+        .status.warning { background: #fff3e0; color: #ef6c00; }
+        .order-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .product-info {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Product Linking Fix Test</h1>
+        <p>This page tests the fix for the "Unknown Product" issue in merchant dashboard.</p>
+        
+        <div class="test-section">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>First, run the SQL fix: <code>fix_product_linking_comprehensive.sql</code></li>
+                <li>Update the Supabase URL and key below</li>
+                <li>Click "Test Product Linking" to verify the fix</li>
+                <li>Check that product names show as "Bamboo Plant" instead of "Unknown Product"</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Configuration:</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">https://your-project.supabase.co</span></p>
+            <p><strong>Status:</strong> <span id="connection-status" class="status warning">Not Connected</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Tests:</h3>
+            <button onclick="testProductLinking()">Test Product Linking</button>
+            <button onclick="testSpecificOrder()">Test ORD-2025-0005</button>
+            <button onclick="testDatabaseConnection()">Test Connection</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Test Results</h3>
+            <div id="loading" class="loading" style="display: none;">Loading...</div>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Replace with your actual anon key
+        
+        // Update the display
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test database connection
+        window.testDatabaseConnection = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            const statusDiv = document.getElementById('connection-status');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    statusDiv.textContent = 'Connection Failed';
+                    statusDiv.className = 'status error';
+                    resultsDiv.innerHTML = `<div class="status error">Connection Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'status success';
+                    resultsDiv.innerHTML = `<div class="status success">Database connection successful!</div>`;
+                }
+            } catch (err) {
+                statusDiv.textContent = 'Connection Failed';
+                statusDiv.className = 'status error';
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test product linking
+        window.testProductLinking = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const testMerchantCode = 'MC-2025-TXYR';
+                
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: testMerchantCode });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+                } else if (orders && orders.length > 0) {
+                    const order = orders[0];
+                    const hasOrderItems = order.order_items && order.order_items.length > 0;
+                    
+                    if (hasOrderItems) {
+                        const productNames = order.order_items.map(item => item.product_name);
+                        const hasUnknownProducts = productNames.some(name => name === 'Unknown Product');
+                        const hasBambooPlant = productNames.some(name => name === 'Bamboo Plant');
+                        
+                        let status = 'success';
+                        let message = 'Product linking working correctly!';
+                        
+                        if (hasUnknownProducts) {
+                            status = 'error';
+                            message = 'Still showing "Unknown Product" - fix not working';
+                        } else if (hasBambooPlant) {
+                            status = 'success';
+                            message = 'Showing "Bamboo Plant" - fix working!';
+                        } else {
+                            status = 'warning';
+                            message = 'Product names found but not "Bamboo Plant"';
+                        }
+                        
+                        resultsDiv.innerHTML = `
+                            <div class="status ${status}">${message}</div>
+                            <h4>Product Names Found:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li>${name}</li>`).join('')}
+                            </ul>
+                            <h4>Order Data:</h4>
+                            <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `<div class="status warning">No order items found</div>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div class="status warning">No orders found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test specific order
+        window.testSpecificOrder = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // First get the order ID for ORD-2025-0005
+                const { data: orderData, error: orderError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code')
+                    .eq('order_code', 'ORD-2025-0005')
+                    .eq('merchant_code', 'MC-2025-TXYR')
+                    .single();
+
+                if (orderError || !orderData) {
+                    resultsDiv.innerHTML = `<div class="status error">Order ORD-2025-0005 not found</div>`;
+                    return;
+                }
+
+                // Test order details for this specific order
+                const { data: orderDetails, error } = await supabase
+                    .rpc('get_merchant_order_details', { 
+                        p_order_id: orderData.id, 
+                        p_merchant_code: 'MC-2025-TXYR' 
+                    });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+                } else if (orderDetails && orderDetails.length > 0) {
+                    const order = orderDetails[0];
+                    const hasOrderItems = order.order_items && order.order_items.length > 0;
+                    
+                    if (hasOrderItems) {
+                        const productNames = order.order_items.map(item => item.product_name);
+                        const hasUnknownProducts = productNames.some(name => name === 'Unknown Product');
+                        const hasBambooPlant = productNames.some(name => name === 'Bamboo Plant');
+                        
+                        let status = 'success';
+                        let message = 'Order ORD-2025-0005 product linking working!';
+                        
+                        if (hasUnknownProducts) {
+                            status = 'error';
+                            message = 'Order ORD-2025-0005 still showing "Unknown Product"';
+                        } else if (hasBambooPlant) {
+                            status = 'success';
+                            message = 'Order ORD-2025-0005 showing "Bamboo Plant" - FIXED!';
+                        } else {
+                            status = 'warning';
+                            message = 'Order ORD-2025-0005 has product names but not "Bamboo Plant"';
+                        }
+                        
+                        resultsDiv.innerHTML = `
+                            <div class="status ${status}">${message}</div>
+                            <h4>Order ORD-2025-0005 Product Names:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li>${name}</li>`).join('')}
+                            </ul>
+                            <h4>Order Details:</h4>
+                            <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `<div class="status warning">Order ORD-2025-0005 has no order items</div>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div class="status warning">No order details found for ORD-2025-0005</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            testDatabaseConnection();
+        });
+    </script>
+</body>
+</html>

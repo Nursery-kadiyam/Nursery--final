@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Confirm Orders - Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .order-id {
+            font-weight: bold;
+            color: #333;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-shipped {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .status-delivered {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+        .order-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .detail-value {
+            font-weight: 500;
+            color: #333;
+        }
+        .items-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .item-name {
+            font-weight: 500;
+        }
+        .item-details {
+            font-size: 12px;
+            color: #666;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #059669;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button.shipped {
+            background: #1e40af;
+        }
+        .button.shipped:hover {
+            background: #1e3a8a;
+        }
+        .button.delivered {
+            background: #7c3aed;
+        }
+        .button.delivered:hover {
+            background: #6d28d9;
+        }
+        .button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .auto-confirm {
+            background: #f0fdf4;
+            border: 1px solid #22c55e;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            color: #166534;
+            font-size: 14px;
+        }
+        .flow-step {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .step-number {
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Auto Confirm Orders - Test</h1>
+        <p>Orders are now automatically confirmed when placed by users. No manual confirmation required!</p>
+        
+        <div class="auto-confirm">
+            <strong>✅ Automatic Confirmation:</strong> Orders are set to "confirmed" status immediately when placed by users, providing instant confirmation and better user experience.
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Order Flow (New)</h2>
+        
+        <div class="flow-step">
+            <span class="step-number">1</span>
+            <strong>User Places Order</strong><br>
+            User selects plants from merchants and places order
+        </div>
+        
+        <div class="flow-step">
+            <span class="step-number">2</span>
+            <strong>Order Automatically Confirmed</strong><br>
+            Order status is set to "confirmed" immediately - no manual confirmation needed
+        </div>
+        
+        <div class="flow-step">
+            <span class="step-number">3</span>
+            <strong>Merchant Sees Confirmed Order</strong><br>
+            Merchant dashboard shows confirmed order with items, customer info, and delivery address
+        </div>
+        
+        <div class="flow-step">
+            <span class="step-number">4</span>
+            <strong>Merchant Updates Status</strong><br>
+            Merchant can mark as "shipped" or "delivered" as order progresses
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📦 Sample Orders (Auto Confirmed)</h2>
+        
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-id">ORD-2025-0005</div>
+                <div class="order-status status-confirmed">Confirmed ✓</div>
+            </div>
+            
+            <div class="order-details">
+                <div class="detail-item">
+                    <div class="detail-label">Customer</div>
+                    <div class="detail-value">John Doe</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">john.doe@example.com</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Amount</div>
+                    <div class="detail-value">₹3,300</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Items</div>
+                    <div class="detail-value">2 items</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Date</div>
+                    <div class="detail-value">9/23/2025</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Auto Confirmed</div>
+                    <div class="detail-value" style="color: #059669;">✓ Yes</div>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h4>Order Items</h4>
+                <div class="item">
+                    <div>
+                        <div class="item-name">Golden Bamboo Plant</div>
+                        <div class="item-details">Quantity: 2 × ₹1,200 = ₹2,400</div>
+                    </div>
+                    <div class="item-price">₹2,400</div>
+                </div>
+                <div class="item">
+                    <div>
+                        <div class="item-name">Ficus Lyrata</div>
+                        <div class="item-details">Quantity: 1 × ₹900 = ₹900</div>
+                    </div>
+                    <div class="item-price">₹900</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="button shipped" onclick="updateStatus(this, 'shipped')">🚚 Mark as Shipped</button>
+                <button class="button delivered" onclick="updateStatus(this, 'delivered')">✅ Mark as Delivered</button>
+            </div>
+        </div>
+
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-id">ORD-2025-0006</div>
+                <div class="order-status status-shipped">Shipped 🚚</div>
+            </div>
+            
+            <div class="order-details">
+                <div class="detail-item">
+                    <div class="detail-label">Customer</div>
+                    <div class="detail-value">Jane Smith</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">jane.smith@example.com</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Amount</div>
+                    <div class="detail-value">₹2,100</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Items</div>
+                    <div class="detail-value">1 item</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Date</div>
+                    <div class="detail-value">9/22/2025</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Auto Confirmed</div>
+                    <div class="detail-value" style="color: #059669;">✓ Yes</div>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h4>Order Items</h4>
+                <div class="item">
+                    <div>
+                        <div class="item-name">Rose Plant (Red)</div>
+                        <div class="item-details">Quantity: 3 × ₹700 = ₹2,100</div>
+                    </div>
+                    <div class="item-price">₹2,100</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="button shipped" disabled>🚚 Already Shipped</button>
+                <button class="button delivered" onclick="updateStatus(this, 'delivered')">✅ Mark as Delivered</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 What Changed</h2>
+        
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">
+            <h3>✅ Automatic Order Confirmation</h3>
+            <ul>
+                <li><strong>Before:</strong> Orders were created with "pending" status, requiring manual confirmation by merchant</li>
+                <li><strong>After:</strong> Orders are automatically set to "confirmed" status when placed by user</li>
+                <li><strong>Benefit:</strong> Instant confirmation for users, no waiting for merchant approval</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Updated Merchant Dashboard</h3>
+            <ul>
+                <li><strong>Removed:</strong> Manual "Confirm Order" buttons (no longer needed)</li>
+                <li><strong>Added:</strong> "Mark as Shipped" and "Mark as Delivered" buttons</li>
+                <li><strong>Updated:</strong> Status filter to show "Confirmed" instead of "Pending"</li>
+                <li><strong>Improved:</strong> Status badges with better colors for confirmed orders</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Better User Experience</h3>
+            <ul>
+                <li><strong>Instant Confirmation:</strong> Users get immediate confirmation when placing orders</li>
+                <li><strong>No Waiting:</strong> No need to wait for merchant to confirm the order</li>
+                <li><strong>Clear Status:</strong> Orders show as "confirmed" immediately in user's order history</li>
+                <li><strong>Merchant Focus:</strong> Merchants can focus on fulfillment (shipping/delivery) rather than confirmation</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 Technical Implementation</h2>
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 4px; padding: 15px; font-family: monospace; font-size: 12px;">
+            <strong>Changes Made:</strong><br>
+            1. Updated MyQuotations.tsx - Set status to 'confirmed' for both parent and child orders<br>
+            2. Updated MerchantDashboard.tsx - Removed manual confirmation buttons<br>
+            3. Updated status filters - Removed 'pending', kept 'confirmed'<br>
+            4. Updated status badges - Made 'confirmed' green (success color)<br>
+            5. Added status progression: confirmed → shipped → delivered<br>
+            6. Updated order details modal to show auto-confirmation message
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(button, newStatus) {
+            const orderCard = button.closest('.order-card');
+            const statusElement = orderCard.querySelector('.order-status');
+            const orderId = orderCard.querySelector('.order-id').textContent;
+            
+            // Update status
+            if (newStatus === 'shipped') {
+                statusElement.textContent = 'Shipped 🚚';
+                statusElement.className = 'order-status status-shipped';
+                button.textContent = '🚚 Already Shipped';
+                button.disabled = true;
+            } else if (newStatus === 'delivered') {
+                statusElement.textContent = 'Delivered ✅';
+                statusElement.className = 'order-status status-delivered';
+                button.textContent = '✅ Delivered';
+                button.disabled = true;
+                
+                // Disable shipped button too
+                const shippedButton = orderCard.querySelector('.button.shipped');
+                if (shippedButton) {
+                    shippedButton.textContent = '🚚 Already Shipped';
+                    shippedButton.disabled = true;
+                }
+            }
+            
+            // Show success message
+            alert(`Order ${orderId} status updated to ${newStatus}!`);
+        }
+    </script>
+</body>
+</html>

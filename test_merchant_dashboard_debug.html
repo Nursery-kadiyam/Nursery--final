@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Merchant Dashboard Data Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            background: #f3f9ff;
+        }
+        .success { background: #e8f5e8; color: #2e7d32; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background: #fff3e0; color: #ef6c00; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1976d2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Merchant Dashboard Data Flow</h1>
+        <p>This page helps debug why the merchant dashboard is still showing "Unknown Product".</p>
+        
+        <div class="debug-section">
+            <h3>Configuration:</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">https://your-project.supabase.co</span></p>
+            <p><strong>Status:</strong> <span id="connection-status" class="warning">Not Connected</span></p>
+        </div>
+
+        <div class="debug-section">
+            <h3>Debug Tests:</h3>
+            <button onclick="testRPCFunction()">Test RPC Function</button>
+            <button onclick="testOrderDetails()">Test Order Details</button>
+            <button onclick="testDataStructure()">Test Data Structure</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Debug Results</h3>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Replace with your actual anon key
+        
+        // Update the display
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test RPC function
+        window.testRPCFunction = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const statusDiv = document.getElementById('connection-status');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing RPC function...</div>';
+
+            try {
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: 'MC-2025-TXYR' });
+
+                if (error) {
+                    statusDiv.textContent = 'Connection Failed';
+                    statusDiv.className = 'error';
+                    resultsDiv.innerHTML = `<div class="error">RPC Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'success';
+                    
+                    if (orders && orders.length > 0) {
+                        const order = orders[0];
+                        const productNames = order.order_items.map(item => item.product_name);
+                        const hasRealNames = productNames.some(name => 
+                            name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                        );
+                        
+                        if (hasRealNames) {
+                            resultsDiv.innerHTML = `
+                                <div class="success">✅ RPC Function: WORKING!</div>
+                                <h4>Product Names from RPC:</h4>
+                                <ul>
+                                    ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                                </ul>
+                                <h4>Full RPC Response:</h4>
+                                <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                            `;
+                        } else {
+                            resultsDiv.innerHTML = `
+                                <div class="error">❌ RPC Function: Still returning generic names</div>
+                                <h4>Product Names from RPC:</h4>
+                                <ul>
+                                    ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                                </ul>
+                                <h4>Full RPC Response:</h4>
+                                <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                            `;
+                        }
+                    } else {
+                        resultsDiv.innerHTML = `<div class="warning">⚠️ No orders found</div>`;
+                    }
+                }
+            } catch (err) {
+                statusDiv.textContent = 'Connection Failed';
+                statusDiv.className = 'error';
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test order details
+        window.testOrderDetails = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing order details...</div>';
+
+            try {
+                const { data: orderDetails, error } = await supabase
+                    .rpc('get_merchant_order_details', { 
+                        p_order_id: 'b8d4d41c-1ebd-4507-832e-38f38965a9d9', 
+                        p_merchant_code: 'MC-2025-TXYR' 
+                    });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="error">Order Details Error: ${error.message}</div>`;
+                } else if (orderDetails && orderDetails.length > 0) {
+                    const order = orderDetails[0];
+                    const productNames = order.order_items.map(item => item.product_name);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    if (hasRealNames) {
+                        resultsDiv.innerHTML = `
+                            <div class="success">✅ Order Details: WORKING!</div>
+                            <h4>Product Names from Order Details:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                            </ul>
+                            <h4>Full Order Details Response:</h4>
+                            <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `
+                            <div class="error">❌ Order Details: Still returning generic names</div>
+                            <h4>Product Names from Order Details:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                            </ul>
+                            <h4>Full Order Details Response:</h4>
+                            <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                        `;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div class="warning">⚠️ No order details found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test data structure
+        window.testDataStructure = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing data structure...</div>';
+
+            try {
+                // Test the exact same call that the frontend makes
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: 'MC-2025-TXYR' });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                } else if (orders && orders.length > 0) {
+                    const order = orders[0];
+                    
+                    // Simulate the frontend processing
+                    const processedOrder = {
+                        id: order.order_id,
+                        order_id: order.order_id,
+                        order_code: order.order_code,
+                        total_amount: order.total_amount,
+                        status: order.status,
+                        created_at: order.created_at,
+                        delivery_address: null,
+                        quotation_code: null,
+                        cart_items: null,
+                        order_items: order.order_items || []
+                    };
+                    
+                    const productNames = processedOrder.order_items.map(item => item.product_name);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="${hasRealNames ? 'success' : 'error'}">
+                            ${hasRealNames ? '✅' : '❌'} Data Structure: ${hasRealNames ? 'WORKING!' : 'NOT WORKING'}
+                        </div>
+                        <h4>Processed Order Structure:</h4>
+                        <div class="debug-info">${JSON.stringify(processedOrder, null, 2)}</div>
+                        <h4>Product Names in Processed Order:</h4>
+                        <ul>
+                            ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                        </ul>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<div class="warning">⚠️ No orders found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            testRPCFunction();
+        });
+    </script>
+</body>
+</html>

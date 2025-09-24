@@ -23,7 +23,7 @@ const Catalog = () => {
       stemThickness: "",
       isGrafted: false,
       bagSize: "",
-      quantity: 1,
+      quantity: "",
       deliveryLocation: "",
       deliveryTimeline: "",
       notes: ""
@@ -36,8 +36,54 @@ const Catalog = () => {
   const [showSummary, setShowSummary] = useState(false);
   const [searchInputs, setSearchInputs] = useState<{[key: number]: string}>({});
   const [showDropdowns, setShowDropdowns] = useState<{[key: number]: boolean}>({});
+  const [plantImages, setPlantImages] = useState<{[key: number]: string}>({});
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState({
+    address: "",
+    city: "",
+    district: "",
+    pincode: ""
+  });
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Load saved data from localStorage on component mount
+  useEffect(() => {
+    const savedSelectedPlants = localStorage.getItem('catalog_selected_plants');
+    const savedDeliveryAddress = localStorage.getItem('catalog_delivery_address');
+    
+    if (savedSelectedPlants) {
+      try {
+        const parsedPlants = JSON.parse(savedSelectedPlants);
+        setSelectedPlants(parsedPlants);
+      } catch (error) {
+        console.error('Error parsing saved plants:', error);
+      }
+    }
+    
+    if (savedDeliveryAddress) {
+      try {
+        const parsedAddress = JSON.parse(savedDeliveryAddress);
+        setDeliveryAddress(parsedAddress);
+      } catch (error) {
+        console.error('Error parsing saved address:', error);
+      }
+    }
+  }, []);
+
+  // Save selected plants to localStorage whenever they change
+  useEffect(() => {
+    if (selectedPlants.length > 0) {
+      localStorage.setItem('catalog_selected_plants', JSON.stringify(selectedPlants));
+    }
+  }, [selectedPlants]);
+
+  // Save delivery address to localStorage whenever it changes
+  useEffect(() => {
+    if (deliveryAddress.address || deliveryAddress.city || deliveryAddress.district || deliveryAddress.pincode) {
+      localStorage.setItem('catalog_delivery_address', JSON.stringify(deliveryAddress));
+    }
+  }, [deliveryAddress]);
 
   // Fetch real-time products from Supabase
   useEffect(() => {
@@ -103,11 +149,91 @@ const Catalog = () => {
     setSearchInputs(prev => ({ ...prev, [plantId]: value }));
     setShowDropdowns(prev => ({ ...prev, [plantId]: true }));
     
+    // Get and set plant image if value matches a known plant
+    const plantImage = getPlantImage(value);
+    setPlantImages(prev => ({ ...prev, [plantId]: plantImage }));
+    
     // Find the index of the plant with this ID
     const plantIndex = selectedPlants.findIndex(p => p.id === plantId);
     if (plantIndex !== -1) {
       updatePlantSelection(plantIndex, "plantName", value);
     }
+  };
+
+  // Get plant image based on plant name
+  const getPlantImage = (plantName: string) => {
+    if (!plantName) return '/assets/placeholder.svg';
+    
+    // Map common plant names to their corresponding images
+    const plantImageMap: {[key: string]: string} = {
+      'golden bamboo': '/assets/golden bamboo.jpeg',
+      'akalifa pink': '/assets/akalifa pink.jpeg',
+      'arkeliform': '/assets/Arkeliform.jpeg',
+      'ashoka': '/assets/Ashoka.jpeg',
+      'bamboo': '/assets/Bamboo plants.jpeg',
+      'boston fern': '/assets/Boston Fern.jpeg',
+      'cassia': '/assets/Cassia Tree.jpeg',
+      'croton': '/assets/Croton plant.jpeg',
+      'gulmohar': '/assets/Gulmohar.jpeg',
+      'neem': '/assets/Neem.jpeg',
+      'rose': '/assets/Rose Bush.jpeg',
+      'spider lily': '/assets/Spider lilly.jpeg',
+      'star fruit': '/assets/Star fruit .jpeg',
+      'terminalia': '/assets/Terminalia green.jpeg',
+      'thailand ixora': '/assets/Thailand ixora.jpeg',
+      'tiwan pink jama': '/assets/Tiwan pink jama.jpeg',
+      'ujenia avenue': '/assets/Ujenia avenue.jpeg',
+      'vepa': '/assets/Vepa.jpeg',
+      'hibiscus': '/assets/lipstick red.jpeg',
+      'ganuga': '/assets/ganuga.jpeg',
+      'bogada': '/assets/Bogada.jpeg',
+      'conacorpus': '/assets/ConaCorpus.jpeg',
+      'conokarpas': '/assets/Conokarpas.jpeg',
+      'cypress': '/assets/Cypress old.jpeg',
+      'dianella grass': '/assets/Dianella grass.jpeg',
+      'dismodiya': '/assets/Dismodiya.jpeg',
+      'dracina': '/assets/Dracina.jpeg',
+      'drogun fruits': '/assets/Drogun Fruits.jpeg',
+      'ficus lyrata': '/assets/Ficus lyrata.jpeg',
+      'foxtail': '/assets/Foxtail.jpeg',
+      'grandis': '/assets/Grandis.jpeg',
+      'gulmohar avenue': '/assets/Gulmohar avenue plants.jpeg',
+      'helikoniya': '/assets/Helikoniya.jpeg',
+      'jatropha': '/assets/Jatropha.jpeg',
+      'kaya': '/assets/kaya.jpeg',
+      'kobbari': '/assets/kobbari.jpeg',
+      'konacarpas': '/assets/Konacarpas.jpeg',
+      'lipstick red': '/assets/lipstick red.jpeg',
+      'mahagani': '/assets/Mahagani.jpeg',
+      'mahatama': '/assets/mahatama.jpeg',
+      'market nimma': '/assets/Market nimma.jpeg',
+      'marri trees': '/assets/marri trees.jpeg',
+      'micro carfa spiral': '/assets/Micro carfa spiral shape.jpeg',
+      'micro multi balls': '/assets/Micro multi balls.jpeg',
+      'mirchi mere green': '/assets/Mirchi mere green.jpeg',
+      'mirchi mery gold': '/assets/Mirchi mery gold.jpeg',
+      'noda': '/assets/Noda.jpeg',
+      'pendanus': '/assets/pendanus.jpeg',
+      'ravi': '/assets/Ravi.jpeg',
+      'rela': '/assets/Rela.jpeg',
+      'seetapalam': '/assets/Seetapalam.jpeg',
+      'starlight': '/assets/Starlight.jpeg',
+      'tabibiya roja': '/assets/Tabibiya roja.jpeg',
+      'tabibiya rosea': '/assets/Tabibiya rosea.jpeg',
+      'terminalia green': '/assets/Terminalia green.jpeg',
+      'terminiliya': '/assets/Terminiliya.jpeg',
+      'thailemon': '/assets/Thailemon .jpeg',
+      'ujenia mini': '/assets/Ujniya mini.jpeg'
+    };
+    
+    const lowerPlantName = plantName.toLowerCase();
+    for (const [key, imagePath] of Object.entries(plantImageMap)) {
+      if (lowerPlantName.includes(key)) {
+        return imagePath;
+      }
+    }
+    
+    return '/assets/placeholder.svg';
   };
 
   // Handle plant selection from dropdown
@@ -119,6 +245,10 @@ const Catalog = () => {
     
     setSearchInputs(prev => ({ ...prev, [plantId]: plantName }));
     setShowDropdowns(prev => ({ ...prev, [plantId]: false }));
+    
+    // Get and set plant image
+    const plantImage = getPlantImage(plantName);
+    setPlantImages(prev => ({ ...prev, [plantId]: plantImage }));
     
     // Find the index of the plant with this ID
     const plantIndex = selectedPlants.findIndex(p => p.id === plantId);
@@ -220,7 +350,7 @@ const Catalog = () => {
 
   // Check if a plant form is completely filled
   const isPlantFormComplete = (plant: any) => {
-    return plant.plantName && plant.quantity > 0;
+    return plant.plantName && plant.quantity && parseInt(plant.quantity) > 0 && plant.deliveryTimeline;
   };
 
   // Check if we can add another plant (current plant must be complete)
@@ -234,7 +364,7 @@ const Catalog = () => {
     if (!canAddPlant()) {
       toast({
         title: "Complete Current Plant",
-        description: "Please fill in the plant name and quantity for the current plant before adding another.",
+        description: "Please fill in the plant name, quantity, and delivery timeline for the current plant before adding another.",
         variant: "destructive"
       });
       return;
@@ -260,9 +390,29 @@ const Catalog = () => {
     // Initialize search input state for the new plant
     setSearchInputs(prev => ({ ...prev, [newId]: "" }));
     setShowDropdowns(prev => ({ ...prev, [newId]: false }));
+    setPlantImages(prev => ({ ...prev, [newId]: '/assets/placeholder.svg' }));
   };
 
   const removePlantFromSelection = (index: number) => {
+    const plantToRemove = selectedPlants[index];
+    if (plantToRemove) {
+      // Clean up state for the removed plant
+      setSearchInputs(prev => {
+        const newState = { ...prev };
+        delete newState[plantToRemove.id];
+        return newState;
+      });
+      setShowDropdowns(prev => {
+        const newState = { ...prev };
+        delete newState[plantToRemove.id];
+        return newState;
+      });
+      setPlantImages(prev => {
+        const newState = { ...prev };
+        delete newState[plantToRemove.id];
+        return newState;
+      });
+    }
     setSelectedPlants(selectedPlants.filter((_, i) => i !== index));
   };
 
@@ -272,8 +422,8 @@ const Catalog = () => {
     setSelectedPlants(updatedPlants);
   };
 
-  const showQuotationSummary = () => {
-    const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity > 0);
+  const showQuotationSummary = async () => {
+    const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity && parseInt(plant.quantity) > 0);
     if (validPlants.length === 0) {
       toast({
         title: "Invalid Selection",
@@ -282,6 +432,105 @@ const Catalog = () => {
       });
       return;
     }
+    
+    // Load saved address if user is logged in
+    if (user) {
+      await loadSavedAddress();
+    }
+    
+    setShowDeliveryModal(true);
+  };
+
+  const loadSavedAddress = async () => {
+    // First check localStorage for any unsaved changes
+    const savedAddress = localStorage.getItem('catalog_delivery_address');
+    if (savedAddress) {
+      try {
+        const parsedAddress = JSON.parse(savedAddress);
+        setDeliveryAddress(parsedAddress);
+        return; // Use localStorage data if available
+      } catch (error) {
+        console.error('Error parsing saved address from localStorage:', error);
+      }
+    }
+    
+    // If no localStorage data and user is logged in, load from database
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('address')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data?.address) {
+        // Parse the address string back to object format
+        try {
+          const parsedAddress = JSON.parse(data.address);
+          setDeliveryAddress(parsedAddress);
+          // Also save to localStorage for future use
+          localStorage.setItem('catalog_delivery_address', JSON.stringify(parsedAddress));
+        } catch (parseError) {
+          // If parsing fails, treat as old format and create new structure
+          const addressData = {
+            address: data.address,
+            city: "",
+            district: "",
+            pincode: ""
+          };
+          setDeliveryAddress(addressData);
+          localStorage.setItem('catalog_delivery_address', JSON.stringify(addressData));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved address:', error);
+    }
+  };
+
+  const handleDeliveryAddressChange = (field: string, value: string) => {
+    setDeliveryAddress(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const saveDeliveryAddress = async () => {
+    if (!user) return;
+    
+    try {
+      // Convert address object to JSON string for storage
+      const addressString = JSON.stringify(deliveryAddress);
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          address: addressString
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Address Saved",
+        description: "Delivery address has been saved to your profile.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error saving delivery address:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save address. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const proceedToSummary = () => {
+    saveDeliveryAddress();
+    setShowDeliveryModal(false);
     setShowSummary(true);
   };
 
@@ -295,7 +544,7 @@ const Catalog = () => {
       return;
     }
 
-    const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity > 0);
+    const validPlants = selectedPlants.filter(plant => plant.plantName && plant.quantity && parseInt(plant.quantity) > 0);
     if (validPlants.length === 0) {
       toast({
         title: "Invalid Selection",
@@ -347,6 +596,10 @@ const Catalog = () => {
         description: `Your quotation request with ${validPlants.length} plant${validPlants.length > 1 ? 's' : ''} has been submitted. Merchants will respond with their prices.`,
       });
 
+      // Clear localStorage after successful submission
+      localStorage.removeItem('catalog_selected_plants');
+      localStorage.removeItem('catalog_delivery_address');
+
       // Reset form
       const newId = Date.now();
       setSelectedPlants([{
@@ -359,11 +612,17 @@ const Catalog = () => {
         stemThickness: "",
         isGrafted: false,
         bagSize: "",
-        quantity: 1,
+        quantity: "",
         deliveryLocation: "",
         deliveryTimeline: "",
         notes: ""
       }]);
+      setDeliveryAddress({
+        address: "",
+        city: "",
+        district: "",
+        pincode: ""
+      });
       setShowSummary(false);
       
       // Reset search states
@@ -446,14 +705,63 @@ const Catalog = () => {
                     <h3 className="text-xl font-bold text-emerald-800">
                       Select Plants
                     </h3>
-                    <Button
-                      onClick={addPlantToSelection}
-                      disabled={!canAddPlant()}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Plant
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={addPlantToSelection}
+                        disabled={!canAddPlant()}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Plant
+                      </Button>
+                      {selectedPlants.length > 0 && (
+                        <Button
+                          onClick={() => {
+                            // Clear localStorage
+                            localStorage.removeItem('catalog_selected_plants');
+                            localStorage.removeItem('catalog_delivery_address');
+                            
+                            // Reset all states
+                            const newId = Date.now();
+                            setSelectedPlants([{
+                              id: newId,
+                              plantName: "",
+                              variety: "",
+                              plantType: "",
+                              ageCategory: "",
+                              heightRange: "",
+                              stemThickness: "",
+                              isGrafted: false,
+                              bagSize: "",
+                              quantity: 1,
+                              deliveryLocation: "",
+                              deliveryTimeline: "",
+                              notes: ""
+                            }]);
+                            setDeliveryAddress({
+                              address: "",
+                              city: "",
+                              district: "",
+                              pincode: ""
+                            });
+                            setSearchInputs({ [newId]: "" });
+                            setShowDropdowns({ [newId]: false });
+                            setShowSummary(false);
+                            setShowDeliveryModal(false);
+                            
+                            toast({
+                              title: "Form Cleared",
+                              description: "All form data has been cleared.",
+                              variant: "default"
+                            });
+                          }}
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                        >
+                          Clear All
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {selectedPlants.length === 0 ? (
@@ -531,6 +839,33 @@ const Catalog = () => {
                                 )}
                               </div>
 
+                              {/* Plant Image Display */}
+                              {plantImages[plant.id] && plantImages[plant.id] !== '/assets/placeholder.svg' && (
+                                <div className="mt-4">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Plant Image
+                                  </label>
+                                  <div className="flex items-center space-x-4">
+                                    <img
+                                      src={plantImages[plant.id]}
+                                      alt={plant.plantName || 'Selected plant'}
+                                      className="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                      onError={(e) => {
+                                        e.currentTarget.src = '/assets/placeholder.svg';
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Selected:</span> {plant.plantName || 'No plant selected'}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Image will be displayed when you select a plant name
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Variety and Plant Type */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -566,16 +901,16 @@ const Catalog = () => {
                               </div>
                             </div>
 
-                            {/* Growth/Age Details Section */}
+                            {/* Essential Plant Details */}
                             <div className="space-y-4">
                               <h5 className="text-lg font-semibold text-emerald-800 border-b border-emerald-200 pb-2">
-                                Growth / Age Details
+                                Plant Specifications
                               </h5>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Age Category
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Age
                                   </label>
                                   <select
                                     value={plant.ageCategory}
@@ -589,9 +924,28 @@ const Catalog = () => {
                                     <option value="3+ years">3+ years</option>
                                   </select>
                                 </div>
+                                
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Height Range
+                                    Bag Size
+                                  </label>
+                                  <select
+                                    value={plant.bagSize}
+                                    onChange={(e) => updatePlantSelection(index, "bagSize", e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="">Select size</option>
+                                    <option value="6&quot;">6&quot;</option>
+                                    <option value="8&quot;">8&quot;</option>
+                                    <option value="12&quot;">12&quot;</option>
+                                    <option value="16&quot;">16&quot;</option>
+                                    <option value="ground-grown">Ground-grown</option>
+                                  </select>
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Height
                                   </label>
                                   <select
                                     value={plant.heightRange}
@@ -605,115 +959,42 @@ const Catalog = () => {
                                     <option value=">6 ft">&gt;6 ft</option>
                                   </select>
                                 </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Stem Thickness (optional)
+                                    Quantity
                                   </label>
                                   <input
-                                    type="text"
-                                    value={plant.stemThickness}
-                                    onChange={(e) => updatePlantSelection(index, "stemThickness", e.target.value)}
-                                    placeholder="e.g., 2-3 cm"
+                                    type="number"
+                                    min="0"
+                                    value={plant.quantity}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '' || /^\d*$/.test(value)) {
+                                        updatePlantSelection(index, "quantity", value);
+                                      }
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   />
                                 </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Bag/Pot Size
-                                  </label>
-                                  <select
-                                    value={plant.bagSize}
-                                    onChange={(e) => updatePlantSelection(index, "bagSize", e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                  >
-                                    <option value="">Select size</option>
-                                      <option value="6&quot;">6&quot;</option>
-                                      <option value="8&quot;">8&quot;</option>
-                                      <option value="12&quot;">12&quot;</option>
-                                      <option value="16&quot;">16&quot;</option>
-                                    <option value="ground-grown">Ground-grown</option>
-                                  </select>
-                                </div>
                               </div>
-
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  id={`grafted-${index}`}
-                                  checked={plant.isGrafted}
-                                  onChange={(e) => updatePlantSelection(index, "isGrafted", e.target.checked)}
-                                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                                />
-                                <label htmlFor={`grafted-${index}`} className="text-sm font-medium text-gray-700">
-                                  Grafted / Seedling
-                                </label>
-                              </div>
-                            </div>
-
-                            {/* Quantity & Delivery Section */}
-                            <div className="space-y-4">
-                              <h5 className="text-lg font-semibold text-emerald-800 border-b border-emerald-200 pb-2">
-                                Quantity & Delivery
-                              </h5>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Quantity Required *
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={plant.quantity}
-                                  onChange={(e) => updatePlantSelection(index, "quantity", parseInt(e.target.value) || 1)}
-                                  className="w-full px-4 py-3 text-lg font-semibold border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                              </div>
-                              <div>
+                              {/* Delivery Timeline */}
+                              <div className="mt-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Delivery Timeline
+                                  Delivery Timeline *
                                 </label>
                                 <select
-                                    value={plant.deliveryTimeline}
-                                    onChange={(e) => updatePlantSelection(index, "deliveryTimeline", e.target.value)}
+                                  value={plant.deliveryTimeline}
+                                  onChange={(e) => updatePlantSelection(index, "deliveryTimeline", e.target.value)}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select timeline</option>
-                                    <option value="Within 7 days">Within 7 days</option>
-                                    <option value="Within 15 days">Within 15 days</option>
-                                    <option value="Within 1 month">Within 1 month</option>
-                                    <option value="Flexible">Flexible</option>
+                                  <option value="">Select delivery timeline</option>
+                                  <option value="Within 7 days">Within 7 days</option>
+                                  <option value="Within 15 days">Within 15 days</option>
+                                  <option value="Within 1 month">Within 1 month</option>
+                                  <option value="Flexible">Flexible</option>
                                 </select>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Delivery Location
-                                </label>
-                                <input
-                                  type="text"
-                                  value={plant.deliveryLocation}
-                                  onChange={(e) => updatePlantSelection(index, "deliveryLocation", e.target.value)}
-                                  placeholder="City, District, Pin Code"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Notes (Optional)
-                                </label>
-                                <textarea
-                                  value={plant.notes}
-                                  onChange={(e) => updatePlantSelection(index, "notes", e.target.value)}
-                                  placeholder="e.g., Require uniform height, bulk plantation use, roadside landscaping"
-                                  rows={3}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
                               </div>
                             </div>
 
@@ -740,6 +1021,98 @@ const Catalog = () => {
               </Card>
             )}
 
+            {/* Delivery Address Modal */}
+            {showDeliveryModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-emerald-800">
+                        Delivery Address
+                      </h2>
+                      <Button
+                        onClick={() => setShowDeliveryModal(false)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address *
+                        </label>
+                        <textarea
+                          value={deliveryAddress.address}
+                          onChange={(e) => handleDeliveryAddressChange('address', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          rows={3}
+                          placeholder="Enter your complete address"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            City *
+                          </label>
+                          <input
+                            type="text"
+                            value={deliveryAddress.city}
+                            onChange={(e) => handleDeliveryAddressChange('city', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder="Enter city"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            District *
+                          </label>
+                          <input
+                            type="text"
+                            value={deliveryAddress.district}
+                            onChange={(e) => handleDeliveryAddressChange('district', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder="Enter district"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Pincode *
+                        </label>
+                        <input
+                          type="text"
+                          value={deliveryAddress.pincode}
+                          onChange={(e) => handleDeliveryAddressChange('pincode', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Enter pincode"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-4 mt-6">
+                      <Button
+                        onClick={() => setShowDeliveryModal(false)}
+                        variant="outline"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={proceedToSummary}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        Proceed to Summary
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quotation Summary Modal */}
             {showSummary && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -759,7 +1132,7 @@ const Catalog = () => {
                     </div>
 
                     <div className="space-y-6">
-                      {selectedPlants.filter(plant => plant.plantName && plant.quantity > 0).map((plant, index) => (
+                      {selectedPlants.filter(plant => plant.plantName && plant.quantity && parseInt(plant.quantity) > 0).map((plant, index) => (
                         <div key={plant.id} className="border border-emerald-200 rounded-lg p-4 bg-emerald-50">
                           <h3 className="text-lg font-semibold text-emerald-800 mb-4">
                             Plant {index + 1}: {plant.plantName}
@@ -947,149 +1320,11 @@ const Catalog = () => {
       {/* Filter Section */}
       {/* (Filter section removed) */}
 
-      {/* Catalog Grid */}
-      <section className="py-12 sm:py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {filteredCategories.map((category, index) => (
-              <Card
-                key={category.id}
-                className="group cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-3 overflow-hidden animate-fade-in bg-white"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="relative h-48 sm:h-64 overflow-hidden">
-                  <img
-                    src={`https://images.unsplash.com/${category.image}?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80`}
-                    alt={`${category.name} from Kadiyam Nursery`}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all duration-500" />
-                  <div className="absolute top-4 left-4">
-                    <div className={`px-3 py-1 rounded-full text-xs font-semibold font-montserrat ${category.color === 'emerald'
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gold-500 text-white'
-                      }`}>
-                      {category.count} Varieties
-                    </div>
-                  </div>
-                  <div className="absolute top-4 right-4">
-                    <div className="bg-white/90 text-emerald-800 px-2 py-1 rounded-full text-xs font-semibold font-montserrat">
-                      Use Case Specific
-                    </div>
-                  </div>
-                </div>
-
-                <CardContent className="p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-bold text-emerald-800 mb-3 group-hover:text-gold-600 transition-colors font-montserrat">
-                    {category.name}
-                  </h3>
-                  <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base font-lora">
-                    {category.description}
-                  </p>
-
-                  <div className="mb-4">
-                    <p className="text-sm font-semibold text-emerald-700 mb-2 font-montserrat">Popular Varieties:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {category.examples.map((example, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-montserrat hover:bg-emerald-200 transition-colors"
-                        >
-                          {example}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                    <a
-                      href={category.id === 'commercial'
-                        ? "/assets/fruit%20plant%20pdf.pdf"
-                        : category.id === 'residential-indoor'
-                          ? "/assets/Air%20Purifying%20Plants%20Catalog.pdf"
-                          : category.id === 'residential-outdoor'
-                            ? "/assets/Cactus%20and%20Succulents%20Catalog.pdf"
-                            : "/assets/catalog.pdf"}
-                      download={category.id === 'commercial'
-                        ? "Commercial-Plants.pdf"
-                        : category.id === 'residential-indoor'
-                          ? "Air-Purifying-Plants-Catalog.pdf"
-                          : category.id === 'residential-outdoor'
-                            ? "Cactus-and-Succulents-Catalog.pdf"
-                            : undefined}
-                      className="flex-1"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button
-                        className={`w-full ${['commercial', 'residential-indoor', 'residential-outdoor'].includes(category.id) ? 'bg-emerald-600' : 'bg-gold-600'} text-white hover:bg-gold-700 transition-all duration-300 min-h-[48px] font-montserrat`}
-                      >
-                        Download
-                      </Button>
-                    </a>
-                    <a
-                      href={category.id === 'commercial'
-                        ? "/assets/fruit%20plant%20pdf.pdf"
-                        : category.id === 'residential-indoor'
-                          ? "/assets/Air%20Purifying%20Plants%20Catalog.pdf"
-                          : category.id === 'residential-outdoor'
-                            ? "/assets/Cactus%20and%20Succulents%20Catalog.pdf"
-                            : undefined}
-                      target={['commercial', 'residential-indoor', 'residential-outdoor'].includes(category.id) ? "_blank" : undefined}
-                      rel={['commercial', 'residential-indoor', 'residential-outdoor'].includes(category.id) ? "noopener noreferrer" : undefined}
-                      className="flex-1"
-                      {...(!['commercial', 'residential-indoor', 'residential-outdoor'].includes(category.id) ? { as: Link, to: '/plants' } : {})}
-                    >
-                      <Button
-                        variant="outline"
-                        className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-all duration-300 min-h-[48px] font-montserrat"
-                      >
-                        Learn More
-                      </Button>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Delivery Information */}
-          <div className="mt-12 sm:mt-16 text-center animate-fade-in">
-            <Card className="bg-emerald-50 border-emerald-200 shadow-lg max-w-4xl mx-auto">
-              <CardContent className="p-6 sm:p-8">
-                <h3 className="text-xl sm:text-2xl font-bold text-emerald-800 mb-4 font-montserrat">
-                  Pan-India Delivery for Every Use Case
-                </h3>
-                <p className="text-gray-600 mb-4 font-lora">
-                  Whether it's for commercial spaces, homes, or large projects, we deliver nationwide
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-emerald-700 font-montserrat">
-                  <div className="flex flex-col items-center">
-                    <span className="font-semibold">eKart</span>
-                    <span className="text-xs">Express Delivery</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="font-semibold">Delhivery</span>
-                    <span className="text-xs">Reliable Service</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="font-semibold">India Post</span>
-                    <span className="text-xs">Nationwide Reach</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="font-semibold">Shiprocket</span>
-                    <span className="text-xs">Fast & Secure</span>
-                  </div>
-                </div>
-                <p className="text-emerald-600 font-semibold mt-4 font-montserrat">
-                  Estimated Delivery: 3–7 Days | Free Shipping over ₹1499
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      {/* Catalog Grid - HIDDEN */}
+      {/* Plant category cards have been hidden as requested */}
+      
+      {/* Delivery Information - HIDDEN */}
+      {/* Delivery information section has been hidden as requested */}
 
 
 

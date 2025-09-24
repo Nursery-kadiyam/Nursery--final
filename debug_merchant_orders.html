@@ -4,86 +4,247 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Debug Merchant Orders</title>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 300px; }
+    </style>
 </head>
 <body>
     <h1>Debug Merchant Orders</h1>
-    <div id="output"></div>
+    
+    <div class="debug-section info">
+        <h3>1. Check Current User</h3>
+        <button onclick="checkCurrentUser()">Check Current User</button>
+        <div id="userResult"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>2. Check Merchant Data</h3>
+        <button onclick="checkMerchantData()">Check Merchant Data</button>
+        <div id="merchantResult"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>3. Check All Orders</h3>
+        <button onclick="checkAllOrders()">Check All Orders</button>
+        <div id="ordersResult"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>4. Check Orders by Merchant Code</h3>
+        <button onclick="checkOrdersByMerchantCode()">Check Orders by Merchant Code</button>
+        <div id="merchantOrdersResult"></div>
+    </div>
+
+    <div class="debug-section info">
+        <h3>5. Check Database Schema</h3>
+        <button onclick="checkSchema()">Check Schema</button>
+        <div id="schemaResult"></div>
+    </div>
 
     <script>
         // Initialize Supabase
-        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzQ4MzEsImV4cCI6MjA1MDU1MDgzMX0.8Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q5Q';
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        async function debugOrders() {
-            const output = document.getElementById('output');
+        async function checkCurrentUser() {
+            const resultDiv = document.getElementById('userResult');
+            resultDiv.innerHTML = '<p>Checking current user...</p>';
             
             try {
-                // Test 1: Check orders table structure
-                output.innerHTML += '<h2>1. Orders Table Structure</h2>';
-                const { data: orders, error: ordersError } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .limit(5);
-                
-                if (ordersError) {
-                    output.innerHTML += `<p style="color: red;">Error: ${ordersError.message}</p>`;
-                } else {
-                    output.innerHTML += `<p>Found ${orders.length} orders</p>`;
-                    output.innerHTML += `<pre>${JSON.stringify(orders, null, 2)}</pre>`;
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+                    return;
                 }
-
-                // Test 2: Check user_profiles table
-                output.innerHTML += '<h2>2. User Profiles Table</h2>';
-                const { data: profiles, error: profilesError } = await supabase
-                    .from('user_profiles')
-                    .select('*')
-                    .limit(3);
                 
-                if (profilesError) {
-                    output.innerHTML += `<p style="color: red;">Error: ${profilesError.message}</p>`;
-                } else {
-                    output.innerHTML += `<p>Found ${profiles.length} profiles</p>`;
-                    output.innerHTML += `<pre>${JSON.stringify(profiles, null, 2)}</pre>`;
+                if (!user) {
+                    resultDiv.innerHTML = `<div class="error"><p>No user logged in</p></div>`;
+                    return;
                 }
-
-                // Test 3: Check merchants table
-                output.innerHTML += '<h2>3. Merchants Table</h2>';
-                const { data: merchants, error: merchantsError } = await supabase
-                    .from('merchants')
-                    .select('*')
-                    .limit(3);
                 
-                if (merchantsError) {
-                    output.innerHTML += `<p style="color: red;">Error: ${merchantsError.message}</p>`;
-                } else {
-                    output.innerHTML += `<p>Found ${merchants.length} merchants</p>`;
-                    output.innerHTML += `<pre>${JSON.stringify(merchants, null, 2)}</pre>`;
-                }
-
-                // Test 4: Check products table
-                output.innerHTML += '<h2>4. Products Table</h2>';
-                const { data: products, error: productsError } = await supabase
-                    .from('products')
-                    .select('*')
-                    .limit(3);
-                
-                if (productsError) {
-                    output.innerHTML += `<p style="color: red;">Error: ${productsError.message}</p>`;
-                } else {
-                    output.innerHTML += `<p>Found ${products.length} products</p>`;
-                    output.innerHTML += `<pre>${JSON.stringify(products, null, 2)}</pre>`;
-                }
-
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ User logged in</p>
+                        <pre>${JSON.stringify({ id: user.id, email: user.email }, null, 2)}</pre>
+                    </div>
+                `;
             } catch (error) {
-                output.innerHTML += `<p style="color: red;">Unexpected error: ${error.message}</p>`;
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
             }
         }
 
-        // Run debug when page loads
-        debugOrders();
+        async function checkMerchantData() {
+            const resultDiv = document.getElementById('merchantResult');
+            resultDiv.innerHTML = '<p>Checking merchant data...</p>';
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    resultDiv.innerHTML = `<div class="error"><p>Please log in first</p></div>`;
+                    return;
+                }
+
+                const { data: merchantData, error } = await supabase
+                    .from('merchants')
+                    .select('*')
+                    .eq('email', user.email)
+                    .single();
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Merchant data found</p>
+                        <pre>${JSON.stringify(merchantData, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        async function checkAllOrders() {
+            const resultDiv = document.getElementById('ordersResult');
+            resultDiv.innerHTML = '<p>Checking all orders...</p>';
+            
+            try {
+                const { data: ordersData, error } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, merchant_id, parent_order_id, total_amount, status, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Found ${ordersData.length} orders</p>
+                        <pre>${JSON.stringify(ordersData, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        async function checkOrdersByMerchantCode() {
+            const resultDiv = document.getElementById('merchantOrdersResult');
+            resultDiv.innerHTML = '<p>Checking orders by merchant code...</p>';
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    resultDiv.innerHTML = `<div class="error"><p>Please log in first</p></div>`;
+                    return;
+                }
+
+                // Get merchant data first
+                const { data: merchantData, error: merchantError } = await supabase
+                    .from('merchants')
+                    .select('merchant_code')
+                    .eq('email', user.email)
+                    .single();
+                
+                if (merchantError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error getting merchant data: ${merchantError.message}</p></div>`;
+                    return;
+                }
+
+                const merchantCode = merchantData.merchant_code;
+                
+                // Check orders by merchant_code
+                const { data: ordersByCode, error: codeError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, merchant_id, parent_order_id, total_amount, status, created_at')
+                    .eq('merchant_code', merchantCode)
+                    .order('created_at', { ascending: false });
+                
+                if (codeError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error: ${codeError.message}</p></div>`;
+                    return;
+                }
+                
+                // Check orders by merchant_id
+                const { data: ordersById, error: idError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, merchant_id, parent_order_id, total_amount, status, created_at')
+                    .eq('merchant_id', merchantData.id)
+                    .order('created_at', { ascending: false });
+                
+                if (idError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error: ${idError.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Merchant Code: ${merchantCode}</p>
+                        <p>Orders by merchant_code: ${ordersByCode.length}</p>
+                        <p>Orders by merchant_id: ${ordersById.length}</p>
+                        <h4>Orders by merchant_code:</h4>
+                        <pre>${JSON.stringify(ordersByCode, null, 2)}</pre>
+                        <h4>Orders by merchant_id:</h4>
+                        <pre>${JSON.stringify(ordersById, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        async function checkSchema() {
+            const resultDiv = document.getElementById('schemaResult');
+            resultDiv.innerHTML = '<p>Checking database schema...</p>';
+            
+            try {
+                // Check if parent_order_id column exists
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('parent_order_id, merchant_id, subtotal')
+                    .limit(1);
+                
+                if (ordersError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error checking orders table: ${ordersError.message}</p></div>`;
+                    return;
+                }
+                
+                // Check if order_items has subtotal column
+                const { data: itemsData, error: itemsError } = await supabase
+                    .from('order_items')
+                    .select('subtotal')
+                    .limit(1);
+                
+                if (itemsError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error checking order_items table: ${itemsError.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Schema check passed!</p>
+                        <p>Orders table has: parent_order_id, merchant_id, subtotal columns</p>
+                        <p>Order_items table has: subtotal column</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
     </script>
 </body>
 </html>
-

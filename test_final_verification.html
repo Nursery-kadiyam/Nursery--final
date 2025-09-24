@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Verification - Quotation Data Flow Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #4caf50;
+            background: #e8f5e8;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .product-name {
+            font-weight: bold;
+            color: #2e7d32;
+            margin: 5px 0;
+        }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Final Verification - Quotation Data Flow Fix</h1>
+        <p>This page verifies that the quotation data flow fix is working correctly.</p>
+        
+        <div class="test-section">
+            <h3>✅ Fix Status: WORKING!</h3>
+            <p>Based on your database output, the fix is working correctly:</p>
+            <ul>
+                <li><strong>Product Name 1:</strong> <span class="product-name">Mahatama</span> ✅</li>
+                <li><strong>Product Name 2:</strong> <span class="product-name">Mirchi mere green</span> ✅</li>
+            </ul>
+            <p>No more "Unknown Product" or "Bamboo Plant" fallbacks!</p>
+        </div>
+
+        <div class="test-section">
+            <h3>What Was Fixed:</h3>
+            <ol>
+                <li><strong>Database Schema:</strong> Added quotation-specific columns to order_items</li>
+                <li><strong>Data Extraction:</strong> Extracted real product names from quotation_specifications</li>
+                <li><strong>Function Updates:</strong> Updated all database functions to use quotation data</li>
+                <li><strong>Priority System:</strong> Implemented smart fallback system</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Verification Tests:</h3>
+            <button onclick="testMerchantDashboard()">Test Merchant Dashboard</button>
+            <button onclick="testUserOrders()">Test User Orders</button>
+            <button onclick="testOrderDetails()">Test Order Details</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Replace with your actual anon key
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test merchant dashboard
+        window.testMerchantDashboard = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="success">Testing Merchant Dashboard...</div>';
+
+            try {
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: 'MC-2025-TXYR' });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+                } else if (orders && orders.length > 0) {
+                    const order = orders[0];
+                    const productNames = order.order_items.map(item => item.product_name);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    if (hasRealNames) {
+                        resultsDiv.innerHTML = `
+                            <div class="success">✅ Merchant Dashboard: WORKING!</div>
+                            <h4>Product Names Found:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li class="product-name">${name}</li>`).join('')}
+                            </ul>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `<div style="color: orange;">⚠️ Merchant Dashboard: Still showing generic names</div>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div style="color: red;">❌ No orders found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div style="color: red;">❌ Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test user orders
+        window.testUserOrders = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="success">Testing User Orders...</div>';
+
+            try {
+                // You'll need to replace with an actual user ID
+                const { data: orders, error } = await supabase
+                    .rpc('get_orders_with_products', { p_user_id: 'b8d4d41c-1ebd-4507-832e-38f38965a9d9' });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+                } else if (orders && orders.length > 0) {
+                    const order = orders[0];
+                    const productNames = order.order_items.map(item => item.product_name);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    if (hasRealNames) {
+                        resultsDiv.innerHTML = `
+                            <div class="success">✅ User Orders: WORKING!</div>
+                            <h4>Product Names Found:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li class="product-name">${name}</li>`).join('')}
+                            </ul>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `<div style="color: orange;">⚠️ User Orders: Still showing generic names</div>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div style="color: red;">❌ No orders found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div style="color: red;">❌ Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test order details
+        window.testOrderDetails = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="success">Testing Order Details...</div>';
+
+            try {
+                const { data: orderDetails, error } = await supabase
+                    .rpc('get_merchant_order_details', { 
+                        p_order_id: 'b8d4d41c-1ebd-4507-832e-38f38965a9d9', 
+                        p_merchant_code: 'MC-2025-TXYR' 
+                    });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+                } else if (orderDetails && orderDetails.length > 0) {
+                    const order = orderDetails[0];
+                    const productNames = order.order_items.map(item => item.product_name);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    if (hasRealNames) {
+                        resultsDiv.innerHTML = `
+                            <div class="success">✅ Order Details: WORKING!</div>
+                            <h4>Product Names Found:</h4>
+                            <ul>
+                                ${productNames.map(name => `<li class="product-name">${name}</li>`).join('')}
+                            </ul>
+                            <h4>Order Details Data:</h4>
+                            <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `<div style="color: orange;">⚠️ Order Details: Still showing generic names</div>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div style="color: red;">❌ No order details found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div style="color: red;">❌ Error: ${err.message}</div>`;
+            }
+        };
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            testMerchantDashboard();
+        });
+    </script>
+</body>
+</html>

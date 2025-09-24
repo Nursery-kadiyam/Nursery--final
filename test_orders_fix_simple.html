@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Orders Fix - Simple</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            background: #f3f9ff;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status.success { background: #e8f5e8; color: #2e7d32; }
+        .status.error { background: #ffebee; color: #c62828; }
+        .status.warning { background: #fff3e0; color: #ef6c00; }
+        .order-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .product-info {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Orders Fix Test - Simple</h1>
+        <p>This page tests the fix for the 400 error when fetching orders.</p>
+        
+        <div class="test-section">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>First, run the SQL fix: <code>debug_and_fix_orders_function.sql</code></li>
+                <li>Update the Supabase URL and key below</li>
+                <li>Click "Test Direct Query" to test the fallback method</li>
+                <li>Click "Test RPC Function" to test the database function</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Configuration:</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">https://your-project.supabase.co</span></p>
+            <p><strong>Status:</strong> <span id="connection-status" class="status warning">Not Connected</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Tests:</h3>
+            <button onclick="testDirectQuery()">Test Direct Query</button>
+            <button onclick="testRPCFunction()">Test RPC Function</button>
+            <button onclick="testDatabaseConnection()">Test Database Connection</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Test Results</h3>
+            <div id="loading" class="loading" style="display: none;">Loading...</div>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Replace with your actual anon key
+        
+        // Update the display
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test database connection
+        window.testDatabaseConnection = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            const statusDiv = document.getElementById('connection-status');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    statusDiv.textContent = 'Connection Failed';
+                    statusDiv.className = 'status error';
+                    resultsDiv.innerHTML = `<div class="status error">Connection Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'status success';
+                    resultsDiv.innerHTML = `<div class="status success">Database connection successful!</div>`;
+                }
+            } catch (err) {
+                statusDiv.textContent = 'Connection Failed';
+                statusDiv.className = 'status error';
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test direct query (fallback method)
+        window.testDirectQuery = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // Get current user
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    resultsDiv.innerHTML = '<div class="status warning">Please login to test orders</div>';
+                    loadingDiv.style.display = 'none';
+                    return;
+                }
+
+                // Test direct query
+                const { data: orders, error } = await supabase
+                    .from("orders")
+                    .select(`
+                        id, order_code, total_amount, cart_items, created_at, status, delivery_address, 
+                        merchant_code, quotation_code,
+                        order_items(
+                            id, product_id, quantity, price, unit_price, subtotal, quotation_id, merchant_code,
+                            products(name, image_url)
+                        )
+                    `)
+                    .eq("user_id", user.id)
+                    .order("created_at", { ascending: false })
+                    .limit(5);
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="status error">Direct Query Error: ${error.message}</div>`;
+                } else {
+                    displayOrders(orders, 'Direct Query Results', resultsDiv);
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test RPC function
+        window.testRPCFunction = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // Get current user
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    resultsDiv.innerHTML = '<div class="status warning">Please login to test orders</div>';
+                    loadingDiv.style.display = 'none';
+                    return;
+                }
+
+                // Test RPC function
+                const { data: orders, error } = await supabase
+                    .rpc('get_orders_with_products', { p_user_id: user.id });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="status error">RPC Function Error: ${error.message}</div>`;
+                } else {
+                    displayOrders(orders, 'RPC Function Results', resultsDiv);
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Display orders
+        function displayOrders(orders, title, container) {
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `<div class="status warning">No orders found</div>`;
+                return;
+            }
+
+            let html = `<h4>${title} (${orders.length} orders)</h4>`;
+            
+            orders.forEach(order => {
+                const hasItems = order.order_items && order.order_items.length > 0;
+                const statusClass = hasItems ? 'success' : 'warning';
+                const statusText = hasItems ? 'Has Items' : 'No Items';
+                
+                html += `
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h5>Order: ${order.order_code || 'N/A'}</h5>
+                            <span class="status ${statusClass}">${statusText}</span>
+                        </div>
+                        <p><strong>Total:</strong> ₹${order.total_amount || 0}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                        <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                        
+                        ${hasItems ? `
+                            <h6>Order Items:</h6>
+                            ${order.order_items.map(item => `
+                                <div class="product-info">
+                                    <img src="${item.product_image || item.products?.image_url || '/assets/placeholder.svg'}" 
+                                         alt="${item.product_name || item.products?.name || 'Unknown'}" 
+                                         class="product-image"
+                                         onerror="this.src='/assets/placeholder.svg'">
+                                    <div class="product-details">
+                                        <div class="product-name">${item.product_name || item.products?.name || 'Unknown Product'}</div>
+                                        <div>Qty: ${item.quantity} × ₹${item.unit_price || 0}</div>
+                                        <div>Total: ₹${item.subtotal || item.price || 0}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        ` : '<p class="status warning">No order items found</p>'}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Auto-test connection on load
+        window.addEventListener('load', () => {
+            testDatabaseConnection();
+        });
+    </script>
+</body>
+</html>

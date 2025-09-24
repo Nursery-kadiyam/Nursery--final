@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Merchant Order Product Display</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-items {
+            margin-top: 10px;
+        }
+        .order-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #eee;
+        }
+        .item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 15px;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .item-quantity {
+            color: #666;
+            font-size: 14px;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .status-shipped {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status-delivered {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #2e7d32;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .debug-info {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Merchant Order Product Display</h1>
+        <p>This test verifies that merchant orders display product names and images correctly.</p>
+        
+        <div id="status"></div>
+        <div id="debug"></div>
+        <div id="orders"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://your-project.supabase.co';
+        const supabaseKey = 'your-anon-key';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Test merchant codes
+        const testMerchantCodes = ['MC-2025-TXYR', 'MC-2025-0005'];
+
+        async function testMerchantOrderProductDisplay() {
+            const statusDiv = document.getElementById('status');
+            const debugDiv = document.getElementById('debug');
+            const ordersDiv = document.getElementById('orders');
+
+            statusDiv.innerHTML = '<div class="loading">🔄 Testing merchant order product display...</div>';
+
+            let allResults = [];
+
+            for (const merchantCode of testMerchantCodes) {
+                try {
+                    console.log(`Testing merchant: ${merchantCode}`);
+                    
+                    // Test 1: Get orders using the simple function
+                    const { data: simpleOrders, error: simpleError } = await supabase
+                        .rpc('get_merchant_orders_simple', {
+                            p_merchant_code: merchantCode
+                        });
+
+                    console.log(`Simple orders for ${merchantCode}:`, { orders: simpleOrders, error: simpleError });
+
+                    // Test 2: Get orders using the detailed function
+                    const { data: detailedOrders, error: detailedError } = await supabase
+                        .rpc('get_merchant_orders_with_products', {
+                            p_merchant_code: merchantCode
+                        });
+
+                    console.log(`Detailed orders for ${merchantCode}:`, { orders: detailedOrders, error: detailedError });
+
+                    // Test 3: Direct query fallback
+                    const { data: directOrders, error: directError } = await supabase
+                        .from('orders')
+                        .select(`
+                            id, order_code, total_amount, created_at, status, merchant_code,
+                            cart_items
+                        `)
+                        .eq('merchant_code', merchantCode)
+                        .order('created_at', { ascending: false })
+                        .limit(5);
+
+                    console.log(`Direct orders for ${merchantCode}:`, { orders: directOrders, error: directError });
+
+                    const result = {
+                        merchantCode,
+                        simpleOrders: simpleOrders || [],
+                        simpleError,
+                        detailedOrders: detailedOrders || [],
+                        detailedError,
+                        directOrders: directOrders || [],
+                        directError
+                    };
+
+                    allResults.push(result);
+
+                } catch (error) {
+                    console.error(`Error testing merchant ${merchantCode}:`, error);
+                    allResults.push({
+                        merchantCode,
+                        error: error.message
+                    });
+                }
+            }
+
+            // Display results
+            displayResults(allResults);
+        }
+
+        function displayResults(results) {
+            const statusDiv = document.getElementById('status');
+            const debugDiv = document.getElementById('debug');
+            const ordersDiv = document.getElementById('orders');
+
+            let html = '<h2>📊 Test Results</h2>';
+
+            results.forEach(result => {
+                html += `<div class="order-card">
+                    <h3>Merchant: ${result.merchantCode}</h3>`;
+
+                if (result.error) {
+                    html += `<div class="error">❌ Error: ${result.error}</div>`;
+                } else {
+                    // Test simple function
+                    if (result.simpleError) {
+                        html += `<div class="error">❌ Simple function error: ${result.simpleError.message}</div>`;
+                    } else {
+                        html += `<div class="success">✅ Simple function: ${result.simpleOrders.length} orders</div>`;
+                    }
+
+                    // Test detailed function
+                    if (result.detailedError) {
+                        html += `<div class="error">❌ Detailed function error: ${result.detailedError.message}</div>`;
+                    } else {
+                        html += `<div class="success">✅ Detailed function: ${result.detailedOrders.length} orders</div>`;
+                    }
+
+                    // Test direct query
+                    if (result.directError) {
+                        html += `<div class="error">❌ Direct query error: ${result.directError.message}</div>`;
+                    } else {
+                        html += `<div class="success">✅ Direct query: ${result.directOrders.length} orders</div>`;
+                    }
+
+                    // Show order details
+                    const ordersToShow = result.detailedOrders.length > 0 ? result.detailedOrders : 
+                                       result.simpleOrders.length > 0 ? result.simpleOrders : 
+                                       result.directOrders;
+
+                    if (ordersToShow.length > 0) {
+                        html += '<h4>📦 Order Details:</h4>';
+                        ordersToShow.forEach(order => {
+                            html += `<div class="order-card">
+                                <div class="order-header">
+                                    <div>
+                                        <strong>Order: ${order.order_code || order.id}</strong>
+                                        <div>Amount: ₹${order.total_amount || 0}</div>
+                                        <div>Date: ${new Date(order.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                    <div>
+                                        <span class="status-badge status-${order.status || 'confirmed'}">
+                                            ${order.status || 'confirmed'}
+                                        </span>
+                                    </div>
+                                </div>`;
+
+                            // Show order items
+                            if (order.order_items && Array.isArray(order.order_items)) {
+                                html += '<div class="order-items">';
+                                order.order_items.forEach((item, index) => {
+                                    html += `<div class="order-item">
+                                        <img src="${item.product_image || item.image_url || '/assets/placeholder.svg'}" 
+                                             alt="${item.product_name || item.name}" 
+                                             class="item-image"
+                                             onerror="this.src='/assets/placeholder.svg'">
+                                        <div class="item-details">
+                                            <div class="item-name">${item.product_name || item.name || 'Unknown Product'}</div>
+                                            <div class="item-quantity">Qty: ${item.quantity || 1}</div>
+                                        </div>
+                                        <div class="item-price">₹${item.subtotal || item.price || 0}</div>
+                                    </div>`;
+                                });
+                                html += '</div>';
+                            } else if (order.cart_items && Array.isArray(order.cart_items)) {
+                                html += '<div class="order-items">';
+                                order.cart_items.forEach((item, index) => {
+                                    html += `<div class="order-item">
+                                        <img src="${item.image || item.image_url || '/assets/placeholder.svg'}" 
+                                             alt="${item.name || item.product_name}" 
+                                             class="item-image"
+                                             onerror="this.src='/assets/placeholder.svg'">
+                                        <div class="item-details">
+                                            <div class="item-name">${item.name || item.product_name || 'Unknown Product'}</div>
+                                            <div class="item-quantity">Qty: ${item.quantity || 1}</div>
+                                        </div>
+                                        <div class="item-price">₹${item.price || 0}</div>
+                                    </div>`;
+                                });
+                                html += '</div>';
+                            } else {
+                                html += '<div class="error">❌ No order items found</div>';
+                            }
+
+                            html += '</div>';
+                        });
+                    } else {
+                        html += '<div class="error">❌ No orders found for this merchant</div>';
+                    }
+                }
+
+                html += '</div>';
+            });
+
+            ordersDiv.innerHTML = html;
+
+            // Debug information
+            debugDiv.innerHTML = `<div class="debug-info">${JSON.stringify(results, null, 2)}</div>`;
+
+            statusDiv.innerHTML = '<div class="success">✅ Test completed! Check results below.</div>';
+        }
+
+        // Run the test
+        testMerchantOrderProductDisplay();
+    </script>
+</body>
+</html>

@@ -3,170 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Merchant Orders System</title>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        .success { color: green; }
-        .error { color: red; }
-        .info { color: blue; }
-        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
-        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
-    </style>
+    <title>Test Merchant Orders</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <h1>🧪 Test Merchant Orders System</h1>
-    
-    <div class="test-section">
-        <h2>1. Database Connection Test</h2>
-        <button onclick="testConnection()">Test Supabase Connection</button>
-        <div id="connection-result"></div>
-    </div>
-
-    <div class="test-section">
-        <h2>2. Test get_merchant_orders Function</h2>
-        <input type="text" id="merchant-code" placeholder="Enter merchant code" value="TEST001">
-        <button onclick="testGetMerchantOrders()">Test Function</button>
-        <div id="orders-result"></div>
-    </div>
-
-    <div class="test-section">
-        <h2>3. Test update_order_delivery_status Function</h2>
-        <input type="text" id="order-id" placeholder="Enter order ID">
-        <input type="text" id="update-merchant-code" placeholder="Enter merchant code" value="TEST001">
-        <select id="new-status">
-            <option value="confirmed">Confirmed</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-        </select>
-        <button onclick="testUpdateOrderStatus()">Test Update</button>
-        <div id="update-result"></div>
-    </div>
-
-    <div class="test-section">
-        <h2>4. Test Orders Table Structure</h2>
-        <button onclick="testOrdersTable()">Check Orders Table</button>
-        <div id="table-result"></div>
-    </div>
+    <h1>Test Merchant Orders</h1>
+    <div id="status"></div>
+    <div id="results"></div>
 
     <script>
         // Initialize Supabase client
         const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NzI3MzEsImV4cCI6MjA3MTI0ODczMX0.jUvGwtvHII75px9cySp5_oxAf8-8aL8xKi9id8DvgF8';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzQ4MDAsImV4cCI6MjA1MDU1MDgwMH0.8QZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZq';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        async function testConnection() {
-            const resultDiv = document.getElementById('connection-result');
-            resultDiv.innerHTML = '<span class="info">Testing connection...</span>';
+        async function testMerchantOrders() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = 'Testing merchant orders...';
             
             try {
-                const { data, error } = await supabase.from('orders').select('count').limit(1);
-                if (error) throw error;
+                // Test 1: Get all merchants
+                console.log('Fetching merchants...');
+                const { data: merchants, error: merchantsError } = await supabase
+                    .from('merchants')
+                    .select('id, merchant_code, nursery_name, user_id')
+                    .order('created_at', { ascending: false });
                 
-                resultDiv.innerHTML = '<span class="success">✅ Connection successful! Orders table accessible.</span>';
-            } catch (error) {
-                resultDiv.innerHTML = `<span class="error">❌ Connection failed: ${error.message}</span>`;
-            }
-        }
-
-        async function testGetMerchantOrders() {
-            const resultDiv = document.getElementById('orders-result');
-            const merchantCode = document.getElementById('merchant-code').value;
-            
-            if (!merchantCode) {
-                resultDiv.innerHTML = '<span class="error">Please enter a merchant code</span>';
-                return;
-            }
-            
-            resultDiv.innerHTML = '<span class="info">Testing get_merchant_orders function...</span>';
-            
-            try {
-                const { data, error } = await supabase.rpc('get_merchant_orders', {
-                    p_merchant_code: merchantCode
-                });
-                
-                if (error) throw error;
-                
-                resultDiv.innerHTML = `
-                    <span class="success">✅ Function call successful!</span>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                    <p><strong>Orders found:</strong> ${data?.length || 0}</p>
-                `;
-            } catch (error) {
-                resultDiv.innerHTML = `<span class="error">❌ Function call failed: ${error.message}</span>`;
-            }
-        }
-
-        async function testUpdateOrderStatus() {
-            const resultDiv = document.getElementById('update-result');
-            const orderId = document.getElementById('order-id').value;
-            const merchantCode = document.getElementById('update-merchant-code').value;
-            const newStatus = document.getElementById('new-status').value;
-            
-            if (!orderId || !merchantCode) {
-                resultDiv.innerHTML = '<span class="error">Please enter both order ID and merchant code</span>';
-                return;
-            }
-            
-            resultDiv.innerHTML = '<span class="info">Testing update_order_delivery_status function...</span>';
-            
-            try {
-                const { data, error } = await supabase.rpc('update_order_delivery_status', {
-                    p_order_id: orderId,
-                    p_merchant_code: merchantCode,
-                    p_delivery_status: newStatus
-                });
-                
-                if (error) throw error;
-                
-                resultDiv.innerHTML = `
-                    <span class="success">✅ Function call successful!</span>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
-            } catch (error) {
-                resultDiv.innerHTML = `<span class="error">❌ Function call failed: ${error.message}</span>`;
-            }
-        }
-
-        async function testOrdersTable() {
-            const resultDiv = document.getElementById('table-result');
-            resultDiv.innerHTML = '<span class="info">Checking orders table structure...</span>';
-            
-            try {
-                const { data, error } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .limit(1);
-                
-                if (error) throw error;
-                
-                // Check if required columns exist
-                const sampleOrder = data?.[0];
-                const requiredColumns = ['merchant_code', 'quotation_code', 'order_status', 'delivery_status', 'customer_details'];
-                const missingColumns = requiredColumns.filter(col => !(col in sampleOrder));
-                
-                if (missingColumns.length === 0) {
-                    resultDiv.innerHTML = `
-                        <span class="success">✅ Orders table structure is correct!</span>
-                        <pre>Sample order structure: ${JSON.stringify(sampleOrder, null, 2)}</pre>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `
-                        <span class="error">❌ Missing required columns: ${missingColumns.join(', ')}</span>
-                        <pre>Current structure: ${JSON.stringify(sampleOrder, null, 2)}</pre>
-                    `;
+                if (merchantsError) {
+                    throw new Error(`Error fetching merchants: ${merchantsError.message}`);
                 }
+                
+                console.log('Merchants found:', merchants);
+                resultsDiv.innerHTML += '<h3>Merchants:</h3><pre>' + JSON.stringify(merchants, null, 2) + '</pre>';
+                
+                // Test 2: Get all orders
+                console.log('Fetching all orders...');
+                const { data: allOrders, error: allOrdersError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, merchant_id, parent_order_id, created_at, total_amount')
+                    .order('created_at', { ascending: false });
+                
+                if (allOrdersError) {
+                    throw new Error(`Error fetching orders: ${allOrdersError.message}`);
+                }
+                
+                console.log('All orders:', allOrders);
+                resultsDiv.innerHTML += '<h3>All Orders:</h3><pre>' + JSON.stringify(allOrders, null, 2) + '</pre>';
+                
+                // Test 3: Get child orders (orders with parent_order_id)
+                console.log('Fetching child orders...');
+                const { data: childOrders, error: childOrdersError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, merchant_id, parent_order_id, created_at, total_amount')
+                    .not('parent_order_id', 'is', null)
+                    .order('created_at', { ascending: false });
+                
+                if (childOrdersError) {
+                    throw new Error(`Error fetching child orders: ${childOrdersError.message}`);
+                }
+                
+                console.log('Child orders:', childOrders);
+                resultsDiv.innerHTML += '<h3>Child Orders (Merchant Orders):</h3><pre>' + JSON.stringify(childOrders, null, 2) + '</pre>';
+                
+                // Test 4: Test merchant-specific queries
+                for (const merchant of merchants) {
+                    console.log(`Testing orders for merchant ${merchant.merchant_code}...`);
+                    
+                    // Query by merchant_id
+                    const { data: ordersByMerchantId, error: error1 } = await supabase
+                        .from('orders')
+                        .select('id, order_code, merchant_code, merchant_id, parent_order_id, created_at, total_amount')
+                        .eq('merchant_id', merchant.id)
+                        .not('parent_order_id', 'is', null);
+                    
+                    // Query by merchant_code
+                    const { data: ordersByMerchantCode, error: error2 } = await supabase
+                        .from('orders')
+                        .select('id, order_code, merchant_code, merchant_id, parent_order_id, created_at, total_amount')
+                        .eq('merchant_code', merchant.merchant_code)
+                        .not('parent_order_id', 'is', null);
+                    
+                    console.log(`Orders for ${merchant.merchant_code} by merchant_id:`, ordersByMerchantId);
+                    console.log(`Orders for ${merchant.merchant_code} by merchant_code:`, ordersByMerchantCode);
+                    
+                    resultsDiv.innerHTML += `<h3>Orders for ${merchant.nursery_name} (${merchant.merchant_code}):</h3>`;
+                    resultsDiv.innerHTML += `<p><strong>By merchant_id:</strong> ${ordersByMerchantId?.length || 0} orders</p>`;
+                    resultsDiv.innerHTML += `<p><strong>By merchant_code:</strong> ${ordersByMerchantCode?.length || 0} orders</p>`;
+                    
+                    if (ordersByMerchantId && ordersByMerchantId.length > 0) {
+                        resultsDiv.innerHTML += '<pre>' + JSON.stringify(ordersByMerchantId, null, 2) + '</pre>';
+                    }
+                }
+                
+                // Test 5: Check for orders with missing merchant_id
+                const ordersWithMissingMerchantId = allOrders.filter(order => 
+                    order.parent_order_id !== null && 
+                    order.merchant_id === null && 
+                    order.merchant_code !== 'admin'
+                );
+                
+                if (ordersWithMissingMerchantId.length > 0) {
+                    resultsDiv.innerHTML += '<h3 style="color: red;">⚠️ Orders with Missing merchant_id:</h3>';
+                    resultsDiv.innerHTML += '<pre>' + JSON.stringify(ordersWithMissingMerchantId, null, 2) + '</pre>';
+                } else {
+                    resultsDiv.innerHTML += '<h3 style="color: green;">✅ All child orders have merchant_id</h3>';
+                }
+                
+                statusDiv.innerHTML = 'Test completed!';
+                
             } catch (error) {
-                resultDiv.innerHTML = `<span class="error">❌ Table check failed: ${error.message}</span>`;
+                console.error('Test failed:', error);
+                statusDiv.innerHTML = 'Test failed!';
+                resultsDiv.innerHTML += '<h3>Test Error:</h3><pre>' + error.message + '</pre>';
             }
         }
 
-        // Auto-test connection on page load
-        window.onload = function() {
-            testConnection();
-        };
+        // Run the test when page loads
+        window.addEventListener('load', testMerchantOrders);
     </script>
 </body>
 </html>

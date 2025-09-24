@@ -1,0 +1,591 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { Package, Eye, Clock, CheckCircle, X, Truck, MapPin, Calendar, User, Phone, Mail, Store, ChevronDown, ChevronUp } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Navbar } from "@/components/ui/navbar";
+import { useAuth } from '../contexts/AuthContext';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+
+const EnhancedMerchantDashboard: React.FC = () => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [merchantInfo, setMerchantInfo] = useState<any>(null);
+
+  // Status badge colors
+  const statusColors: {[key: string]: string} = {
+    'pending': 'bg-yellow-100 text-yellow-800',
+    'confirmed': 'bg-green-100 text-green-800',
+    'processing': 'bg-blue-100 text-blue-800',
+    'shipped': 'bg-purple-100 text-purple-800',
+    'delivered': 'bg-green-100 text-green-800',
+    'cancelled': 'bg-red-100 text-red-800'
+  };
+
+  // Status display names
+  const statusNames: {[key: string]: string} = {
+    'pending': 'Pending',
+    'confirmed': 'Confirmed',
+    'processing': 'Processing',
+    'shipped': 'Shipped',
+    'delivered': 'Delivered',
+    'cancelled': 'Cancelled'
+  };
+
+  // Fetch merchant info
+  const fetchMerchantInfo = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data: merchant, error } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching merchant info:', error);
+        setError('Failed to load merchant information.');
+        return;
+      }
+
+      setMerchantInfo(merchant);
+    } catch (err) {
+      console.error('Merchant info fetch error:', err);
+      setError('Failed to load merchant information.');
+    }
+  }, [user]);
+
+  // Fetch orders function
+  const fetchOrders = useCallback(async () => {
+    if (!user || !merchantInfo) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch only child orders for this merchant
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`
+          id, 
+          order_code, 
+          total_amount, 
+          cart_items, 
+          created_at, 
+          status, 
+          delivery_address, 
+          parent_order_id, 
+          merchant_code,
+          quotation_code,
+          user_id
+        `)
+        .eq("merchant_id", merchantInfo.id)
+        .is("parent_order_id", "not", null) // Only child orders
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+        setError('Failed to load orders. Please try again.');
+        setOrders([]);
+      } else {
+        setOrders(data || []);
+      }
+    } catch (err) {
+      console.error('Orders fetch error:', err);
+      setError('Failed to load orders. Please try again.');
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, merchantInfo]);
+
+  useEffect(() => {
+    fetchMerchantInfo();
+  }, [fetchMerchantInfo]);
+
+  useEffect(() => {
+    if (merchantInfo) {
+      fetchOrders();
+    }
+  }, [fetchOrders]);
+
+  const handleViewOrderDetails = (order: any) => {
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    const newExpanded = new Set(expandedOrders);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedOrders(newExpanded);
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+
+      toast({
+        title: "Status Updated",
+        description: `Order status updated to ${statusNames[newStatus] || newStatus}`,
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(price);
+  };
+
+  const getCartItems = (order: any) => {
+    if (!order.cart_items) return [];
+    
+    try {
+      return typeof order.cart_items === 'string' 
+        ? JSON.parse(order.cart_items) 
+        : order.cart_items;
+    } catch (e) {
+      console.error('Error parsing cart items:', e);
+      return [];
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="p-6 text-center">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Please Login</h2>
+              <p className="text-gray-600 mb-4">You need to be logged in to access the merchant dashboard.</p>
+              <Button onClick={() => navigate('/login')} className="w-full">
+                Login to Continue
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!merchantInfo) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="p-6 text-center">
+              <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Merchant Account Required</h2>
+              <p className="text-gray-600 mb-4">You need a merchant account to access this dashboard.</p>
+              <Button onClick={() => navigate('/merchant-registration')} className="w-full">
+                Register as Merchant
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            <span className="ml-2">Loading orders...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="p-6 text-center">
+              <X className="h-12 w-12 text-red-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Error</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={fetchOrders} className="w-full">
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        {/* Merchant Info Header */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Store className="w-6 h-6 mr-2 text-green-600" />
+              {merchantInfo.nursery_name} Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {orders.length}
+                </div>
+                <div className="text-sm text-gray-600">Total Orders</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {orders.filter(order => order.status === 'pending').length}
+                </div>
+                <div className="text-sm text-gray-600">Pending Orders</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">
+                  {formatPrice(orders.reduce((sum, order) => sum + (order.total_amount || 0), 0))}
+                </div>
+                <div className="text-sm text-gray-600">Total Revenue</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Orders</h1>
+          <p className="text-gray-600">Manage orders assigned to your nursery</p>
+        </div>
+
+        {orders.length === 0 ? (
+          <Card className="max-w-md mx-auto">
+            <CardContent className="p-6 text-center">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Orders Yet</h2>
+              <p className="text-gray-600 mb-4">You haven't received any orders yet.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {orders.map((order) => {
+              const isExpanded = expandedOrders.has(order.id);
+              const cartItems = getCartItems(order);
+              
+              return (
+                <Card key={order.id} className="overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <CardTitle className="text-lg">Order #{order.order_code}</CardTitle>
+                          <p className="text-sm text-gray-600">
+                            Received on {formatDate(order.created_at)}
+                          </p>
+                          {order.quotation_code && (
+                            <p className="text-xs text-blue-600">
+                              Quotation: {order.quotation_code}
+                            </p>
+                          )}
+                        </div>
+                        <Badge className={statusColors[order.status] || 'bg-gray-100 text-gray-800'}>
+                          {statusNames[order.status] || order.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="text-right">
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatPrice(order.total_amount || 0)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {cartItems.length} item{cartItems.length !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleOrderExpansion(order.id)}
+                          className="ml-2"
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  {/* Order Summary */}
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">{cartItems.length}</span> item{cartItems.length !== 1 ? 's' : ''}
+                        </div>
+                        {order.delivery_address && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mr-1" />
+                            Delivery address provided
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewOrderDetails(order)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </Button>
+                        {order.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Confirm
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t">
+                        <h4 className="font-semibold mb-3 text-gray-700">Order Items</h4>
+                        <div className="space-y-2">
+                          {cartItems.map((item: any, index: number) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name}
+                                    className="w-10 h-10 object-cover rounded"
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-medium">{item.name}</p>
+                                  <p className="text-sm text-gray-600">
+                                    Qty: {item.quantity} • {formatPrice(item.unit_price || 0)} each
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold">
+                                  {formatPrice(item.price || 0)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Status Actions */}
+                        <div className="mt-4 pt-4 border-t">
+                          <h4 className="font-semibold mb-3 text-gray-700">Order Actions</h4>
+                          <div className="flex space-x-2">
+                            {order.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Confirm Order
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                >
+                                  <X className="w-4 h-4 mr-2" />
+                                  Cancel
+                                </Button>
+                              </>
+                            )}
+                            {order.status === 'confirmed' && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateOrderStatus(order.id, 'processing')}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                <Package className="w-4 h-4 mr-2" />
+                                Start Processing
+                              </Button>
+                            )}
+                            {order.status === 'processing' && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateOrderStatus(order.id, 'shipped')}
+                                className="bg-purple-600 hover:bg-purple-700"
+                              >
+                                <Truck className="w-4 h-4 mr-2" />
+                                Mark as Shipped
+                              </Button>
+                            )}
+                            {order.status === 'shipped' && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateOrderStatus(order.id, 'delivered')}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Mark as Delivered
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Order Details Dialog */}
+        <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Order Details - #{selectedOrder?.order_code}</DialogTitle>
+              <DialogDescription>
+                Order received on {selectedOrder && formatDate(selectedOrder.created_at)}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedOrder && (
+              <div className="space-y-6">
+                {/* Order Status */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <h3 className="font-semibold">Order Status</h3>
+                    <Badge className={statusColors[selectedOrder.status] || 'bg-gray-100 text-gray-800'}>
+                      {statusNames[selectedOrder.status] || selectedOrder.status}
+                    </Badge>
+                  </div>
+                  <div className="text-right">
+                    <h3 className="font-semibold">Total Amount</h3>
+                    <p className="text-lg font-bold text-green-600">
+                      {formatPrice(selectedOrder.total_amount || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h3 className="font-semibold mb-3">Order Items</h3>
+                  <div className="space-y-2">
+                    {getCartItems(selectedOrder).map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          {item.image && (
+                            <img 
+                              src={item.image} 
+                              alt={item.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">
+                            {formatPrice(item.price || 0)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {formatPrice(item.unit_price || 0)} each
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Delivery Address */}
+                {selectedOrder.delivery_address && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Delivery Address</h3>
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <pre className="text-sm whitespace-pre-wrap">
+                        {JSON.stringify(selectedOrder.delivery_address, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
+
+export default EnhancedMerchantDashboard;

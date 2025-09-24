@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Order Items Access Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f9fafb;
+        }
+        .success {
+            background: #dcfce7;
+            border-color: #16a34a;
+            color: #166534;
+        }
+        .error {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+        .warning {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .info {
+            background: #dbeafe;
+            border-color: #2563eb;
+            color: #1e40af;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        .order-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Merchant Order Items Access Test</h1>
+    <p>This page tests the RLS policies and order items access for merchants after the fix.</p>
+    
+    <div class="container">
+        <h2>🚀 Quick Fix Application</h2>
+        <div class="test-section info">
+            <h3>Step 1: Apply the Database Fix</h3>
+            <p>Run the SQL script <code>fix_order_items_rls_and_json.sql</code> in your Supabase SQL editor to:</p>
+            <ul>
+                <li>Fix invalid cart_items JSON data</li>
+                <li>Create proper RLS policies for order_items</li>
+                <li>Populate missing order_items from cart_items</li>
+                <li>Create helper functions for merchant access</li>
+            </ul>
+            <button class="button" onclick="runDatabaseTests()">Test Database Connection</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Database Status</h2>
+        <div id="database-status" class="loading">Checking database status...</div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 RLS Policy Tests</h2>
+        <div id="rls-tests" class="loading">Testing RLS policies...</div>
+    </div>
+
+    <div class="container">
+        <h2>📦 Order Items Access Tests</h2>
+        <div id="order-items-tests" class="loading">Testing order items access...</div>
+    </div>
+
+    <div class="container">
+        <h2>🛠️ Debug Information</h2>
+        <div id="debug-info" class="loading">Gathering debug information...</div>
+    </div>
+
+    <div class="container">
+        <h2>✅ Test Results Summary</h2>
+        <div id="test-summary" class="loading">Running tests...</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseKey = 'your-anon-key'; // Replace with your anon key
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        let testResults = {
+            databaseConnection: false,
+            rlsPolicies: false,
+            orderItemsAccess: false,
+            jsonParsing: false,
+            merchantAccess: false
+        };
+        
+        async function runDatabaseTests() {
+            try {
+                document.getElementById('database-status').innerHTML = '<div class="loading">Testing database connection...</div>';
+                
+                // Test basic connection
+                const { data: orders, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .limit(1);
+                
+                if (ordersError) throw ordersError;
+                
+                // Test order_items table access
+                const { data: orderItems, error: orderItemsError } = await supabase
+                    .from('order_items')
+                    .select('id')
+                    .limit(1);
+                
+                if (orderItemsError) {
+                    document.getElementById('database-status').innerHTML = `
+                        <div class="test-section error">
+                            <h3>❌ Database Access Error</h3>
+                            <p><strong>Error:</strong> ${orderItemsError.message}</p>
+                            <p>This indicates RLS policies might be blocking access.</p>
+                        </div>
+                    `;
+                    testResults.databaseConnection = false;
+                } else {
+                    document.getElementById('database-status').innerHTML = `
+                        <div class="test-section success">
+                            <h3>✅ Database Connection Successful</h3>
+                            <p>Basic database access is working.</p>
+                        </div>
+                    `;
+                    testResults.databaseConnection = true;
+                }
+                
+                await runRLSTests();
+                await runOrderItemsTests();
+                await gatherDebugInfo();
+                await showTestSummary();
+                
+            } catch (error) {
+                document.getElementById('database-status').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Database Connection Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please check your Supabase configuration.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function runRLSTests() {
+            try {
+                document.getElementById('rls-tests').innerHTML = '<div class="loading">Testing RLS policies...</div>';
+                
+                // Test direct order_items access
+                const { data: directAccess, error: directError } = await supabase
+                    .from('order_items')
+                    .select('id, order_id, quantity, unit_price')
+                    .limit(5);
+                
+                let rlsHtml = '';
+                
+                if (directError) {
+                    rlsHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Direct Order Items Access Failed</h3>
+                            <p><strong>Error:</strong> ${directError.message}</p>
+                            <p>RLS policies are blocking direct access.</p>
+                        </div>
+                    `;
+                    testResults.rlsPolicies = false;
+                } else {
+                    rlsHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Direct Order Items Access Working</h3>
+                            <p>Found ${directAccess.length} order items accessible.</p>
+                        </div>
+                    `;
+                    testResults.rlsPolicies = true;
+                }
+                
+                // Test function-based access
+                try {
+                    const { data: functionAccess, error: functionError } = await supabase
+                        .rpc('get_order_items_for_user', { p_user_id: '00000000-0000-0000-0000-000000000000' });
+                    
+                    if (functionError) {
+                        rlsHtml += `
+                            <div class="test-section warning">
+                                <h3>⚠️ Function Access Test</h3>
+                                <p><strong>Note:</strong> Function access test failed (expected for test user): ${functionError.message}</p>
+                            </div>
+                        `;
+                    } else {
+                        rlsHtml += `
+                            <div class="test-section success">
+                                <h3>✅ Function Access Working</h3>
+                                <p>Function-based access is working.</p>
+                            </div>
+                        `;
+                    }
+                } catch (funcError) {
+                    rlsHtml += `
+                        <div class="test-section info">
+                            <h3>ℹ️ Function Access Test Skipped</h3>
+                            <p>Function test skipped (requires authentication).</p>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('rls-tests').innerHTML = rlsHtml;
+                
+            } catch (error) {
+                document.getElementById('rls-tests').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ RLS Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function runOrderItemsTests() {
+            try {
+                document.getElementById('order-items-tests').innerHTML = '<div class="loading">Testing order items access...</div>';
+                
+                // Test orders with order_items
+                const { data: ordersWithItems, error: ordersError } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, cart_items, created_at,
+                        order_items(id, quantity, unit_price, subtotal, products(name, image_url))
+                    `)
+                    .not('order_items', 'is', null)
+                    .limit(5);
+                
+                let itemsHtml = '';
+                
+                if (ordersError) {
+                    itemsHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Order Items Join Failed</h3>
+                            <p><strong>Error:</strong> ${ordersError.message}</p>
+                        </div>
+                    `;
+                    testResults.orderItemsAccess = false;
+                } else {
+                    itemsHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Order Items Join Working</h3>
+                            <p>Found ${ordersWithItems.length} orders with order_items.</p>
+                        </div>
+                    `;
+                    testResults.orderItemsAccess = true;
+                    
+                    // Show sample order items
+                    if (ordersWithItems.length > 0) {
+                        itemsHtml += '<h4>Sample Order Items:</h4>';
+                        ordersWithItems.forEach(order => {
+                            if (order.order_items && order.order_items.length > 0) {
+                                itemsHtml += `
+                                    <div class="order-item">
+                                        <strong>${order.order_code || order.id.slice(0, 8)}</strong><br>
+                                        Items: ${order.order_items.length}<br>
+                                        ${order.order_items.map(item => `${item.products?.name || 'Unknown'} (Qty: ${item.quantity})`).join(', ')}
+                                    </div>
+                                `;
+                            }
+                        });
+                    }
+                }
+                
+                // Test JSON parsing
+                const { data: cartItemsTest, error: cartError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, cart_items')
+                    .not('cart_items', 'is', null)
+                    .limit(3);
+                
+                if (cartError) {
+                    itemsHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Cart Items Access Failed</h3>
+                            <p><strong>Error:</strong> ${cartError.message}</p>
+                        </div>
+                    `;
+                    testResults.jsonParsing = false;
+                } else {
+                    let validJsonCount = 0;
+                    let invalidJsonCount = 0;
+                    
+                    cartItemsTest.forEach(order => {
+                        try {
+                            const cartItems = typeof order.cart_items === 'string' 
+                                ? JSON.parse(order.cart_items) 
+                                : order.cart_items;
+                            if (Array.isArray(cartItems)) {
+                                validJsonCount++;
+                            } else {
+                                invalidJsonCount++;
+                            }
+                        } catch (e) {
+                            invalidJsonCount++;
+                        }
+                    });
+                    
+                    if (invalidJsonCount === 0) {
+                        itemsHtml += `
+                            <div class="test-section success">
+                                <h3>✅ JSON Parsing Working</h3>
+                                <p>All ${validJsonCount} cart_items have valid JSON format.</p>
+                            </div>
+                        `;
+                        testResults.jsonParsing = true;
+                    } else {
+                        itemsHtml += `
+                            <div class="test-section warning">
+                                <h3>⚠️ JSON Parsing Issues</h3>
+                                <p>Valid JSON: ${validJsonCount}, Invalid JSON: ${invalidJsonCount}</p>
+                                <p>Some cart_items may have formatting issues.</p>
+                            </div>
+                        `;
+                        testResults.jsonParsing = false;
+                    }
+                }
+                
+                document.getElementById('order-items-tests').innerHTML = itemsHtml;
+                
+            } catch (error) {
+                document.getElementById('order-items-tests').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Order Items Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function gatherDebugInfo() {
+            try {
+                document.getElementById('debug-info').innerHTML = '<div class="loading">Gathering debug information...</div>';
+                
+                // Get counts
+                const { count: ordersCount } = await supabase
+                    .from('orders')
+                    .select('*', { count: 'exact', head: true });
+                
+                const { count: orderItemsCount } = await supabase
+                    .from('order_items')
+                    .select('*', { count: 'exact', head: true });
+                
+                const { count: merchantsCount } = await supabase
+                    .from('merchants')
+                    .select('*', { count: 'exact', head: true });
+                
+                // Get recent orders with items
+                const { data: recentOrders } = await supabase
+                    .from('orders')
+                    .select('id, order_code, cart_items')
+                    .not('cart_items', 'is', null)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                let debugHtml = `
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-number">${ordersCount || 0}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${orderItemsCount || 0}</div>
+                            <div class="stat-label">Order Items</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${merchantsCount || 0}</div>
+                            <div class="stat-label">Merchants</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (recentOrders && recentOrders.length > 0) {
+                    debugHtml += '<h4>Recent Orders Cart Items Status:</h4>';
+                    recentOrders.forEach(order => {
+                        const cartStatus = order.cart_items ? 
+                            (typeof order.cart_items === 'string' ? 'String' : 'Object') : 
+                            'Null';
+                        debugHtml += `
+                            <div class="order-item">
+                                <strong>${order.order_code || order.id.slice(0, 8)}</strong><br>
+                                Cart Items Type: ${cartStatus}
+                            </div>
+                        `;
+                    });
+                }
+                
+                document.getElementById('debug-info').innerHTML = debugHtml;
+                
+            } catch (error) {
+                document.getElementById('debug-info').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Debug Info Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function showTestSummary() {
+            const summaryHtml = `
+                <div class="stats">
+                    <div class="stat ${testResults.databaseConnection ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.databaseConnection ? '✅' : '❌'}</div>
+                        <div class="stat-label">Database Connection</div>
+                    </div>
+                    <div class="stat ${testResults.rlsPolicies ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.rlsPolicies ? '✅' : '❌'}</div>
+                        <div class="stat-label">RLS Policies</div>
+                    </div>
+                    <div class="stat ${testResults.orderItemsAccess ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.orderItemsAccess ? '✅' : '❌'}</div>
+                        <div class="stat-label">Order Items Access</div>
+                    </div>
+                    <div class="stat ${testResults.jsonParsing ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.jsonParsing ? '✅' : '❌'}</div>
+                        <div class="stat-label">JSON Parsing</div>
+                    </div>
+                </div>
+                
+                <div class="test-section ${Object.values(testResults).every(r => r) ? 'success' : 'warning'}">
+                    <h3>${Object.values(testResults).every(r => r) ? '🎉 All Tests Passed!' : '⚠️ Some Tests Failed'}</h3>
+                    <p>${Object.values(testResults).every(r => r) ? 
+                        'The order items display fix is working correctly. Merchants should now be able to see order items.' : 
+                        'Please review the failed tests and apply the necessary fixes.'}</p>
+                </div>
+                
+                <div class="test-section info">
+                    <h3>📋 Next Steps</h3>
+                    <ol>
+                        <li>If tests failed, run the <code>fix_order_items_rls_and_json.sql</code> script</li>
+                        <li>Deploy the updated frontend code</li>
+                        <li>Test in both user orders and merchant dashboard</li>
+                        <li>Verify orders show items instead of "No items found"</li>
+                    </ol>
+                </div>
+            `;
+            
+            document.getElementById('test-summary').innerHTML = summaryHtml;
+        }
+        
+        // Initialize
+        console.log('Merchant Order Items Access Test initialized');
+        console.log('This test verifies:');
+        console.log('1. RLS policies for order_items table');
+        console.log('2. JSON parsing fixes for cart_items');
+        console.log('3. Merchant access to order items');
+        console.log('4. Database connection and permissions');
+    </script>
+</body>
+</html>

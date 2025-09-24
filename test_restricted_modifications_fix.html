@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restricted Modifications Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .step { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; }
+        .feature-list { background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .restricted { background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 5px 0; }
+        .editable { background-color: #d4edda; padding: 10px; border-radius: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔒 Restricted Modifications Fix</h1>
+    
+    <div class="test-section success">
+        <h2>✅ Issue Fixed: Restricted Merchant Modifications</h2>
+        <p><strong>Problem:</strong> Merchants had access to modify all specifications, which was too permissive</p>
+        <p><strong>Solution:</strong> Restricted modifications to only 4 specific fields</p>
+        <p><strong>Status:</strong> Fixed - Merchants can now only modify allowed fields</p>
+    </div>
+
+    <div class="feature-list">
+        <h3>🎯 What Merchants Can Modify</h3>
+        <div class="editable">
+            <h4>✅ Allowed Modifications:</h4>
+            <ul>
+                <li><strong>Quantity:</strong> Simple text input (no number arrows)</li>
+                <li><strong>Age:</strong> Age category specifications</li>
+                <li><strong>Bag Size:</strong> Bag size specifications</li>
+                <li><strong>Height:</strong> Height range specifications</li>
+            </ul>
+        </div>
+        
+        <div class="restricted">
+            <h4>🚫 Restricted Fields (Read-Only):</h4>
+            <ul>
+                <li><strong>Variety:</strong> Plant variety (grayed out)</li>
+                <li><strong>Type:</strong> Plant type (grayed out)</li>
+                <li><strong>Stem Thickness:</strong> Stem specifications (grayed out)</li>
+                <li><strong>Grafted:</strong> Grafting status (grayed out)</li>
+                <li><strong>Delivery Location:</strong> Location details (grayed out)</li>
+                <li><strong>Delivery Timeline:</strong> Timeline information (grayed out)</li>
+                <li><strong>Notes:</strong> Additional notes (grayed out)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Changes Made</h2>
+        
+        <h3>1. Quantity Input Fix</h3>
+        <pre>// Changed from number input to text input
+&lt;Input
+    type="text"  // ✅ Changed from "number"
+    value={getSpecificationValue(q.id, idx, 'quantity', item.quantity)}
+    onChange={(e) => handleSpecificationChange(q.id, idx, 'quantity', e.target.value)}
+    className="w-20 h-8 text-sm"
+    placeholder="1"
+/&gt;</pre>
+
+        <h3>2. Restricted Modifications</h3>
+        <pre>// Only these fields are editable:
+- Quantity (text input)
+- Age Category (text input)
+- Bag Size (text input)  
+- Height Range (text input)
+
+// All other fields are read-only with gray styling</pre>
+
+        <h3>3. Read-Only Field Styling</h3>
+        <pre>// Fixed specifications display
+&lt;div className="h-8 px-3 py-2 bg-gray-100 border border-gray-300 rounded text-xs text-gray-700 flex items-center"&gt;
+    {item.variety}  // ✅ Read-only display
+&lt;/div&gt;</pre>
+
+        <h3>4. Visual Organization</h3>
+        <pre>// Two-column layout:
+// Left: "Modifiable Specifications" (editable)
+// Right: "Fixed Specifications" (read-only)</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>🎨 Visual Design Changes</h2>
+        
+        <h3>Editable Fields (Left Column)</h3>
+        <ul>
+            <li><strong>Label Color:</strong> Dark gray (text-gray-600)</li>
+            <li><strong>Input Style:</strong> White background, editable</li>
+            <li><strong>Section Title:</strong> "Modifiable Specifications"</li>
+        </ul>
+
+        <h3>Read-Only Fields (Right Column)</h3>
+        <ul>
+            <li><strong>Label Color:</strong> Light gray (text-gray-500)</li>
+            <li><strong>Display Style:</strong> Gray background (bg-gray-100)</li>
+            <li><strong>Section Title:</strong> "Fixed Specifications"</li>
+            <li><strong>Visual Cue:</strong> Clearly non-editable appearance</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 How It Works Now</h2>
+        
+        <div class="step">
+            <h3>Step 1: Merchant Opens Quotation</h3>
+            <p>Merchant sees two clearly separated sections:</p>
+            <ul>
+                <li><strong>Left:</strong> Modifiable fields (Quantity, Age, Bag Size, Height)</li>
+                <li><strong>Right:</strong> Fixed fields (all other specifications)</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Merchant Can Only Edit Allowed Fields</h3>
+            <p>Merchants can only modify the 4 specified fields:</p>
+            <ul>
+                <li>Quantity (simple text input)</li>
+                <li>Age category</li>
+                <li>Bag size</li>
+                <li>Height range</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Other Fields Are Protected</h3>
+            <p>All other specifications are displayed as read-only with gray styling, preventing any modifications</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Clear Visual Distinction</h3>
+            <p>Users can clearly see what merchants modified vs what was fixed from the original request</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 User Experience Improvements</h2>
+        <ul>
+            <li><strong>Clear Boundaries:</strong> Merchants know exactly what they can modify</li>
+            <li><strong>Simplified Interface:</strong> Less overwhelming with fewer editable fields</li>
+            <li><strong>Data Integrity:</strong> Critical specifications are protected from modification</li>
+            <li><strong>Visual Clarity:</strong> Easy to distinguish between editable and fixed fields</li>
+            <li><strong>Focused Modifications:</strong> Only essential fields can be changed</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Testing Steps</h2>
+        <ol>
+            <li><strong>Login as Merchant:</strong> Access merchant dashboard</li>
+            <li><strong>Open Quotation:</strong> Find a pending quotation request</li>
+            <li><strong>Test Editable Fields:</strong> Try to modify Quantity, Age, Bag Size, Height</li>
+            <li><strong>Verify Restrictions:</strong> Confirm other fields are read-only</li>
+            <li><strong>Check Quantity Input:</strong> Verify it's a simple text input (no arrows)</li>
+            <li><strong>Submit Quotation:</strong> Test that only allowed modifications are saved</li>
+            <li><strong>View as User:</strong> Check that modifications are properly displayed</li>
+        </ol>
+    </div>
+
+    <div class="test-section warning">
+        <h2>⚠️ Important Notes</h2>
+        <ul>
+            <li><strong>Quantity Input:</strong> Now uses simple text input instead of number input</li>
+            <li><strong>Data Validation:</strong> Ensure quantity values are properly validated</li>
+            <li><strong>User Expectations:</strong> Users will only see modifications for the 4 allowed fields</li>
+            <li><strong>Backward Compatibility:</strong> Existing quotations with other modifications will still display correctly</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h2>✅ Summary</h2>
+        <p>The merchant modification system has been successfully restricted with the following improvements:</p>
+        <ul>
+            <li>✅ <strong>Quantity Input:</strong> Changed to simple text input without number arrows</li>
+            <li>✅ <strong>Restricted Access:</strong> Only 4 fields can be modified (Quantity, Age, Bag Size, Height)</li>
+            <li>✅ <strong>Protected Fields:</strong> All other specifications are read-only</li>
+            <li>✅ <strong>Clear Visual Design:</strong> Easy to distinguish between editable and fixed fields</li>
+            <li>✅ <strong>Data Integrity:</strong> Critical specifications are protected from modification</li>
+            <li>✅ <strong>User Experience:</strong> Simplified and focused modification interface</li>
+        </ul>
+        <p><strong>Result:</strong> Merchants now have controlled access to modify only essential specifications while maintaining data integrity for other fields!</p>
+    </div>
+</body>
+</html>

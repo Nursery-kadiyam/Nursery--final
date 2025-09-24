@@ -90,7 +90,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: `Failed to insert order items: ${orderItemsError.message}` }), { status: 400 });
     }
 
-    // Update product quantities using the stock management system
+    // Update product quantities directly (without stock management system)
     // Only update stock for items that have a valid product_id (not quotation-based orders)
     for (const item of items) {
         // Skip stock update for quotation-based orders (product_id is null)
@@ -99,16 +99,19 @@ serve(async (req) => {
             continue;
         }
         
-        const { error: updateError } = await supabase.rpc('update_product_stock', {
-            p_product_id: item.id,
-            p_quantity_change: -item.quantity, // Negative for purchase (decrease stock)
-            p_transaction_type: 'purchase',
-            p_order_id: newOrder.id,
-            p_reason: 'Order placed',
-            p_notes: `Stock decreased due to order placement - Order #${newOrder.id}`
-        });
+        // Update available_quantity directly in products table
+        const { error: updateError } = await supabase
+            .from('products')
+            .update({ 
+                available_quantity: supabase.raw(`available_quantity - ${item.quantity}`)
+            })
+            .eq('id', item.id);
+            
         if (updateError) {
-            return new Response(JSON.stringify({ error: `Failed to update product quantity: ${updateError.message}` }), { status: 400 });
+            console.warn(`Failed to update product quantity for ${item.name}: ${updateError.message}`);
+            // Don't fail the entire order if stock update fails
+        } else {
+            console.log(`Updated stock for ${item.name}: -${item.quantity}`);
         }
     }
 

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Parent-Child Orders</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Parent-Child Order System Test</h1>
+    
+    <div class="test-section info">
+        <h3>Database Schema Check</h3>
+        <p>Checking if the parent-child order columns exist in the database...</p>
+        <button onclick="checkSchema()">Check Schema</button>
+        <div id="schemaResult"></div>
+    </div>
+
+    <div class="test-section info">
+        <h3>Test Order Creation</h3>
+        <p>Testing the creation of parent and child orders...</p>
+        <button onclick="testOrderCreation()">Test Order Creation</button>
+        <div id="orderResult"></div>
+    </div>
+
+    <div class="test-section info">
+        <h3>Test Order Fetching</h3>
+        <p>Testing fetching of parent orders with child orders...</p>
+        <button onclick="testOrderFetching()">Test Order Fetching</button>
+        <div id="fetchResult"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function checkSchema() {
+            const resultDiv = document.getElementById('schemaResult');
+            resultDiv.innerHTML = '<p>Checking schema...</p>';
+            
+            try {
+                // Check if parent_order_id column exists
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('parent_order_id, merchant_id, subtotal')
+                    .limit(1);
+                
+                if (ordersError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error checking orders table: ${ordersError.message}</p></div>`;
+                    return;
+                }
+                
+                // Check if order_items has subtotal column
+                const { data: itemsData, error: itemsError } = await supabase
+                    .from('order_items')
+                    .select('subtotal')
+                    .limit(1);
+                
+                if (itemsError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error checking order_items table: ${itemsError.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Schema check passed!</p>
+                        <p>Orders table has: parent_order_id, merchant_id, subtotal columns</p>
+                        <p>Order_items table has: subtotal column</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        async function testOrderCreation() {
+            const resultDiv = document.getElementById('orderResult');
+            resultDiv.innerHTML = '<p>Testing order creation...</p>';
+            
+            try {
+                // Get current user
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                if (authError || !user) {
+                    resultDiv.innerHTML = `<div class="error"><p>Please log in first to test order creation</p></div>`;
+                    return;
+                }
+                
+                // Create a test parent order
+                const parentOrder = {
+                    user_id: user.id,
+                    parent_order_id: null,
+                    merchant_id: null,
+                    merchant_code: 'parent',
+                    delivery_address: { test: true },
+                    shipping_address: 'Test Address',
+                    total_amount: 1000,
+                    subtotal: 1000,
+                    cart_items: [],
+                    status: 'pending'
+                };
+                
+                const { data: parentData, error: parentError } = await supabase
+                    .from('orders')
+                    .insert([parentOrder])
+                    .select('id, order_code')
+                    .single();
+                
+                if (parentError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error creating parent order: ${parentError.message}</p></div>`;
+                    return;
+                }
+                
+                // Create test child orders
+                const childOrders = [
+                    {
+                        user_id: user.id,
+                        parent_order_id: parentData.id,
+                        merchant_id: null, // Will be set if merchant exists
+                        merchant_code: 'merchant1',
+                        delivery_address: { test: true },
+                        shipping_address: 'Test Address',
+                        total_amount: 500,
+                        subtotal: 500,
+                        cart_items: [],
+                        status: 'pending'
+                    },
+                    {
+                        user_id: user.id,
+                        parent_order_id: parentData.id,
+                        merchant_id: null,
+                        merchant_code: 'merchant2',
+                        delivery_address: { test: true },
+                        shipping_address: 'Test Address',
+                        total_amount: 500,
+                        subtotal: 500,
+                        cart_items: [],
+                        status: 'pending'
+                    }
+                ];
+                
+                const { data: childData, error: childError } = await supabase
+                    .from('orders')
+                    .insert(childOrders)
+                    .select('id, order_code');
+                
+                if (childError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error creating child orders: ${childError.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Order creation test passed!</p>
+                        <p>Created parent order: ${parentData.order_code || parentData.id}</p>
+                        <p>Created ${childData.length} child orders</p>
+                        <pre>${JSON.stringify({ parent: parentData, children: childData }, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+
+        async function testOrderFetching() {
+            const resultDiv = document.getElementById('fetchResult');
+            resultDiv.innerHTML = '<p>Testing order fetching...</p>';
+            
+            try {
+                // Get current user
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                if (authError || !user) {
+                    resultDiv.innerHTML = `<div class="error"><p>Please log in first to test order fetching</p></div>`;
+                    return;
+                }
+                
+                // Fetch parent orders with child orders
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, total_amount, subtotal, created_at, status, 
+                        parent_order_id, merchant_id, merchant_code,
+                        child_orders:orders!parent_order_id(
+                            id, order_code, total_amount, subtotal, status, 
+                            merchant_code, merchant_id
+                        )
+                    `)
+                    .eq('user_id', user.id)
+                    .is('parent_order_id', null)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (ordersError) {
+                    resultDiv.innerHTML = `<div class="error"><p>Error fetching orders: ${ordersError.message}</p></div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <p>✅ Order fetching test passed!</p>
+                        <p>Found ${ordersData.length} parent orders</p>
+                        <pre>${JSON.stringify(ordersData, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p></div>`;
+            }
+        }
+    </script>
+</body>
+</html>

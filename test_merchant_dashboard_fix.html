@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Merchant Dashboard Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            background: #f3f9ff;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status.success { background: #e8f5e8; color: #2e7d32; }
+        .status.error { background: #ffebee; color: #c62828; }
+        .status.warning { background: #fff3e0; color: #ef6c00; }
+        .order-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .product-info {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 Merchant Dashboard Fix Test</h1>
+        <p>This page tests the fix for merchant dashboard order items display.</p>
+        
+        <div class="test-section">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>First, run the SQL fix: <code>fix_merchant_dashboard_orders.sql</code></li>
+                <li>Update the Supabase URL and key below</li>
+                <li>Click "Test Merchant Orders Function" to test the database function</li>
+                <li>Click "Test Order Details Function" to test individual order details</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>Configuration:</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">https://your-project.supabase.co</span></p>
+            <p><strong>Status:</strong> <span id="connection-status" class="status warning">Not Connected</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Tests:</h3>
+            <button onclick="testMerchantOrders()">Test Merchant Orders Function</button>
+            <button onclick="testOrderDetails()">Test Order Details Function</button>
+            <button onclick="testDatabaseConnection()">Test Database Connection</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Test Results</h3>
+            <div id="loading" class="loading" style="display: none;">Loading...</div>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwNzQ4NzEsImV4cCI6MjA1MDY1MDg3MX0.8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q'; // Replace with your actual anon key
+        
+        // Update the display
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test database connection
+        window.testDatabaseConnection = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            const statusDiv = document.getElementById('connection-status');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    statusDiv.textContent = 'Connection Failed';
+                    statusDiv.className = 'status error';
+                    resultsDiv.innerHTML = `<div class="status error">Connection Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'status success';
+                    resultsDiv.innerHTML = `<div class="status success">Database connection successful!</div>`;
+                }
+            } catch (err) {
+                statusDiv.textContent = 'Connection Failed';
+                statusDiv.className = 'status error';
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test merchant orders function
+        window.testMerchantOrders = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // Test with a known merchant code
+                const testMerchantCode = 'MC-2025-TXYR'; // Replace with actual merchant code
+                
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: testMerchantCode });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="status error">Merchant Orders Error: ${error.message}</div>`;
+                } else {
+                    displayMerchantOrders(orders, 'Merchant Orders', resultsDiv);
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Test order details function
+        window.testOrderDetails = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // First get an order ID from merchant orders
+                const testMerchantCode = 'MC-2025-TXYR';
+                const { data: orders } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: testMerchantCode });
+
+                if (orders && orders.length > 0) {
+                    const orderId = orders[0].order_id;
+                    
+                    const { data: orderDetails, error } = await supabase
+                        .rpc('get_merchant_order_details', { 
+                            p_order_id: orderId, 
+                            p_merchant_code: testMerchantCode 
+                        });
+
+                    if (error) {
+                        resultsDiv.innerHTML = `<div class="status error">Order Details Error: ${error.message}</div>`;
+                    } else {
+                        displayOrderDetails(orderDetails, 'Order Details', resultsDiv);
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<div class="status warning">No orders found to test order details</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${err.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        };
+
+        // Display merchant orders
+        function displayMerchantOrders(orders, title, container) {
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `<div class="status warning">No merchant orders found</div>`;
+                return;
+            }
+
+            let html = `<h4>${title} (${orders.length} orders)</h4>`;
+            
+            orders.forEach(order => {
+                const hasItems = order.order_items && order.order_items.length > 0;
+                const statusClass = hasItems ? 'success' : 'warning';
+                const statusText = hasItems ? 'Has Items' : 'No Items';
+                
+                html += `
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h5>Order: ${order.order_code || 'N/A'}</h5>
+                            <span class="status ${statusClass}">${statusText}</span>
+                        </div>
+                        <p><strong>Buyer:</strong> ${order.buyer_reference}</p>
+                        <p><strong>Total:</strong> ₹${order.total_amount || 0}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                        <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                        
+                        ${hasItems ? `
+                            <h6>Order Items:</h6>
+                            ${order.order_items.map(item => `
+                                <div class="product-info">
+                                    <img src="${item.product_image || '/assets/placeholder.svg'}" 
+                                         alt="${item.product_name || 'Unknown'}" 
+                                         class="product-image"
+                                         onerror="this.src='/assets/placeholder.svg'">
+                                    <div class="product-details">
+                                        <div class="product-name">${item.product_name || 'Unknown Product'}</div>
+                                        <div>Qty: ${item.quantity} × ₹${item.unit_price || 0}</div>
+                                        <div>Total: ₹${item.subtotal || 0}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        ` : '<p class="status warning">No order items found</p>'}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Display order details
+        function displayOrderDetails(orderDetails, title, container) {
+            if (!orderDetails || orderDetails.length === 0) {
+                container.innerHTML = `<div class="status warning">No order details found</div>`;
+                return;
+            }
+
+            const order = orderDetails[0];
+            const hasItems = order.order_items && order.order_items.length > 0;
+            const statusClass = hasItems ? 'success' : 'warning';
+            const statusText = hasItems ? 'Has Items' : 'No Items';
+
+            let html = `
+                <h4>${title}</h4>
+                <div class="order-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h5>Order: ${order.order_code || 'N/A'}</h5>
+                        <span class="status ${statusClass}">${statusText}</span>
+                    </div>
+                    <p><strong>Buyer:</strong> ${order.buyer_reference}</p>
+                    <p><strong>Total:</strong> ₹${order.total_amount || 0}</p>
+                    <p><strong>Status:</strong> ${order.status}</p>
+                    <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                    
+                    ${hasItems ? `
+                        <h6>Order Items:</h6>
+                        ${order.order_items.map(item => `
+                            <div class="product-info">
+                                <img src="${item.product_image || '/assets/placeholder.svg'}" 
+                                     alt="${item.product_name || 'Unknown'}" 
+                                     class="product-image"
+                                     onerror="this.src='/assets/placeholder.svg'">
+                                <div class="product-details">
+                                    <div class="product-name">${item.product_name || 'Unknown Product'}</div>
+                                    <div>Qty: ${item.quantity} × ₹${item.unit_price || 0}</div>
+                                    <div>Total: ₹${item.subtotal || 0}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    ` : '<p class="status warning">No order items found</p>'}
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Auto-test connection on load
+        window.addEventListener('load', () => {
+            testDatabaseConnection();
+        });
+    </script>
+</body>
+</html>

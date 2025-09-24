@@ -1,0 +1,161 @@
+-- Simple order placement function that works with the actual database schema
+-- This function creates orders without trying to insert into non-existent columns
+
+CREATE OR REPLACE FUNCTION create_simple_order_from_quotations(
+    p_user_id UUID,
+    p_quotation_code TEXT,
+    p_selected_merchants JSONB,
+    p_delivery_address JSONB,
+    p_shipping_address TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_merchant_code TEXT;
+    v_merchant_data JSONB;
+    v_total_amount DECIMAL(10,2) := 0;
+    v_result JSONB;
+    v_quotation RECORD;
+    v_order_ids UUID[] := '{}';
+    v_order_codes TEXT[] := '{}';
+    v_order_code TEXT;
+BEGIN
+    -- Get the original quotation
+    SELECT * INTO v_quotation 
+    FROM quotations 
+    WHERE quotation_code = p_quotation_code;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', 'Quotation not found'
+        );
+    END IF;
+    
+    -- Process each selected merchant - create ONE order per merchant
+    FOR v_merchant_data IN SELECT * FROM jsonb_array_elements(p_selected_merchants)
+    LOOP
+        v_merchant_code := v_merchant_data->>'merchant_code';
+        
+        -- Create order with only the columns that exist in the schema
+        INSERT INTO orders (
+            user_id,
+            quotation_code,
+            merchant_code,
+            delivery_address,
+            shipping_address,
+            total_amount,
+            cart_items,
+            status
+        ) VALUES (
+            p_user_id,
+            p_quotation_code,
+            v_merchant_code,
+            p_delivery_address,
+            p_shipping_address,
+            (v_merchant_data->>'total_price')::DECIMAL,
+            v_merchant_data->'items',
+            'pending'
+        ) RETURNING id INTO v_order_id;
+        
+        -- Add to arrays for return
+        v_order_ids := array_append(v_order_ids, v_order_id);
+        
+        -- Get the generated order code
+        SELECT order_code INTO v_order_code FROM orders WHERE id = v_order_id;
+        v_order_codes := array_append(v_order_codes, v_order_code);
+        
+        -- Add total to running total
+        v_total_amount := v_total_amount + (v_merchant_data->>'total_price')::DECIMAL;
+    END LOOP;
+    
+    -- Update quotation status
+    UPDATE quotations 
+    SET status = 'user_confirmed', 
+        user_confirmed_at = NOW(),
+        order_placed_at = NOW()
+    WHERE quotation_code = p_quotation_code;
+    
+    -- Return success with order details
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Orders created successfully',
+        'order_ids', v_order_ids,
+        'order_codes', v_order_codes,
+        'total_amount', v_total_amount,
+        'merchant_count', array_length(v_order_ids, 1)
+    );
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', 'Failed to create orders: ' || SQLERRM
+        );
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION create_simple_order_from_quotations(UUID, TEXT, JSONB, JSONB, TEXT) TO authenticated;
+
+-- Also create a simple order function for non-quotation orders
+CREATE OR REPLACE FUNCTION create_simple_order(
+    p_user_id UUID,
+    p_delivery_address JSONB,
+    p_cart_items JSONB,
+    p_total_amount NUMERIC,
+    p_quotation_code TEXT DEFAULT NULL,
+    p_merchant_code TEXT DEFAULT 'admin'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_order_code TEXT;
+BEGIN
+    -- Create order with only the columns that exist in the schema
+    INSERT INTO orders (
+        user_id,
+        delivery_address,
+        cart_items,
+        total_amount,
+        quotation_code,
+        merchant_code,
+        status
+    ) VALUES (
+        p_user_id,
+        p_delivery_address,
+        p_cart_items,
+        p_total_amount,
+        p_quotation_code,
+        p_merchant_code,
+        'pending'
+    ) RETURNING id INTO v_order_id;
+    
+    -- Get the generated order code
+    SELECT order_code INTO v_order_code FROM orders WHERE id = v_order_id;
+    
+    -- Return success with order details
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Order created successfully',
+        'order_id', v_order_id,
+        'order_code', v_order_code
+    );
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', 'Failed to create order: ' || SQLERRM
+        );
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION create_simple_order(UUID, JSONB, JSONB, NUMERIC, TEXT, TEXT) TO authenticated;

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Order Duplicate Prevention</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Order Duplicate Prevention</h1>
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzQ4MDAsImV4cCI6MjA1MDU1MDgwMH0.8QZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZq';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testDuplicatePrevention() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = 'Testing duplicate prevention...';
+            
+            try {
+                // Test 1: Check current orders for quotation QC-2025-0023
+                console.log('Checking existing orders for quotation QC-2025-0023...');
+                const { data: existingOrders, error: existingError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, quotation_code, parent_order_id, merchant_code, created_at')
+                    .eq('quotation_code', 'QC-2025-0023')
+                    .order('created_at', { ascending: false });
+                
+                if (existingError) {
+                    throw new Error(`Error fetching existing orders: ${existingError.message}`);
+                }
+                
+                console.log('Existing orders:', existingOrders);
+                resultsDiv.innerHTML += '<h3>Existing Orders for QC-2025-0023:</h3><pre>' + JSON.stringify(existingOrders, null, 2) + '</pre>';
+                
+                // Count parent and child orders
+                const parentOrders = existingOrders.filter(order => order.parent_order_id === null);
+                const childOrders = existingOrders.filter(order => order.parent_order_id !== null);
+                
+                resultsDiv.innerHTML += `<p><strong>Parent Orders:</strong> ${parentOrders.length}</p>`;
+                resultsDiv.innerHTML += `<p><strong>Child Orders:</strong> ${childOrders.length}</p>`;
+                
+                if (parentOrders.length > 1) {
+                    resultsDiv.innerHTML += '<p style="color: red;"><strong>ISSUE DETECTED:</strong> Multiple parent orders found for the same quotation!</p>';
+                } else if (parentOrders.length === 1) {
+                    resultsDiv.innerHTML += '<p style="color: green;"><strong>GOOD:</strong> Only one parent order found.</p>';
+                } else {
+                    resultsDiv.innerHTML += '<p style="color: orange;"><strong>INFO:</strong> No parent orders found for this quotation.</p>';
+                }
+                
+                // Test 2: Try to create a duplicate order (this should fail with the new constraints)
+                console.log('Testing duplicate order creation...');
+                const testOrderPayload = {
+                    user_id: '00000000-0000-0000-0000-000000000000', // Test UUID
+                    parent_order_id: null,
+                    merchant_id: null,
+                    quotation_code: 'QC-2025-0023',
+                    merchant_code: 'parent',
+                    delivery_address: {},
+                    shipping_address: 'Test Address',
+                    total_amount: 100.00,
+                    subtotal: 100.00,
+                    cart_items: [{
+                        name: 'Test Plant',
+                        price: 100.00,
+                        quantity: 1
+                    }],
+                    status: 'pending'
+                };
+                
+                const { data: duplicateOrderData, error: duplicateOrderError } = await supabase
+                    .from('orders')
+                    .insert([testOrderPayload])
+                    .select('id, order_code')
+                    .single();
+                
+                if (duplicateOrderError) {
+                    if (duplicateOrderError.code === '23505' || duplicateOrderError.message.includes('duplicate')) {
+                        resultsDiv.innerHTML += '<p style="color: green;"><strong>SUCCESS:</strong> Duplicate order creation properly blocked!</p>';
+                    } else {
+                        resultsDiv.innerHTML += '<p style="color: orange;"><strong>WARNING:</strong> Order creation failed for a different reason: ' + duplicateOrderError.message + '</p>';
+                    }
+                } else {
+                    resultsDiv.innerHTML += '<p style="color: red;"><strong>ISSUE:</strong> Duplicate order was created! This should not happen.</p>';
+                    
+                    // Clean up the test order
+                    await supabase
+                        .from('orders')
+                        .delete()
+                        .eq('id', duplicateOrderData.id);
+                }
+                
+                statusDiv.innerHTML = 'Test completed!';
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                statusDiv.innerHTML = 'Test failed!';
+                resultsDiv.innerHTML += '<h3>Test Error:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testDuplicatePrevention);
+    </script>
+</body>
+</html>

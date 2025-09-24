@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Loading Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            background: #f3f9ff;
+        }
+        .success { background: #e8f5e8; color: #2e7d32; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background: #fff3e0; color: #ef6c00; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .product-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1976d2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Test Image Loading Fix</h1>
+        <p>This page tests the fix for image loading and flickering issues.</p>
+        
+        <div class="test-section">
+            <h3>Issues Fixed:</h3>
+            <ul>
+                <li>✅ Removed conflicting "No items found" message</li>
+                <li>✅ Fixed image source priority (quotation → stored → products → fallback)</li>
+                <li>✅ Added better error handling for images</li>
+                <li>✅ Improved console logging for debugging</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>Configuration:</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">https://your-project.supabase.co</span></p>
+            <p><strong>Status:</strong> <span id="connection-status" class="warning">Not Connected</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Tests:</h3>
+            <button onclick="testImageLoading()">Test Image Loading</button>
+            <button onclick="testProductData()">Test Product Data</button>
+            <button onclick="testOrderDetails()">Test Order Details</button>
+        </div>
+
+        <div id="results" class="container">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // UPDATE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Replace with your actual anon key
+        
+        // Update the display
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Test image loading
+        window.testImageLoading = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const statusDiv = document.getElementById('connection-status');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing image loading...</div>';
+
+            try {
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: 'MC-2025-TXYR' });
+
+                if (error) {
+                    statusDiv.textContent = 'Connection Failed';
+                    statusDiv.className = 'error';
+                    resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'success';
+                    
+                    if (orders && orders.length > 0) {
+                        const order = orders[0];
+                        const items = order.order_items || [];
+                        
+                        let html = '<div class="success">✅ Image Loading Test Results:</div>';
+                        html += '<h4>Product Items with Images:</h4>';
+                        
+                        items.forEach((item, index) => {
+                            html += `
+                                <div class="product-item">
+                                    <h4>Item ${index + 1}: ${item.product_name}</h4>
+                                    <p><strong>Image Source:</strong> ${item.product_image}</p>
+                                    <p><strong>Quantity:</strong> ${item.quantity}</p>
+                                    <p><strong>Price:</strong> ₹${item.subtotal}</p>
+                                    <img src="${item.product_image}" alt="${item.product_name}" class="product-image" 
+                                         onerror="this.src='/assets/placeholder.svg'; console.log('Image failed to load:', this.src);"
+                                         onload="console.log('Image loaded successfully:', '${item.product_name}');" />
+                                </div>
+                            `;
+                        });
+                        
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = `<div class="warning">⚠️ No orders found</div>`;
+                    }
+                }
+            } catch (err) {
+                statusDiv.textContent = 'Connection Failed';
+                statusDiv.className = 'error';
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test product data
+        window.testProductData = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing product data...</div>';
+
+            try {
+                const { data: orders, error } = await supabase
+                    .rpc('get_merchant_orders_with_products', { p_merchant_code: 'MC-2025-TXYR' });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                } else if (orders && orders.length > 0) {
+                    const order = orders[0];
+                    const items = order.order_items || [];
+                    
+                    const productNames = items.map(item => item.product_name);
+                    const productImages = items.map(item => item.product_image);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    const hasRealImages = productImages.some(img => 
+                        img && img !== '/assets/placeholder.svg'
+                    );
+                    
+                    let status = 'success';
+                    let message = 'Product data is working correctly!';
+                    
+                    if (!hasRealNames) {
+                        status = 'error';
+                        message = 'Product names are not coming from real-time data';
+                    } else if (!hasRealImages) {
+                        status = 'warning';
+                        message = 'Product names are real but images are placeholder';
+                    }
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="${status}">${message}</div>
+                        <h4>Product Names:</h4>
+                        <ul>
+                            ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                        </ul>
+                        <h4>Product Images:</h4>
+                        <ul>
+                            ${productImages.map(img => `<li><strong>${img}</strong></li>`).join('')}
+                        </ul>
+                        <h4>Full Order Data:</h4>
+                        <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<div class="warning">⚠️ No orders found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Test order details
+        window.testOrderDetails = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="warning">Testing order details...</div>';
+
+            try {
+                const { data: orderDetails, error } = await supabase
+                    .rpc('get_merchant_order_details', { 
+                        p_order_id: 'b8d4d41c-1ebd-4507-832e-38f38965a9d9', 
+                        p_merchant_code: 'MC-2025-TXYR' 
+                    });
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                } else if (orderDetails && orderDetails.length > 0) {
+                    const order = orderDetails[0];
+                    const items = order.order_items || [];
+                    
+                    const productNames = items.map(item => item.product_name);
+                    const productImages = items.map(item => item.product_image);
+                    const hasRealNames = productNames.some(name => 
+                        name && (name.includes('Mahatama') || name.includes('Mirchi'))
+                    );
+                    
+                    let status = 'success';
+                    let message = 'Order details are working correctly!';
+                    
+                    if (!hasRealNames) {
+                        status = 'error';
+                        message = 'Order details are not showing real product names';
+                    }
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="${status}">${message}</div>
+                        <h4>Order Details Product Names:</h4>
+                        <ul>
+                            ${productNames.map(name => `<li><strong>${name}</strong></li>`).join('')}
+                        </ul>
+                        <h4>Order Details Product Images:</h4>
+                        <ul>
+                            ${productImages.map(img => `<li><strong>${img}</strong></li>`).join('')}
+                        </ul>
+                        <h4>Full Order Details:</h4>
+                        <div class="debug-info">${JSON.stringify(order, null, 2)}</div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<div class="warning">⚠️ No order details found</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            testImageLoading();
+        });
+    </script>
+</body>
+</html>

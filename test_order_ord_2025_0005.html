@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Order ORD-2025-0005</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #dcfce7;
+            border: 1px solid #16a34a;
+            color: #166534;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .order-details {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .item-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Order ORD-2025-0005</h1>
+    <p>This page tests the specific order that was showing "No items found".</p>
+    
+    <div class="container">
+        <h2>📋 Step 1: Run Database Fix</h2>
+        <div class="warning">
+            <h3>⚠️ Important</h3>
+            <p>First, run the SQL script <code>quick_fix_order_items.sql</code> in your Supabase SQL editor.</p>
+            <p>This will populate the missing order_items for ORD-2025-0005.</p>
+        </div>
+        <button class="button" onclick="testOrder()">Test Order ORD-2025-0005</button>
+    </div>
+
+    <div class="container">
+        <h2>📊 Order Details</h2>
+        <div id="order-details" class="loading">Click "Test Order" to check the order details...</div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 Debug Information</h2>
+        <div id="debug-info" class="loading">Debug information will appear here...</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseKey = 'your-anon-key'; // Replace with your anon key
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        async function testOrder() {
+            try {
+                document.getElementById('order-details').innerHTML = '<div class="loading">Loading order details...</div>';
+                document.getElementById('debug-info').innerHTML = '<div class="loading">Gathering debug information...</div>';
+                
+                // Get the specific order
+                const { data: order, error: orderError } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, merchant_code, total_amount, status, created_at,
+                        cart_items, delivery_address,
+                        order_items(id, quantity, unit_price, subtotal, product_id, products(name, image_url))
+                    `)
+                    .eq('order_code', 'ORD-2025-0005')
+                    .single();
+                
+                if (orderError) {
+                    document.getElementById('order-details').innerHTML = `
+                        <div class="error">
+                            <h3>❌ Order Not Found</h3>
+                            <p><strong>Error:</strong> ${orderError.message}</p>
+                            <p>The order ORD-2025-0005 was not found in the database.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Display order details
+                let orderHtml = `
+                    <div class="order-details">
+                        <h3>Order Information</h3>
+                        <p><strong>Order ID:</strong> ${order.order_code}</p>
+                        <p><strong>Merchant Code:</strong> ${order.merchant_code}</p>
+                        <p><strong>Total Amount:</strong> ₹${order.total_amount}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                        <p><strong>Created:</strong> ${new Date(order.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+                
+                // Check order items
+                if (order.order_items && order.order_items.length > 0) {
+                    orderHtml += `
+                        <div class="success">
+                            <h3>✅ Order Items Found</h3>
+                            <p>Found ${order.order_items.length} items for this order:</p>
+                        </div>
+                    `;
+                    
+                    order.order_items.forEach((item, index) => {
+                        orderHtml += `
+                            <div class="item-card">
+                                <div>
+                                    <strong>${item.products?.name || 'Unknown Product'}</strong><br>
+                                    <small>ID: ${item.id}</small>
+                                </div>
+                                <div>
+                                    <strong>Quantity:</strong> ${item.quantity}<br>
+                                    <strong>Unit Price:</strong> ₹${item.unit_price}<br>
+                                    <strong>Subtotal:</strong> ₹${item.subtotal}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    orderHtml += `
+                        <div class="error">
+                            <h3>❌ No Order Items Found</h3>
+                            <p>This order has no order_items records. This is why you're seeing "No items found for this order."</p>
+                            <p><strong>Solution:</strong> Run the <code>quick_fix_order_items.sql</code> script to populate the order_items.</p>
+                        </div>
+                    `;
+                }
+                
+                // Debug information
+                let debugHtml = `
+                    <h3>Debug Information</h3>
+                    <div class="order-details">
+                        <p><strong>Order ID:</strong> ${order.id}</p>
+                        <p><strong>Has Cart Items:</strong> ${order.cart_items ? 'Yes' : 'No'}</p>
+                        <p><strong>Cart Items Type:</strong> ${typeof order.cart_items}</p>
+                        <p><strong>Order Items Count:</strong> ${order.order_items ? order.order_items.length : 0}</p>
+                    </div>
+                `;
+                
+                if (order.cart_items) {
+                    debugHtml += `
+                        <div class="order-details">
+                            <h4>Cart Items Content:</h4>
+                            <pre style="background: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto;">
+${JSON.stringify(order.cart_items, null, 2)}
+                            </pre>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('order-details').innerHTML = orderHtml;
+                document.getElementById('debug-info').innerHTML = debugHtml;
+                
+            } catch (error) {
+                document.getElementById('order-details').innerHTML = `
+                    <div class="error">
+                        <h3>❌ Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-run test on page load
+        console.log('Order ORD-2025-0005 test page loaded');
+        console.log('Click "Test Order" to check if the order items are now visible');
+    </script>
+</body>
+</html>

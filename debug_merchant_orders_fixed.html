@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Merchant Orders - Fixed</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .order-id {
+            font-weight: bold;
+            color: #333;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .status-confirmed {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .order-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .detail-value {
+            font-weight: 500;
+            color: #333;
+        }
+        .items-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .item-name {
+            font-weight: 500;
+        }
+        .item-details {
+            font-size: 12px;
+            color: #666;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #059669;
+        }
+        .no-items {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        .debug-info {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button.confirm {
+            background: #059669;
+        }
+        .button.confirm:hover {
+            background: #047857;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug Merchant Orders - Fixed Version</h1>
+        <p>This page helps debug merchant order display issues. It shows:</p>
+        <ul>
+            <li>✅ Order items properly displayed</li>
+            <li>✅ Customer information (name, email, phone)</li>
+            <li>✅ Delivery address information</li>
+            <li>✅ Order confirmation functionality</li>
+            <li>✅ Proper order details modal</li>
+        </ul>
+        
+        <div class="debug-info">
+            <strong>Debug Info:</strong><br>
+            - Orders are fetched using parent-child structure<br>
+            - Cart items are parsed from JSON and displayed properly<br>
+            - Customer info is fetched from user_profiles table<br>
+            - Delivery address is retrieved from parent order<br>
+            - Order confirmation updates status to 'confirmed'
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Sample Order Display (Fixed)</h2>
+        
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-id">ORD-2025-0005</div>
+                <div class="order-status status-pending">Pending</div>
+            </div>
+            
+            <div class="order-details">
+                <div class="detail-item">
+                    <div class="detail-label">Customer</div>
+                    <div class="detail-value">John Doe</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">john.doe@example.com</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Phone</div>
+                    <div class="detail-value">+91 98765 43210</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Amount</div>
+                    <div class="detail-value">₹3,300</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Items</div>
+                    <div class="detail-value">2 items</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Date</div>
+                    <div class="detail-value">9/23/2025</div>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h4>Order Items</h4>
+                <div class="item">
+                    <div>
+                        <div class="item-name">Golden Bamboo Plant</div>
+                        <div class="item-details">Quantity: 2 × ₹1,200 = ₹2,400</div>
+                    </div>
+                    <div class="item-price">₹2,400</div>
+                </div>
+                <div class="item">
+                    <div>
+                        <div class="item-name">Ficus Lyrata</div>
+                        <div class="item-details">Quantity: 1 × ₹900 = ₹900</div>
+                    </div>
+                    <div class="item-price">₹900</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <h4>Delivery Address</h4>
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                    <strong>John Doe</strong><br>
+                    Phone: +91 98765 43210<br>
+                    123 Garden Street, Plant City<br>
+                    Bangalore, Karnataka - 560001
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="button">👁️ View Details</button>
+                <button class="button">📞 Contact Customer</button>
+                <button class="button confirm">✅ Confirm Order</button>
+                <button class="button">📦 Update Status</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 What Was Fixed</h2>
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">
+            <h3>✅ Order Items Display</h3>
+            <p><strong>Problem:</strong> Orders showed "0 items" and "No items found for this order"</p>
+            <p><strong>Solution:</strong> Fixed cart_items parsing and display logic in merchant dashboard</p>
+            <ul>
+                <li>Properly parse JSON cart_items from database</li>
+                <li>Map cart items to display format with name, quantity, price, unit_price</li>
+                <li>Show item images and modified specifications</li>
+                <li>Calculate subtotals correctly</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Customer Information</h3>
+            <p><strong>Problem:</strong> Customer info showed "No email" and "Unknown User"</p>
+            <p><strong>Solution:</strong> Fixed user profile lookup from parent orders</p>
+            <ul>
+                <li>Fetch user_id from parent order for child orders</li>
+                <li>Query user_profiles table for customer details</li>
+                <li>Display name, email, phone, and buyer reference</li>
+                <li>Handle cases where profile data is missing</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Delivery Address</h3>
+            <p><strong>Problem:</strong> Delivery address showed "No address"</p>
+            <p><strong>Solution:</strong> Fixed address retrieval from parent order</p>
+            <ul>
+                <li>Parse delivery_address from parent order</li>
+                <li>Display address components properly</li>
+                <li>Handle JSON parsing errors gracefully</li>
+                <li>Show "No address provided" when missing</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Order Confirmation</h3>
+            <p><strong>Problem:</strong> Confirm button didn't work properly</p>
+            <p><strong>Solution:</strong> Added proper order confirmation functionality</p>
+            <ul>
+                <li>Confirm button only shows for pending orders</li>
+                <li>Updates order status to 'confirmed'</li>
+                <li>Shows loading state during update</li>
+                <li>Displays success/error messages</li>
+            </ul>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #059669; margin-top: 10px;">
+            <h3>✅ Order Details Modal</h3>
+            <p><strong>Problem:</strong> Order details were shown in basic alert</p>
+            <p><strong>Solution:</strong> Created professional order details modal</p>
+            <ul>
+                <li>Professional modal with proper layout</li>
+                <li>Shows all order information clearly</li>
+                <li>Displays order items with images and details</li>
+                <li>Responsive design for different screen sizes</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🚀 How to Test</h2>
+        <ol>
+            <li>Go to the merchant dashboard</li>
+            <li>Navigate to the Orders tab</li>
+            <li>You should now see:
+                <ul>
+                    <li>✅ Order items properly displayed (not "0 items")</li>
+                    <li>✅ Customer name, email, and phone</li>
+                    <li>✅ Delivery address information</li>
+                    <li>✅ Working "Confirm Order" button</li>
+                    <li>✅ Professional order details modal</li>
+                </ul>
+            </li>
+            <li>Click "View Details" to see the full order information</li>
+            <li>Click "Confirm Order" to update order status</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <h2>📝 Technical Details</h2>
+        <div class="debug-info">
+            <strong>Key Changes Made:</strong><br>
+            1. Fixed order fetching query to include parent_order data<br>
+            2. Improved cart_items parsing and display logic<br>
+            3. Added proper user profile lookup for customer info<br>
+            4. Fixed delivery address retrieval from parent order<br>
+            5. Added order confirmation functionality<br>
+            6. Created professional order details modal<br>
+            7. Added proper error handling and loading states
+        </div>
+    </div>
+
+    <script>
+        // Simulate order confirmation
+        document.querySelectorAll('.button.confirm').forEach(button => {
+            button.addEventListener('click', function() {
+                const orderCard = this.closest('.order-card');
+                const statusElement = orderCard.querySelector('.order-status');
+                
+                // Update status
+                statusElement.textContent = 'Confirmed';
+                statusElement.className = 'order-status status-confirmed';
+                
+                // Disable confirm button
+                this.textContent = '✅ Confirmed';
+                this.disabled = true;
+                this.style.background = '#6b7280';
+                
+                // Show success message
+                alert('Order confirmed successfully!');
+            });
+        });
+
+        // Simulate view details
+        document.querySelectorAll('.button').forEach(button => {
+            if (button.textContent.includes('View Details')) {
+                button.addEventListener('click', function() {
+                    alert('Order Details Modal would open here showing:\n\n- Order ID: ORD-2025-0005\n- Customer: John Doe\n- Items: 2 items\n- Total: ₹3,300\n- Address: 123 Garden Street, Plant City, Bangalore');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

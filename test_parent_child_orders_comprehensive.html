@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent-Child Order System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .loading {
+            color: #007bff;
+        }
+        .error-text {
+            color: #dc3545;
+        }
+        .success-text {
+            color: #28a745;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .status-confirmed { background-color: #d1ecf1; color: #0c5460; }
+        .status-shipped { background-color: #d4edda; color: #155724; }
+        .status-delivered { background-color: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Parent-Child Order System Comprehensive Test</h1>
+    
+    <div class="container">
+        <h2>Test Configuration</h2>
+        <div class="test-section info">
+            <p><strong>Test Purpose:</strong> Verify that the parent-child order splitting system works correctly</p>
+            <p><strong>Expected Behavior:</strong></p>
+            <ul>
+                <li>Users see parent orders with expandable merchant breakdown</li>
+                <li>Merchants see only their child orders</li>
+                <li>Parent orders show combined totals and status</li>
+                <li>Child orders show merchant-specific items and subtotals</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Database Connection Test</h2>
+        <div class="test-section">
+            <button onclick="testDatabaseConnection()">Test Database Connection</button>
+            <div id="dbResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Schema Validation Test</h2>
+        <div class="test-section">
+            <button onclick="testSchemaValidation()">Validate Parent-Child Schema</button>
+            <div id="schemaResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Parent Orders Test (User View)</h2>
+        <div class="test-section">
+            <button onclick="testParentOrders()">Fetch Parent Orders</button>
+            <div id="parentOrdersResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Child Orders Test (Merchant View)</h2>
+        <div class="test-section">
+            <button onclick="testChildOrders()">Fetch Child Orders for Merchant</button>
+            <div id="childOrdersResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Order Statistics Test</h2>
+        <div class="test-section">
+            <button onclick="testOrderStatistics()">Get Order Statistics</button>
+            <div id="statisticsResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Order Status Update Test</h2>
+        <div class="test-section">
+            <button onclick="testOrderStatusUpdate()">Test Order Status Update</button>
+            <div id="statusUpdateResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Data Integrity Test</h2>
+        <div class="test-section">
+            <button onclick="testDataIntegrity()">Test Data Integrity</button>
+            <div id="integrityResult" class="result"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co';
+        const supabaseKey = 'your-anon-key';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Test database connection
+        window.testDatabaseConnection = async function() {
+            const resultDiv = document.getElementById('dbResult');
+            resultDiv.innerHTML = '<div class="loading">Testing database connection...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">✅ Database connection successful! Found ${data} orders.</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Connection failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test schema validation
+        window.testSchemaValidation = async function() {
+            const resultDiv = document.getElementById('schemaResult');
+            resultDiv.innerHTML = '<div class="loading">Validating schema...</div>';
+            
+            try {
+                const checks = [];
+                
+                // Check if parent_order_id column exists
+                const { data: parentOrderIdCheck, error: parentOrderIdError } = await supabase
+                    .from('orders')
+                    .select('parent_order_id')
+                    .limit(1);
+                
+                if (parentOrderIdError) {
+                    checks.push(`❌ parent_order_id column: ${parentOrderIdError.message}`);
+                } else {
+                    checks.push('✅ parent_order_id column exists');
+                }
+                
+                // Check if merchant_id column exists
+                const { data: merchantIdCheck, error: merchantIdError } = await supabase
+                    .from('orders')
+                    .select('merchant_id')
+                    .limit(1);
+                
+                if (merchantIdError) {
+                    checks.push(`❌ merchant_id column: ${merchantIdError.message}`);
+                } else {
+                    checks.push('✅ merchant_id column exists');
+                }
+                
+                // Check if subtotal column exists
+                const { data: subtotalCheck, error: subtotalError } = await supabase
+                    .from('orders')
+                    .select('subtotal')
+                    .limit(1);
+                
+                if (subtotalError) {
+                    checks.push(`❌ subtotal column: ${subtotalError.message}`);
+                } else {
+                    checks.push('✅ subtotal column exists');
+                }
+                
+                resultDiv.innerHTML = checks.join('\n');
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Schema validation failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test parent orders
+        window.testParentOrders = async function() {
+            const resultDiv = document.getElementById('parentOrdersResult');
+            resultDiv.innerHTML = '<div class="loading">Fetching parent orders...</div>';
+            
+            try {
+                // Get a sample user ID for testing
+                const { data: users, error: userError } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .limit(1);
+                
+                if (userError || !users || users.length === 0) {
+                    resultDiv.innerHTML = `<div class="error-text">No users found for testing</div>`;
+                    return;
+                }
+                
+                const userId = users[0].id;
+                
+                // Fetch parent orders using the function
+                const { data: parentOrders, error: parentError } = await supabase
+                    .rpc('get_parent_orders_with_children', { p_user_id: userId });
+                
+                if (parentError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error fetching parent orders: ${parentError.message}</div>`;
+                    return;
+                }
+                
+                if (!parentOrders || parentOrders.length === 0) {
+                    resultDiv.innerHTML = `<div class="warning">No parent orders found for user ${userId}</div>`;
+                    return;
+                }
+                
+                // Display results in a table
+                let tableHTML = `
+                    <h4>Parent Orders Found: ${parentOrders.length}</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parent Order Code</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Child Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                parentOrders.forEach(order => {
+                    const childOrders = order.child_orders || [];
+                    tableHTML += `
+                        <tr>
+                            <td>${order.parent_order_code}</td>
+                            <td>₹${order.parent_total_amount}</td>
+                            <td><span class="status-badge status-${order.parent_status}">${order.parent_status}</span></td>
+                            <td>${new Date(order.parent_created_at).toLocaleDateString()}</td>
+                            <td>${childOrders.length} merchants</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                resultDiv.innerHTML = tableHTML;
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Parent orders test failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test child orders
+        window.testChildOrders = async function() {
+            const resultDiv = document.getElementById('childOrdersResult');
+            resultDiv.innerHTML = '<div class="loading">Fetching child orders...</div>';
+            
+            try {
+                // Get a sample merchant ID for testing
+                const { data: merchants, error: merchantError } = await supabase
+                    .from('merchants')
+                    .select('id')
+                    .limit(1);
+                
+                if (merchantError || !merchants || merchants.length === 0) {
+                    resultDiv.innerHTML = `<div class="error-text">No merchants found for testing</div>`;
+                    return;
+                }
+                
+                const merchantId = merchants[0].id;
+                
+                // Fetch child orders using the function
+                const { data: childOrders, error: childError } = await supabase
+                    .rpc('get_merchant_child_orders', { p_merchant_id: merchantId });
+                
+                if (childError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error fetching child orders: ${childError.message}</div>`;
+                    return;
+                }
+                
+                if (!childOrders || childOrders.length === 0) {
+                    resultDiv.innerHTML = `<div class="warning">No child orders found for merchant ${merchantId}</div>`;
+                    return;
+                }
+                
+                // Display results in a table
+                let tableHTML = `
+                    <h4>Child Orders Found: ${childOrders.length}</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Child Order Code</th>
+                                <th>Parent Order Code</th>
+                                <th>Subtotal</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Items</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                childOrders.forEach(order => {
+                    const items = order.order_items || [];
+                    tableHTML += `
+                        <tr>
+                            <td>${order.child_order_code}</td>
+                            <td>${order.parent_order_code}</td>
+                            <td>₹${order.child_subtotal}</td>
+                            <td><span class="status-badge status-${order.child_status}">${order.child_status}</span></td>
+                            <td>${new Date(order.child_created_at).toLocaleDateString()}</td>
+                            <td>${items.length} items</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                resultDiv.innerHTML = tableHTML;
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Child orders test failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test order statistics
+        window.testOrderStatistics = async function() {
+            const resultDiv = document.getElementById('statisticsResult');
+            resultDiv.innerHTML = '<div class="loading">Fetching order statistics...</div>';
+            
+            try {
+                const { data: stats, error: statsError } = await supabase
+                    .from('order_statistics')
+                    .select('*')
+                    .single();
+                
+                if (statsError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error fetching statistics: ${statsError.message}</div>`;
+                    return;
+                }
+                
+                const statsHTML = `
+                    <h4>Order Statistics</h4>
+                    <table>
+                        <tr><td>Total Orders</td><td>${stats.total_orders}</td></tr>
+                        <tr><td>Parent Orders</td><td>${stats.parent_orders}</td></tr>
+                        <tr><td>Child Orders</td><td>${stats.child_orders}</td></tr>
+                        <tr><td>Pending Orders</td><td>${stats.pending_orders}</td></tr>
+                        <tr><td>Confirmed Orders</td><td>${stats.confirmed_orders}</td></tr>
+                        <tr><td>Shipped Orders</td><td>${stats.shipped_orders}</td></tr>
+                        <tr><td>Delivered Orders</td><td>${stats.delivered_orders}</td></tr>
+                        <tr><td>Cancelled Orders</td><td>${stats.cancelled_orders}</td></tr>
+                        <tr><td>Total Revenue</td><td>₹${stats.total_revenue}</td></tr>
+                    </table>
+                `;
+                
+                resultDiv.innerHTML = statsHTML;
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Statistics test failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test order status update
+        window.testOrderStatusUpdate = async function() {
+            const resultDiv = document.getElementById('statusUpdateResult');
+            resultDiv.innerHTML = '<div class="loading">Testing order status update...</div>';
+            
+            try {
+                // Get a sample child order for testing
+                const { data: orders, error: orderError } = await supabase
+                    .from('orders')
+                    .select('id, merchant_id')
+                    .not('parent_order_id', 'is', null)
+                    .not('merchant_id', 'is', null)
+                    .limit(1);
+                
+                if (orderError || !orders || orders.length === 0) {
+                    resultDiv.innerHTML = `<div class="warning">No child orders found for status update test</div>`;
+                    return;
+                }
+                
+                const testOrder = orders[0];
+                
+                // Test status update
+                const { data: updateResult, error: updateError } = await supabase
+                    .rpc('update_order_status', {
+                        p_order_id: testOrder.id,
+                        p_merchant_id: testOrder.merchant_id,
+                        p_new_status: 'confirmed'
+                    });
+                
+                if (updateError) {
+                    resultDiv.innerHTML = `<div class="error-text">Status update failed: ${updateError.message}</div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success-text">✅ Status update test successful!</div>
+                    <pre>${JSON.stringify(updateResult, null, 2)}</pre>
+                `;
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Status update test failed: ${err.message}</div>`;
+            }
+        };
+
+        // Test data integrity
+        window.testDataIntegrity = async function() {
+            const resultDiv = document.getElementById('integrityResult');
+            resultDiv.innerHTML = '<div class="loading">Testing data integrity...</div>';
+            
+            try {
+                const checks = [];
+                
+                // Check for orphaned child orders (child orders without parent)
+                const { data: orphanedChildren, error: orphanedError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, parent_order_id')
+                    .not('parent_order_id', 'is', null)
+                    .is('parent_order_id', null);
+                
+                if (orphanedError) {
+                    checks.push(`❌ Orphaned children check failed: ${orphanedError.message}`);
+                } else {
+                    checks.push(`✅ Orphaned children check: ${orphanedChildren.length} found`);
+                }
+                
+                // Check for parent orders with no children
+                const { data: parentOrders, error: parentError } = await supabase
+                    .from('orders')
+                    .select('id, order_code')
+                    .is('parent_order_id', null);
+                
+                if (parentError) {
+                    checks.push(`❌ Parent orders check failed: ${parentError.message}`);
+                } else {
+                    let parentsWithoutChildren = 0;
+                    for (const parent of parentOrders) {
+                        const { data: children } = await supabase
+                            .from('orders')
+                            .select('id')
+                            .eq('parent_order_id', parent.id)
+                            .limit(1);
+                        
+                        if (!children || children.length === 0) {
+                            parentsWithoutChildren++;
+                        }
+                    }
+                    checks.push(`✅ Parent orders without children: ${parentsWithoutChildren}`);
+                }
+                
+                // Check for orders with invalid merchant_id
+                const { data: invalidMerchants, error: merchantError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_id')
+                    .not('merchant_id', 'is', null)
+                    .not('merchant_id', 'in', '(SELECT id FROM merchants)');
+                
+                if (merchantError) {
+                    checks.push(`❌ Invalid merchant check failed: ${merchantError.message}`);
+                } else {
+                    checks.push(`✅ Invalid merchant references: ${invalidMerchants.length}`);
+                }
+                
+                resultDiv.innerHTML = checks.join('\n');
+                
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Data integrity test failed: ${err.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>

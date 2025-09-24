@@ -45,7 +45,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
     { name: "Categories", href: "/plants" },
-    { name: "Our Catalog", href: "/catalog" },
+    { name: "Request Quotation", href: "/catalog" },
     { name: "Shop", href: "/shop" },
     { name: "Contact", href: "/contact" },
     { name: "My Orders", href: "/orders" },
@@ -64,7 +64,7 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
           let profile = null;
           const { data: profileByEmail, error: emailError } = await supabase
             .from('user_profiles')
-            .select('role, user_id, id')
+            .select('role, id')
             .eq('email', user.email)
             .maybeSingle();
           
@@ -72,31 +72,19 @@ const Navbar: React.FC<NavbarProps> = ({ hideNavigationLinks = false, hideCart =
             profile = profileByEmail;
             console.log('Navbar: Found profile by email:', profile);
           } else {
-            // Try by user_id
-            const { data: profileByUserId, error: userIdError } = await supabase
+            // Try by id as fallback
+            const { data: profileById, error: idError } = await supabase
               .from('user_profiles')
-              .select('role, user_id, id')
-              .eq('user_id', user.id)
+              .select('role, id')
+              .eq('id', user.id)
               .maybeSingle();
             
-            if (profileByUserId) {
-              profile = profileByUserId;
-              console.log('Navbar: Found profile by user_id:', profile);
+            if (profileById) {
+              profile = profileById;
+              console.log('Navbar: Found profile by id:', profile);
             } else {
-              // Try by id as fallback
-              const { data: profileById, error: idError } = await supabase
-                .from('user_profiles')
-                .select('role, user_id, id')
-                .eq('id', user.id)
-                .maybeSingle();
-              
-              if (profileById) {
-                profile = profileById;
-                console.log('Navbar: Found profile by id:', profile);
-              } else {
-                console.log('Navbar: No profile found for user:', user.email);
-                console.log('Navbar: Errors - Email:', emailError, 'UserID:', userIdError, 'ID:', idError);
-              }
+              console.log('Navbar: No profile found for user:', user.email);
+              console.log('Navbar: Errors - Email:', emailError, 'ID:', idError);
             }
           }
           

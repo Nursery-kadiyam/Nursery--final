@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantity Modification Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .step { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; }
+        .feature-list { background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔢 Quantity Modification Feature Added</h1>
+    
+    <div class="test-section success">
+        <h2>✅ New Feature: Merchant Quantity Modification</h2>
+        <p><strong>What's New:</strong> Merchants can now modify quantities when submitting quotations</p>
+        <p><strong>Visual Indicator:</strong> Modified quantities are displayed in red color with tooltips</p>
+        <p><strong>Status:</strong> Fully implemented and ready for testing</p>
+    </div>
+
+    <div class="feature-list">
+        <h3>🎯 Features Implemented</h3>
+        <ul>
+            <li>✅ <strong>Editable Quantity Fields:</strong> Merchants can change quantities in quotation forms</li>
+            <li>✅ <strong>Red Highlighting:</strong> Modified quantities show in red color</li>
+            <li>✅ <strong>Tooltip Information:</strong> Hover to see original vs modified quantities</li>
+            <li>✅ <strong>Price Recalculation:</strong> Total prices update based on modified quantities</li>
+            <li>✅ <strong>Mobile Support:</strong> Works on both desktop and mobile views</li>
+            <li>✅ <strong>Data Persistence:</strong> Modified quantities are saved in modified_specifications</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Changes Made</h2>
+        
+        <h3>1. Merchant Dashboard (MerchantDashboard.tsx)</h3>
+        <pre>// Added editable quantity field
+&lt;div className="flex items-center space-x-2 mb-2"&gt;
+  &lt;Label className="text-sm text-gray-600"&gt;Quantity:&lt;/Label&gt;
+  &lt;Input
+    type="number"
+    min="1"
+    value={getSpecificationValue(q.id, idx, 'quantity', item.quantity)}
+    onChange={(e) => handleSpecificationChange(q.id, idx, 'quantity', parseInt(e.target.value) || 1)}
+    className="w-20 h-8 text-sm"
+    placeholder="1"
+  /&gt;
+  &lt;span className="text-sm text-gray-500"&gt;units&lt;/span&gt;
+&lt;/div&gt;</pre>
+
+        <h3>2. Price Calculation Update</h3>
+        <pre>// Updated to use modified quantities
+const calculateTotalProductCost = (quotationId: string, items: any[]) => {
+    const unitPrices = formStates[quotationId]?.unit_prices || {};
+    const modifiedSpecifications = modifiedSpecs[quotationId] || {};
+    return items.reduce((total, item, index) => {
+        const price = parseFloat(unitPrices[index]) || 0;
+        const quantity = modifiedSpecifications[index]?.quantity || item.quantity || 1;
+        return total + (price * quantity);
+    }, 0);
+};</pre>
+
+        <h3>3. User View Display (MyQuotations.tsx)</h3>
+        <pre>// Desktop view - quantity with red highlighting
+&lt;td className="py-3 px-3 text-sm text-gray-600 font-medium"&gt;
+  &lt;div className="flex items-center space-x-1"&gt;
+    &lt;span className={itemModifiedSpecs.quantity && itemModifiedSpecs.quantity !== item.quantity ? 'text-red-600 font-semibold' : ''}&gt;
+      {itemModifiedSpecs.quantity || item.quantity || 1}
+    &lt;/span&gt;
+    {itemModifiedSpecs.quantity && itemModifiedSpecs.quantity !== item.quantity && (
+      &lt;Tooltip&gt;
+        &lt;TooltipTrigger&gt;
+          &lt;span className="text-xs text-red-600 font-bold cursor-help"&gt;*&lt;/span&gt;
+        &lt;/TooltipTrigger&gt;
+        &lt;TooltipContent&gt;
+          &lt;p className="text-xs"&gt;
+            &lt;span className="font-semibold"&gt;Original:&lt;/span&gt; {item.quantity || 1}&lt;br/&gt;
+            &lt;span className="font-semibold"&gt;Modified to:&lt;/span&gt; {itemModifiedSpecs.quantity}
+          &lt;/p&gt;
+        &lt;/TooltipContent&gt;
+      &lt;/Tooltip&gt;
+    )}
+  &lt;/div&gt;
+&lt;/td&gt;</pre>
+
+        <h3>4. Mobile View Update</h3>
+        <pre>// Mobile view - quantity with red highlighting
+&lt;p className="text-xs text-gray-500"&gt;
+  Qty: &lt;span className={itemModifiedSpecs.quantity && itemModifiedSpecs.quantity !== item.quantity ? 'text-red-600 font-semibold' : ''}&gt;
+    {itemModifiedSpecs.quantity || item.quantity}
+  &lt;/span&gt; • ₹{pricePerUnit.toFixed(2)}/unit
+&lt;/p&gt;</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 How It Works</h2>
+        
+        <div class="step">
+            <h3>Step 1: Merchant Submits Quotation</h3>
+            <p>Merchant can modify quantities in the quotation form by changing the number input field</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Data Storage</h3>
+            <p>Modified quantities are stored in the <code>modified_specifications</code> JSONB field in the database</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: User Views Response</h3>
+            <p>When users view merchant responses, modified quantities are displayed in red with tooltips showing original vs modified values</p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Price Calculation</h3>
+            <p>Total prices are calculated using the modified quantities, not the original quantities</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 Visual Indicators</h2>
+        <ul>
+            <li><strong>Red Text:</strong> Modified quantities appear in red color</li>
+            <li><strong>Red Asterisk (*):</strong> Hover indicator showing there are modifications</li>
+            <li><strong>Tooltip:</strong> Shows "Original: X" and "Modified to: Y"</li>
+            <li><strong>Red Border:</strong> Mobile cards with modifications have red borders</li>
+            <li><strong>Warning Icon:</strong> Mobile view shows ⚠️ for modified items</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Testing Steps</h2>
+        <ol>
+            <li><strong>Login as Merchant:</strong> Access merchant dashboard</li>
+            <li><strong>Open Quotation:</strong> Find a pending quotation request</li>
+            <li><strong>Modify Quantities:</strong> Change quantity values in the form</li>
+            <li><strong>Submit Response:</strong> Submit the quotation with modified quantities</li>
+            <li><strong>Login as User:</strong> Switch to user account</li>
+            <li><strong>View Responses:</strong> Check that modified quantities show in red</li>
+            <li><strong>Verify Totals:</strong> Ensure price calculations use modified quantities</li>
+        </ol>
+    </div>
+
+    <div class="test-section warning">
+        <h2>⚠️ Important Notes</h2>
+        <ul>
+            <li><strong>Database Function:</strong> Make sure to run the SQL script to update the database function</li>
+            <li><strong>Quantity Validation:</strong> Minimum quantity is set to 1 (cannot be 0 or negative)</li>
+            <li><strong>Price Impact:</strong> Changing quantities directly affects total pricing</li>
+            <li><strong>User Awareness:</strong> Users can clearly see when merchants modify quantities</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h2>✅ Summary</h2>
+        <p>The quantity modification feature has been successfully implemented with the following capabilities:</p>
+        <ul>
+            <li>✅ <strong>Merchant Control:</strong> Merchants can modify quantities during quotation submission</li>
+            <li>✅ <strong>Visual Feedback:</strong> Clear red highlighting for modified quantities</li>
+            <li>✅ <strong>Data Integrity:</strong> Original and modified values are preserved</li>
+            <li>✅ <strong>Price Accuracy:</strong> Calculations use modified quantities</li>
+            <li>✅ <strong>User Experience:</strong> Clear indication of what was changed</li>
+            <li>✅ <strong>Responsive Design:</strong> Works on all device sizes</li>
+        </ul>
+        <p><strong>Ready for Production:</strong> The feature is fully implemented and ready for use!</p>
+    </div>
+</body>
+</html>

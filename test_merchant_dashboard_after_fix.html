@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Dashboard - After Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .order-table th,
+        .order-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .order-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .order-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-shipped {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .status-delivered {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+        .action-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 12px;
+        }
+        .action-button:hover {
+            background: #2563eb;
+        }
+        .action-button.ship {
+            background: #1e40af;
+        }
+        .action-button.deliver {
+            background: #7c3aed;
+        }
+        .action-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .fix-instructions {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .step-number {
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Merchant Dashboard - After Fix</h1>
+        <p>This shows how the merchant dashboard will look after running the database fix.</p>
+        
+        <div class="fix-instructions">
+            <h2>📋 Steps to Fix the Issue</h2>
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Run the SQL Script</strong><br>
+                Execute <code>complete_order_status_fix.sql</code> to update all pending orders to confirmed
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Clear Browser Cache</strong><br>
+                Refresh the merchant dashboard with Ctrl+F5 to clear cached data
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Verify Changes</strong><br>
+                Check that all orders now show as "Confirmed" instead of "Pending"
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 B2B Order Management - Fixed Version</h2>
+        <p>Track and manage customer orders with privacy protection</p>
+        
+        <div style="margin: 20px 0;">
+            <button class="action-button">Filter</button>
+            <button class="action-button">Search</button>
+            <button class="action-button">Export</button>
+        </div>
+
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Items</th>
+                    <th>Delivery Location</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ORD-2025-0004</td>
+                    <td>
+                        <div>John Doe</div>
+                        <div style="font-size: 12px; color: #666;">john.doe@example.com</div>
+                    </td>
+                    <td><span class="status-badge status-confirmed">Confirmed ✓</span></td>
+                    <td>₹1,000</td>
+                    <td>2 items</td>
+                    <td>123 Garden St, Bangalore</td>
+                    <td>9/19/2025</td>
+                    <td>
+                        <button class="action-button" onclick="viewDetails('ORD-2025-0004')">👁️</button>
+                        <button class="action-button ship" onclick="updateStatus(this, 'shipped')">🚚 Ship</button>
+                        <button class="action-button deliver" onclick="updateStatus(this, 'delivered')">✅ Deliver</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>ORD-250916-10007-1919</td>
+                    <td>
+                        <div>Jane Smith</div>
+                        <div style="font-size: 12px; color: #666;">jane.smith@example.com</div>
+                    </td>
+                    <td><span class="status-badge status-confirmed">Confirmed ✓</span></td>
+                    <td>₹0</td>
+                    <td>1 item</td>
+                    <td>456 Plant Ave, Mumbai</td>
+                    <td>9/16/2025</td>
+                    <td>
+                        <button class="action-button" onclick="viewDetails('ORD-250916-10007-1919')">👁️</button>
+                        <button class="action-button ship" onclick="updateStatus(this, 'shipped')">🚚 Ship</button>
+                        <button class="action-button deliver" onclick="updateStatus(this, 'delivered')">✅ Deliver</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>ORD-250908-10005-3838</td>
+                    <td>
+                        <div>Mike Johnson</div>
+                        <div style="font-size: 12px; color: #666;">mike.johnson@example.com</div>
+                    </td>
+                    <td><span class="status-badge status-shipped">Shipped 🚚</span></td>
+                    <td>₹10,000</td>
+                    <td>3 items</td>
+                    <td>789 Tree Lane, Delhi</td>
+                    <td>9/8/2025</td>
+                    <td>
+                        <button class="action-button" onclick="viewDetails('ORD-250908-10005-3838')">👁️</button>
+                        <button class="action-button ship" disabled>🚚 Shipped</button>
+                        <button class="action-button deliver" onclick="updateStatus(this, 'delivered')">✅ Deliver</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>ORD-250916-10008-2066</td>
+                    <td>
+                        <div>Sarah Wilson</div>
+                        <div style="font-size: 12px; color: #666;">sarah.wilson@example.com</div>
+                    </td>
+                    <td><span class="status-badge status-delivered">Delivered ✅</span></td>
+                    <td>₹20,500</td>
+                    <td>5 items</td>
+                    <td>321 Flower St, Chennai</td>
+                    <td>9/3/2025</td>
+                    <td>
+                        <button class="action-button" onclick="viewDetails('ORD-250916-10008-2066')">👁️</button>
+                        <button class="action-button ship" disabled>🚚 Shipped</button>
+                        <button class="action-button deliver" disabled>✅ Delivered</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>ORD-250916-10008-6918</td>
+                    <td>
+                        <div>David Brown</div>
+                        <div style="font-size: 12px; color: #666;">david.brown@example.com</div>
+                    </td>
+                    <td><span class="status-badge status-confirmed">Confirmed ✓</span></td>
+                    <td>₹10,250</td>
+                    <td>2 items</td>
+                    <td>654 Garden Rd, Pune</td>
+                    <td>9/3/2025</td>
+                    <td>
+                        <button class="action-button" onclick="viewDetails('ORD-250916-10008-6918')">👁️</button>
+                        <button class="action-button ship" onclick="updateStatus(this, 'shipped')">🚚 Ship</button>
+                        <button class="action-button deliver" onclick="updateStatus(this, 'delivered')">✅ Deliver</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>✅ What's Fixed</h2>
+        <ul>
+            <li><strong>Status:</strong> All orders now show "Confirmed" instead of "Pending"</li>
+            <li><strong>Customer Info:</strong> Shows actual customer names and emails</li>
+            <li><strong>Order Items:</strong> Displays correct item counts</li>
+            <li><strong>Delivery Address:</strong> Shows proper delivery locations</li>
+            <li><strong>Actions:</strong> "Ship" and "Deliver" buttons instead of "Confirm"</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>🔧 Technical Details</h2>
+        <div style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
+            <strong>SQL Script to Run:</strong><br>
+            <code>complete_order_status_fix.sql</code><br><br>
+            
+            <strong>Key Updates:</strong><br>
+            UPDATE orders SET status = 'confirmed' WHERE status = 'pending';<br>
+            UPDATE orders SET status = 'confirmed' WHERE status IS NULL;<br>
+            UPDATE orders SET status = 'confirmed' WHERE status = 'Paid';<br><br>
+            
+            <strong>Result:</strong><br>
+            All orders will show as "Confirmed" in merchant dashboard
+        </div>
+    </div>
+
+    <script>
+        function viewDetails(orderId) {
+            alert(`Viewing details for order: ${orderId}\n\nThis would open the order details modal with:\n- Order items\n- Customer information\n- Delivery address\n- Order history`);
+        }
+
+        function updateStatus(button, newStatus) {
+            const row = button.closest('tr');
+            const statusCell = row.querySelector('.status-badge');
+            const shipButton = row.querySelector('.action-button.ship');
+            const deliverButton = row.querySelector('.action-button.deliver');
+            
+            if (newStatus === 'shipped') {
+                statusCell.textContent = 'Shipped 🚚';
+                statusCell.className = 'status-badge status-shipped';
+                button.textContent = '🚚 Shipped';
+                button.disabled = true;
+            } else if (newStatus === 'delivered') {
+                statusCell.textContent = 'Delivered ✅';
+                statusCell.className = 'status-badge status-delivered';
+                button.textContent = '✅ Delivered';
+                button.disabled = true;
+                shipButton.disabled = true;
+            }
+            
+            alert(`Order status updated to ${newStatus}!`);
+        }
+    </script>
+</body>
+</html>

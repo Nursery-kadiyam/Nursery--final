@@ -316,6 +316,83 @@ const ProductDetails = () => {
         deliveryTimeline: "",
         notes: ""
     });
+    const [quotationPlantImage, setQuotationPlantImage] = useState<string>('/assets/placeholder.svg');
+
+    // Get plant image based on plant name
+    const getPlantImage = (plantName: string) => {
+        if (!plantName) return '/assets/placeholder.svg';
+        
+        // Map common plant names to their corresponding images
+        const plantImageMap: {[key: string]: string} = {
+            'golden bamboo': '/assets/golden bamboo.jpeg',
+            'akalifa pink': '/assets/akalifa pink.jpeg',
+            'arkeliform': '/assets/Arkeliform.jpeg',
+            'ashoka': '/assets/Ashoka.jpeg',
+            'bamboo': '/assets/Bamboo plants.jpeg',
+            'boston fern': '/assets/Boston Fern.jpeg',
+            'cassia': '/assets/Cassia Tree.jpeg',
+            'croton': '/assets/Croton plant.jpeg',
+            'gulmohar': '/assets/Gulmohar.jpeg',
+            'neem': '/assets/Neem.jpeg',
+            'rose': '/assets/Rose Bush.jpeg',
+            'spider lily': '/assets/Spider lilly.jpeg',
+            'star fruit': '/assets/Star fruit .jpeg',
+            'terminalia': '/assets/Terminalia green.jpeg',
+            'thailand ixora': '/assets/Thailand ixora.jpeg',
+            'tiwan pink jama': '/assets/Tiwan pink jama.jpeg',
+            'ujenia avenue': '/assets/Ujenia avenue.jpeg',
+            'vepa': '/assets/Vepa.jpeg',
+            'hibiscus': '/assets/lipstick red.jpeg',
+            'ganuga': '/assets/ganuga.jpeg',
+            'bogada': '/assets/Bogada.jpeg',
+            'conacorpus': '/assets/ConaCorpus.jpeg',
+            'conokarpas': '/assets/Conokarpas.jpeg',
+            'cypress': '/assets/Cypress old.jpeg',
+            'dianella grass': '/assets/Dianella grass.jpeg',
+            'dismodiya': '/assets/Dismodiya.jpeg',
+            'dracina': '/assets/Dracina.jpeg',
+            'drogun fruits': '/assets/Drogun Fruits.jpeg',
+            'ficus lyrata': '/assets/Ficus lyrata.jpeg',
+            'foxtail': '/assets/Foxtail.jpeg',
+            'grandis': '/assets/Grandis.jpeg',
+            'gulmohar avenue': '/assets/Gulmohar avenue plants.jpeg',
+            'helikoniya': '/assets/Helikoniya.jpeg',
+            'jatropha': '/assets/Jatropha.jpeg',
+            'kaya': '/assets/kaya.jpeg',
+            'kobbari': '/assets/kobbari.jpeg',
+            'konacarpas': '/assets/Konacarpas.jpeg',
+            'lipstick red': '/assets/lipstick red.jpeg',
+            'mahagani': '/assets/Mahagani.jpeg',
+            'mahatama': '/assets/mahatama.jpeg',
+            'market nimma': '/assets/Market nimma.jpeg',
+            'marri trees': '/assets/marri trees.jpeg',
+            'micro carfa spiral': '/assets/Micro carfa spiral shape.jpeg',
+            'micro multi balls': '/assets/Micro multi balls.jpeg',
+            'mirchi mere green': '/assets/Mirchi mere green.jpeg',
+            'mirchi mery gold': '/assets/Mirchi mery gold.jpeg',
+            'noda': '/assets/Noda.jpeg',
+            'pendanus': '/assets/pendanus.jpeg',
+            'ravi': '/assets/Ravi.jpeg',
+            'rela': '/assets/Rela.jpeg',
+            'seetapalam': '/assets/Seetapalam.jpeg',
+            'starlight': '/assets/Starlight.jpeg',
+            'tabibiya roja': '/assets/Tabibiya roja.jpeg',
+            'tabibiya rosea': '/assets/Tabibiya rosea.jpeg',
+            'terminalia green': '/assets/Terminalia green.jpeg',
+            'terminiliya': '/assets/Terminiliya.jpeg',
+            'thailemon': '/assets/Thailemon .jpeg',
+            'ujenia mini': '/assets/Ujniya mini.jpeg'
+        };
+        
+        const lowerPlantName = plantName.toLowerCase();
+        for (const [key, imagePath] of Object.entries(plantImageMap)) {
+            if (lowerPlantName.includes(key)) {
+                return imagePath;
+            }
+        }
+        
+        return '/assets/placeholder.svg';
+    };
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -340,6 +417,10 @@ const ProductDetails = () => {
                     plantName: data.name || "",
                     plantType: data.category || ""
                 }));
+                
+                // Set initial plant image
+                const initialPlantImage = getPlantImage(data.name || "");
+                setQuotationPlantImage(initialPlantImage);
             }
             setLoading(false);
         };
@@ -493,6 +574,12 @@ const ProductDetails = () => {
             ...prev,
             [field]: value
         }));
+        
+        // If plant name is changed, update the plant image
+        if (field === 'plantName') {
+            const plantImage = getPlantImage(value);
+            setQuotationPlantImage(plantImage);
+        }
     };
 
     const openImageModal = (index: number) => {
@@ -739,6 +826,34 @@ const ProductDetails = () => {
                                                 placeholder="Type to search plants..."
                                             />
                                         </div>
+                                        
+                                        {/* Plant Image Display */}
+                                        {quotationPlantImage && quotationPlantImage !== '/assets/placeholder.svg' && (
+                                            <div className="md:col-span-2">
+                                                <Label className="text-sm font-medium text-gray-700">
+                                                    Plant Image
+                                                </Label>
+                                                <div className="mt-2 flex items-center space-x-4">
+                                                    <img
+                                                        src={quotationPlantImage}
+                                                        alt={quotationForm.plantName || 'Selected plant'}
+                                                        className="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src = '/assets/placeholder.svg';
+                                                        }}
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm text-gray-600">
+                                                            <span className="font-medium">Selected:</span> {quotationForm.plantName || 'No plant selected'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Image will be displayed when you enter a plant name
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         <div>
                                             <Label htmlFor="variety" className="text-sm font-medium text-gray-700">
                                                 Variety / Hybrid

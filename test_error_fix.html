@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Error Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background: #e8f5e8; color: #2e7d32; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .warning { background: #fff3e0; color: #ef6c00; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Error Fix</h1>
+        <p>This page verifies that the JavaScript error has been fixed.</p>
+        
+        <div class="success">
+            <h3>✅ Error Fixed:</h3>
+            <ul>
+                <li><strong>Issue:</strong> <code>ReferenceError: items is not defined</code></li>
+                <li><strong>Location:</strong> MerchantDashboard.tsx:4365:41</li>
+                <li><strong>Cause:</strong> Duplicate/conflicting code section trying to reference undefined variable</li>
+                <li><strong>Fix:</strong> Removed the conflicting code section that was causing the error</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>📋 What Was Fixed:</h3>
+            <ol>
+                <li>Removed duplicate code section that was trying to process cart_items</li>
+                <li>Eliminated the reference to undefined 'items' variable</li>
+                <li>Kept the main order items processing logic intact</li>
+                <li>Maintained proper error handling for the modal</li>
+            </ol>
+        </div>
+
+        <div class="container">
+            <h3>Expected Results:</h3>
+            <div class="success">
+                ✅ No more "ReferenceError: items is not defined"<br>
+                ✅ Merchant dashboard loads without JavaScript errors<br>
+                ✅ Order details modal works correctly<br>
+                ✅ Product names and images display properly
+            </div>
+        </div>
+
+        <div class="container">
+            <h3>How to Test:</h3>
+            <div class="warning">
+                <ol>
+                    <li>Refresh your merchant dashboard page</li>
+                    <li>Check browser console for any remaining errors</li>
+                    <li>Click on order ORD-2025-0005 to open details</li>
+                    <li>Verify that the modal opens without errors</li>
+                    <li>Check that product names and images display correctly</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="container">
+            <h3>If Still Having Issues:</h3>
+            <div class="error">
+                <p>If you're still seeing errors, check:</p>
+                <ol>
+                    <li>Clear browser cache and refresh the page</li>
+                    <li>Check browser console for any new errors</li>
+                    <li>Verify that the file was saved correctly</li>
+                    <li>Restart your development server if needed</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

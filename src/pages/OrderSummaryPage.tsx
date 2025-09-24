@@ -84,6 +84,7 @@ const OrderSummaryPage = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const { clearCart } = useCart();
     const [cartProducts, setCartProducts] = useState<any[]>([]);
+    const [products, setProducts] = useState<{[key: string]: any}>({});
 
     useEffect(() => {
         const checkUser = async () => {
@@ -93,11 +94,75 @@ const OrderSummaryPage = () => {
                 setAddresses([]);
             } else {
                 setUser(user);
+                
+                // Fetch user profile and address from database
+                try {
+                    const { data: profile, error } = await supabase
+                        .from('user_profiles')
+                        .select('first_name, last_name, phone, address')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (!error && profile) {
+                        console.log('OrderSummaryPage: User profile loaded:', profile);
+                        
+                        // Parse address if it's stored as JSON
+                        let parsedAddress = null;
+                        if (profile.address) {
+                            try {
+                                parsedAddress = JSON.parse(profile.address);
+                            } catch (e) {
+                                // Handle old address format
+                                parsedAddress = {
+                                    address: profile.address,
+                                    city: "",
+                                    district: "",
+                                    pincode: ""
+                                };
+                            }
+                        }
+
+                        // Set addresses array with user profile data
+                        const userAddresses = [{
+                            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.user_metadata?.first_name || 'User',
+                            phone: profile.phone || '',
+                            address: parsedAddress?.address || '',
+                            city: parsedAddress?.city || '',
+                            state: parsedAddress?.district || '',
+                            pincode: parsedAddress?.pincode || '',
+                            addressType: 'Home'
+                        }];
+                        
+                        setAddresses(userAddresses);
+                        setSelectedAddressIdx(0); // Auto-select the first (and only) address
+                        
+                        console.log('OrderSummaryPage: Addresses set:', userAddresses);
+                    } else {
+                        console.error('OrderSummaryPage: Error fetching user profile:', error);
+                        // Fallback to basic user data
                 setAddresses([{
-                    name: user.user_metadata?.first_name,
-                    address: "",
-                    pincode: "",
-                }]);
+                            name: user.user_metadata?.first_name || 'User',
+                            phone: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            pincode: '',
+                            addressType: 'Home'
+                        }]);
+                    }
+                } catch (error) {
+                    console.error('OrderSummaryPage: Error in checkUser:', error);
+                    // Fallback to basic user data
+                    setAddresses([{
+                        name: user.user_metadata?.first_name || 'User',
+                        phone: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        pincode: '',
+                        addressType: 'Home'
+                    }]);
+                }
             }
         };
         checkUser();
@@ -219,6 +284,25 @@ const OrderSummaryPage = () => {
         fetchCartProducts();
     }, [cart]);
 
+    // Fetch all products for quotation item processing
+    useEffect(() => {
+        const fetchProducts = async () => {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*');
+            
+            if (!error && data) {
+                const productsMap: {[key: string]: any} = {};
+                data.forEach(product => {
+                    productsMap[product.id] = product;
+                });
+                setProducts(productsMap);
+            }
+        };
+        
+        fetchProducts();
+    }, []);
+
     // Debug useEffect to monitor success dialog state
     useEffect(() => {
         console.log('showOrderSuccess state changed to:', showOrderSuccess);
@@ -295,83 +379,146 @@ const OrderSummaryPage = () => {
         const quotationCode = hasQuotation ? cartProducts[0].quotation_code : null;
         const quotationId = hasQuotation ? cartProducts[0].quotation_id : null;
         
-        // Get merchant code for quotation-based orders
-        const merchantCode = hasQuotation ? cartProducts[0].selected_merchant : 'admin';
-        
         console.log('Has quotation:', hasQuotation);
         console.log('Quotation Code:', quotationCode);
         console.log('Quotation ID:', quotationId);
-        console.log('Merchant Code:', merchantCode);
         
-        const orderPayload = {
-            user_id: user.id,
-            quotation_code: quotationCode, // Add quotation_code if this is a quotation order
-            merchant_code: merchantCode, // Add merchant_code (required field)
-            delivery_address: deliveryAddress || {},
-            shipping_address: deliveryAddress ? JSON.stringify(deliveryAddress) : 'Default Address',
-            total_amount: total,
-            cart_items: cartProducts || [],
-            status: 'pending'
-        };
+        // Group cart items by merchant for parent-child order structure
+        const merchantGroups: { [merchantCode: string]: any[] } = {};
         
-        console.log('Order payload:', orderPayload);
-        
-        // Insert order and get the new order's id
-        const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .insert([orderPayload])
-            .select('id')
-            .single();
-            
-        if (orderError) {
-            console.error('Order save error:', orderError);
-            alert('Order save failed: ' + orderError.message);
-            return;
-        }
-        
-        console.log('Order saved successfully. Order ID:', orderData.id);
-        
-        // Insert order_items for each cart item
-        const orderId = orderData.id;
-        const orderItems = cartProducts.map(item => {
-            // Create minimal order item with only required fields
-            const baseItem = {
-                order_id: orderId,
-                product_id: item.quotation_id ? null : item.id, // Use null for quotation-based orders
-                quantity: item.quantity,
-                price: item.price,
-                unit_price: item.unit_price || Math.round(item.price / item.quantity) // Use unit_price from quotation or calculate from total
-            };
-            
-            // Only add merchant_code if it exists in the schema
-            if (merchantCode && merchantCode !== 'admin') {
-                return {
-                    ...baseItem,
-                    merchant_code: merchantCode
-                };
+        cartProducts.forEach(item => {
+            const merchantCode = item.selected_merchant || item.merchant_code || 'admin';
+            if (!merchantGroups[merchantCode]) {
+                merchantGroups[merchantCode] = [];
             }
-            
-            return baseItem;
+            merchantGroups[merchantCode].push(item);
         });
         
-        console.log('Order items to save:', orderItems);
+        console.log('Merchant groups:', merchantGroups);
         
-        const { error: orderItemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
+        // Calculate total amount for parent order (sum of all child subtotals)
+        const totalChildSubtotals = Object.entries(merchantGroups).reduce((sum, [merchantCode, items]) => {
+            const merchantSubtotal = items.reduce((itemSum, item) => {
+                if (item.quotation_id) {
+                    return itemSum + Number(item.price || 0);
+                }
+                return itemSum + (Number(item.price || 0) * item.quantity);
+            }, 0);
+            return sum + merchantSubtotal;
+        }, 0);
+        
+        // Use the appropriate order creation function based on order type
+        let orderResult, orderError;
+        
+        if (hasQuotation) {
+            // Use quotation-specific function for quotation-based orders
+            // Group selected merchants from cart products and convert to array format
+            const merchantGroups = cartProducts.reduce((acc, item) => {
+                const merchantCode = item.selected_merchant || 'admin';
+                if (!acc[merchantCode]) {
+                    acc[merchantCode] = {
+                        merchant_code: merchantCode,
+                        items: [],
+                        total_price: 0
+                    };
+                }
+                acc[merchantCode].items.push({
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    total_price: item.price
+                });
+                acc[merchantCode].total_price += Number(item.price || 0);
+                return acc;
+            }, {} as { [key: string]: any });
+
+            // Convert to array format expected by the function
+            const selectedMerchants = Object.values(merchantGroups);
+
+            console.log('Selected merchants data:', selectedMerchants);
+            console.log('Delivery address:', deliveryAddress);
+            console.log('Quotation code:', quotationCode);
+
+            const result = await supabase
+                .rpc('create_or_update_order_from_quotations', {
+                    p_user_id: user.id,
+                    p_quotation_code: quotationCode,
+                    p_selected_merchants: selectedMerchants,
+                    p_delivery_address: deliveryAddress || {},
+                    p_shipping_address: deliveryAddress ? 
+                        `${deliveryAddress.address}, ${deliveryAddress.city}, ${deliveryAddress.district} - ${deliveryAddress.pincode}` : 
+                        ''
+                });
+            orderResult = result.data;
+            orderError = result.error;
+        } else {
+            // Use regular order function for non-quotation orders
+            // Get merchant code from quotation if available
+            let merchantCode = 'admin';
+            if (quotationCode) {
+                try {
+                    const { data: quotationData } = await supabase
+                        .from('quotations')
+                        .select('merchant_code')
+                        .eq('quotation_code', quotationCode)
+                        .single();
+                    if (quotationData?.merchant_code) {
+                        merchantCode = quotationData.merchant_code;
+                    }
+                } catch (error) {
+                    console.log('Could not fetch merchant code from quotation, using default');
+                }
+            }
             
-        if (orderItemsError) {
-            console.error('Order items save error:', orderItemsError);
-            console.error('Order items data:', orderItems);
-            toast({
-                title: "Order Items Error",
-                description: `Failed to save order items: ${orderItemsError.message}`,
-                variant: "destructive"
+            const result = await supabase
+                .rpc('create_or_update_simple_order', {
+                p_user_id: user.id,
+                p_delivery_address: deliveryAddress || {},
+                p_cart_items: cartProducts || [],
+                p_total_amount: totalChildSubtotals,
+                p_quotation_code: quotationCode,
+                p_merchant_code: merchantCode
             });
+            orderResult = result.data;
+            orderError = result.error;
+        }
+
+        if (orderError) {
+            console.error('Order placement error:', orderError);
+            // If quotation function fails, try regular order function as fallback
+            if (hasQuotation) {
+                console.log('Quotation function failed, trying regular order function...');
+                const fallbackResult = await supabase
+                    .rpc('create_or_update_simple_order', {
+                        p_user_id: user.id,
+                        p_delivery_address: deliveryAddress || {},
+                        p_cart_items: cartProducts || [],
+                        p_total_amount: totalChildSubtotals,
+                        p_quotation_code: quotationCode,
+                        p_merchant_code: merchantCode
+                    });
+                
+                if (fallbackResult.error) {
+                    console.error('Fallback order placement error:', fallbackResult.error);
+                    alert('Order placement failed: ' + fallbackResult.error.message);
+                    return;
+                }
+                
+                orderResult = fallbackResult.data;
+                orderError = null;
+            } else {
+            alert('Order placement failed: ' + orderError.message);
+            return;
+            }
+        }
+
+        if (orderResult && !orderResult.success) {
+            console.error('Order placement failed:', orderResult.message);
+            alert('Order placement failed: ' + orderResult.message);
             return;
         }
-        
-        console.log('Order items saved successfully');
+
+        console.log('Order placed successfully:', orderResult);
         
         // If this order is from a quotation, update the quotation status to user_confirmed
         if (quotationId) {
@@ -389,11 +536,17 @@ const OrderSummaryPage = () => {
         }
         
         console.log('Order placement completed successfully');
+        console.log('Order result:', orderResult);
         
         // Show success message
+        const orderCode = orderResult?.order_codes?.[0] || orderResult?.order_code || orderResult?.id || 'Order placed';
+        const description = orderResult?.order_codes && orderResult.order_codes.length > 1 ? 
+            `Orders: ${orderResult.order_codes.join(', ')} - Split across ${orderResult.merchant_count} merchants` : 
+            `Order: ${orderCode} placed successfully`;
+            
         toast({
             title: "Order Placed Successfully!",
-            description: `Order saved with ID: ${orderData.id}. Order items: ${orderItems.length}`,
+            description: description,
             variant: "default"
         });
         
@@ -544,25 +697,36 @@ const OrderSummaryPage = () => {
                                 <CardContent className="p-0 flex flex-col gap-4">
                                     <div className="bg-emerald-600 text-emerald-50 px-4 py-2 font-bold text-lg flex items-center">2 DELIVERY ADDRESS</div>
                                     <div className="p-4">
-                                        {deliveryAddress ? (
+                                        {addresses.length > 0 && selectedAddressIdx !== null ? (
                                             <div className="border rounded p-3 mb-2 bg-emerald-50">
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        <div className="font-semibold">{deliveryAddress.name} <span className="text-gray-600">{deliveryAddress.phone}</span></div>
+                                                        <div className="font-semibold">{addresses[selectedAddressIdx].name} <span className="text-gray-600">{addresses[selectedAddressIdx].phone}</span></div>
                                                         <div className="text-gray-700 text-sm">
-                                                            {deliveryAddress.addressLine}, {deliveryAddress.city}, {deliveryAddress.state} – {deliveryAddress.pincode}
+                                                            {addresses[selectedAddressIdx].address}, {addresses[selectedAddressIdx].city}, {addresses[selectedAddressIdx].state} – {addresses[selectedAddressIdx].pincode}
                                                         </div>
-                                                        <div className="text-xs mt-1"><span className="px-2 py-1 rounded bg-emerald-200 text-emerald-800">{deliveryAddress.addressType}</span></div>
+                                                        <div className="text-xs mt-1"><span className="px-2 py-1 rounded bg-emerald-200 text-emerald-800">{addresses[selectedAddressIdx].addressType}</span></div>
                                                     </div>
                                                     <div className="flex flex-col gap-2 ml-4">
                                                         <span className="ml-4 text-emerald-600 font-bold">Selected</span>
                                                         <Button size="sm" variant="outline" onClick={() => {
-                                                            setNewAddress(deliveryAddress);
+                                                            setNewAddress({
+                                                                name: addresses[selectedAddressIdx].name,
+                                                                phone: addresses[selectedAddressIdx].phone,
+                                                                addressLine: addresses[selectedAddressIdx].address,
+                                                                city: addresses[selectedAddressIdx].city,
+                                                                state: addresses[selectedAddressIdx].state,
+                                                                pincode: addresses[selectedAddressIdx].pincode,
+                                                                addressType: addresses[selectedAddressIdx].addressType
+                                                            });
+                                                            setEditingAddressIdx(selectedAddressIdx);
                                                             setShowAddAddressForm(true);
                                                         }}>Edit</Button>
                                                         <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => {
-                                                            localStorage.removeItem('deliveryAddress');
-                                                            setDeliveryAddress(null);
+                                                            // Remove address from array
+                                                            const newAddresses = addresses.filter((_, idx) => idx !== selectedAddressIdx);
+                                                            setAddresses(newAddresses);
+                                                            setSelectedAddressIdx(newAddresses.length > 0 ? 0 : null);
                                                         }}>Delete</Button>
                                                     </div>
                                                 </div>
@@ -578,11 +742,60 @@ const OrderSummaryPage = () => {
                                             </Button>
                                         )}
                                         {showAddAddressForm && (
-                                            <form className="bg-white border rounded p-4 mt-2 space-y-3 w-full max-w-xl" onSubmit={e => {
+                                            <form className="bg-white border rounded p-4 mt-2 space-y-3 w-full max-w-xl" onSubmit={async (e) => {
                                                 e.preventDefault();
-                                                setDeliveryAddress({ ...newAddress });
-                                                localStorage.setItem('deliveryAddress', JSON.stringify({ ...newAddress }));
+                                                
+                                                // Update addresses array
+                                                const updatedAddresses = [...addresses];
+                                                if (editingAddressIdx !== null) {
+                                                    // Editing existing address
+                                                    updatedAddresses[editingAddressIdx] = { ...newAddress };
+                                                } else {
+                                                    // Adding new address
+                                                    updatedAddresses.push({ ...newAddress });
+                                                }
+                                                setAddresses(updatedAddresses);
+                                                
+                                                // Save to database if user is logged in
+                                                if (user) {
+                                                    try {
+                                                        const addressData = {
+                                                            address: newAddress.addressLine,
+                                                            city: newAddress.city,
+                                                            district: newAddress.state,
+                                                            pincode: newAddress.pincode
+                                                        };
+                                                        
+                                                        const { error } = await supabase
+                                                            .from('user_profiles')
+                                                            .update({ 
+                                                                address: JSON.stringify(addressData),
+                                                                first_name: newAddress.name.split(' ')[0],
+                                                                last_name: newAddress.name.split(' ').slice(1).join(' '),
+                                                                phone: newAddress.phone
+                                                            })
+                                                            .eq('id', user.id);
+                                                        
+                                                        if (error) {
+                                                            console.error('Error saving address to database:', error);
+                                                            toast({
+                                                                title: "Error",
+                                                                description: "Failed to save address. Please try again.",
+                                                                variant: "destructive"
+                                                            });
+                                                        } else {
+                                                            toast({
+                                                                title: "Address Saved",
+                                                                description: "Your address has been saved successfully.",
+                                                            });
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Error saving address:', error);
+                                                    }
+                                                }
+                                                
                                                 setShowAddAddressForm(false);
+                                                setEditingAddressIdx(null);
                                             }}>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <Input placeholder="Name" value={newAddress.name} onChange={e => setNewAddress(f => ({ ...f, name: e.target.value }))} required />
@@ -623,8 +836,11 @@ const OrderSummaryPage = () => {
                                                 </Button>
                                             </div>
                                         ) : (
-                                            cartProducts.map(item => (
-                                                <div key={item.id} className="flex flex-row sm:flex-row gap-4 border-b pb-4 mb-4 bg-white rounded shadow-sm">
+                                            <div className="space-y-6">
+                                                {cartProducts.map((item, index) => (
+                                                    <div key={`${item.id}-${index}`} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                                                        {/* Plant Header */}
+                                                        <div className="flex items-start gap-4 mb-4">
                                                     <img
                                                         src={
                                                             item.image_url && typeof item.image_url === 'string' && (item.image_url.startsWith('http') || item.image_url.startsWith('/assets/'))
@@ -634,46 +850,184 @@ const OrderSummaryPage = () => {
                                                                     : '/assets/placeholder.svg')
                                                         }
                                                         alt={item.title || item.name}
-                                                        className="w-24 h-24 object-cover rounded"
+                                                                className="w-20 h-20 object-cover rounded-lg border border-gray-200"
                                                         onError={e => { e.currentTarget.src = '/assets/placeholder.svg'; }}
                                                     />
-                                                    <div className="flex-1 flex flex-col justify-between">
-                                                        <div className="flex flex-col">
-                                                            <div className="font-semibold text-base sm:text-lg">{item.title || item.name}</div>
+                                                            <div className="flex-1">
+                                                                <h3 className="font-bold text-lg text-gray-900 mb-2">{item.title || item.name}</h3>
+                                                                
+                                                                {/* Merchant Information */}
+                                                                {item.selected_merchant && (
+                                                                    <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-base sm:text-lg text-green-700">
+                                                                            <span className="text-sm font-medium text-blue-800">Merchant:</span>
+                                                                            <Badge className="bg-blue-100 text-blue-800 font-mono text-xs">
+                                                                                {item.selected_merchant}
+                                                                            </Badge>
+                                                                            {item.merchant_name && (
+                                                                                <span className="text-sm text-blue-700">({item.merchant_name})</span>
+                                                                            )}
+                                                                        </div>
+                                                                        {item.estimated_delivery_days && (
+                                                                            <div className="text-xs text-blue-600 mt-1">
+                                                                                Estimated Delivery: {item.estimated_delivery_days} days
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Plant Specifications */}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                                                    {item.variety && item.variety !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Variety:</span>
+                                                                            <span className="text-sm text-gray-900">{item.variety}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.plant_type && item.plant_type !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Type:</span>
+                                                                            <span className="text-sm text-gray-900">{item.plant_type}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.age_category && item.age_category !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Age:</span>
+                                                                            <span className="text-sm text-gray-900">{item.age_category}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.bag_size && item.bag_size !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Bag Size:</span>
+                                                                            <span className="text-sm text-gray-900">{item.bag_size}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.height_range && item.height_range !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Height:</span>
+                                                                            <span className="text-sm text-gray-900">{item.height_range}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.stem_thickness && item.stem_thickness !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Stem:</span>
+                                                                            <span className="text-sm text-gray-900">{item.stem_thickness}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.weight && item.weight !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Weight:</span>
+                                                                            <span className="text-sm text-gray-900">{item.weight}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.is_grafted !== undefined && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Grafted:</span>
+                                                                            <span className="text-sm text-gray-900">{item.is_grafted ? 'Yes' : 'No'}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.delivery_timeline && item.delivery_timeline !== '-' && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Delivery:</span>
+                                                                            <span className="text-sm text-gray-900">{item.delivery_timeline}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Modified Specifications Indicator */}
+                                                                {item.has_modified_specs && (
+                                                                    <div className="mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs font-medium text-yellow-800">⚠️ Modified Specifications</span>
+                                                                            <span className="text-xs text-yellow-700">Some specifications were modified by the merchant</span>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Pricing Information */}
+                                                                <div className="border-t border-gray-200 pt-3">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-gray-600">Quantity:</span>
+                                                                            <span className="text-sm font-bold text-gray-900">{item.quantity} units</span>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <div className="text-lg font-bold text-green-700">
                                                                     ₹{item.quotation_id ? Number(item.price || 0).toFixed(2) : (Number(item.price || 0) * item.quantity).toFixed(2)}
-                                                                </span>
+                                                                            </div>
                                                                 {item.quotation_id && (
+                                                                                <div className="flex items-center gap-2">
                                                                     <Badge className="bg-emerald-100 text-emerald-800 text-xs">
                                                                         Quotation Price
                                                                     </Badge>
-                                                                )}
-                                                                {item.quotation_id ? (
-                                                                    <span className="text-sm text-gray-500">
+                                                                                    <span className="text-xs text-gray-500">
                                                                         (₹{(Number(item.price || 0) / (item.quantity || 1)).toFixed(2)} × {item.quantity} = ₹{Number(item.price || 0).toFixed(2)})
                                                                     </span>
-                                                                ) : (
-                                                                    <span className="text-sm text-gray-500">
-                                                                        (₹{Number(item.price || 0).toFixed(2)} × {item.quantity} = ₹{(Number(item.price || 0) * item.quantity).toFixed(2)})
-                                                                    </span>
+                                                                                </div>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <div className="text-xs text-gray-600 mb-1">{item.description}</div>
-                                                        {item.seller && <div className="text-xs text-gray-600 mb-1">Seller: <span className="font-medium">{item.seller}</span></div>}
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            {item.originalPrice && <span className="line-through text-gray-400 text-sm">₹{item.originalPrice}</span>}
-                                                            {item.discount && <span className="text-green-600 text-xs font-semibold">{item.discount}% Off</span>}
-                                                            {item.coupon && <span className="text-green-700 text-xs font-semibold">{item.coupon}</span>}
+                                                                    
+                                                                    {/* Quotation Information */}
+                                                                    {item.quotation_code && (
+                                                                        <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-medium text-green-800">Quotation Code:</span>
+                                                                                <Badge className="bg-green-100 text-green-800 font-mono text-xs">
+                                                                                    {item.quotation_code}
+                                                                                </Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <span className="text-sm text-gray-600">Quantity: {item.quantity}</span>
                                                         </div>
-                                                        {item.deliveryInfo && <div className="text-xs text-gray-500 mt-1">{item.deliveryInfo}</div>}
+                                                                    )}
                                                     </div>
                                                 </div>
-                                            ))
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                
+                                                {/* Merchant Breakdown */}
+                                                <div className="border-t border-gray-200 pt-4">
+                                                    <h4 className="font-semibold text-gray-900 mb-3">Order Breakdown by Merchant</h4>
+                                                    <div className="space-y-3">
+                                                        {Object.entries(
+                                                            cartProducts.reduce((acc, item) => {
+                                                                const merchant = item.selected_merchant || 'Unknown Merchant';
+                                                                if (!acc[merchant]) {
+                                                                    acc[merchant] = [];
+                                                                }
+                                                                acc[merchant].push(item);
+                                                                return acc;
+                                                            }, {} as { [key: string]: any[] })
+                                                        ).map(([merchantCode, items]) => {
+                                                            const merchantTotal = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+                                                            return (
+                                                                <div key={merchantCode} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Badge className="bg-blue-100 text-blue-800 font-mono text-xs">
+                                                                                {merchantCode}
+                                                                            </Badge>
+                                                                            <span className="text-sm text-gray-600">
+                                                                                {items.length} item(s)
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="font-semibold text-gray-900">
+                                                                            ₹{merchantTotal.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500">
+                                                                        {items.map(item => `${item.name} (${item.quantity})`).join(', ')}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    
+                                                    <div className="mt-4 text-sm text-gray-600 text-center">
+                                                        Total {cartProducts.length} item(s) from {new Set(cartProducts.map(item => item.selected_merchant)).size} merchant(s)
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </CardContent>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Order Creation Fix</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Order Creation Fix</h1>
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://nlrdxgcckfgsgivljmkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scmR4Z2Nja2Znc2dpdmxqbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzQ4MDAsImV4cCI6MjA1MDU1MDgwMH0.8QZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZq';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testOrderCreation() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = 'Testing order creation...';
+            
+            try {
+                // Test 1: Check if orders table exists and has required columns
+                console.log('Testing orders table structure...');
+                const { data: tableInfo, error: tableError } = await supabase
+                    .from('information_schema.columns')
+                    .select('column_name, data_type')
+                    .eq('table_name', 'orders');
+                
+                if (tableError) {
+                    throw new Error(`Table structure check failed: ${tableError.message}`);
+                }
+                
+                console.log('Orders table columns:', tableInfo);
+                resultsDiv.innerHTML += '<h3>Orders Table Structure:</h3><pre>' + JSON.stringify(tableInfo, null, 2) + '</pre>';
+                
+                // Test 2: Try to create a test order
+                console.log('Testing order creation...');
+                const testOrderPayload = {
+                    user_id: '00000000-0000-0000-0000-000000000000', // Test UUID
+                    parent_order_id: null,
+                    merchant_id: null,
+                    quotation_code: 'TEST-QC-2025-0001',
+                    merchant_code: 'parent',
+                    delivery_address: {},
+                    shipping_address: 'Test Address',
+                    total_amount: 100.00,
+                    subtotal: 100.00,
+                    cart_items: [{
+                        name: 'Test Plant',
+                        price: 100.00,
+                        quantity: 1
+                    }],
+                    status: 'pending'
+                };
+                
+                console.log('Creating test order with payload:', testOrderPayload);
+                
+                const { data: orderData, error: orderError } = await supabase
+                    .from('orders')
+                    .insert([testOrderPayload])
+                    .select('id, order_code')
+                    .single();
+                
+                if (orderError) {
+                    console.error('Order creation failed:', orderError);
+                    resultsDiv.innerHTML += '<h3>Order Creation Error:</h3><pre>' + JSON.stringify(orderError, null, 2) + '</pre>';
+                    
+                    // Check if it's the LPAD function error
+                    if (orderError.message && orderError.message.includes('lpad')) {
+                        resultsDiv.innerHTML += '<p style="color: red;"><strong>LPAD Function Error Detected!</strong> The database triggers need to be fixed.</p>';
+                    }
+                } else {
+                    console.log('Order created successfully:', orderData);
+                    resultsDiv.innerHTML += '<h3>Order Created Successfully:</h3><pre>' + JSON.stringify(orderData, null, 2) + '</pre>';
+                    
+                    // Clean up test order
+                    await supabase
+                        .from('orders')
+                        .delete()
+                        .eq('id', orderData.id);
+                    
+                    resultsDiv.innerHTML += '<p style="color: green;">Test order created and cleaned up successfully!</p>';
+                }
+                
+                statusDiv.innerHTML = 'Test completed!';
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                statusDiv.innerHTML = 'Test failed!';
+                resultsDiv.innerHTML += '<h3>Test Error:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testOrderCreation);
+    </script>
+</body>
+</html>

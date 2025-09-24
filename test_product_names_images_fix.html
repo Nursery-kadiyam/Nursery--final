@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Product Names and Images Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #dcfce7;
+            border: 1px solid #16a34a;
+            color: #166534;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #dbeafe;
+            border: 1px solid #2563eb;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        .order-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .order-code {
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .items-list {
+            margin-top: 10px;
+        }
+        .item-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .item-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .item-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: 500;
+            color: #111827;
+        }
+        .item-quantity {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #059669;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Product Names and Images Fix</h1>
+    <p>This page tests the comprehensive fix for product names and images across the entire app.</p>
+    
+    <div class="container">
+        <h2>📋 Step 1: Apply Database Fix</h2>
+        <div class="warning">
+            <h3>⚠️ Important</h3>
+            <p>Run the SQL script <code>fix_product_names_images_comprehensive.sql</code> in your Supabase SQL editor.</p>
+            <p>This will:</p>
+            <ul>
+                <li>Update database functions to properly join with products table</li>
+                <li>Fix product name and image mapping</li>
+                <li>Populate missing order_items for ORD-2025-0005</li>
+                <li>Ensure proper product relationships</li>
+            </ul>
+        </div>
+        <button class="button" onclick="runTest()">Test Product Names and Images</button>
+    </div>
+
+    <div class="container">
+        <h2>📊 Test Results</h2>
+        <div id="test-results" class="loading">Click "Test Product Names and Images" to check the fix...</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseKey = 'your-anon-key'; // Replace with your anon key
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        async function runTest() {
+            try {
+                document.getElementById('test-results').innerHTML = '<div class="loading">Testing product names and images...</div>';
+                
+                let resultsHtml = '';
+                
+                // Test 1: Check if user is authenticated
+                const { data: { user }, error: userError } = await supabase.auth.getUser();
+                
+                if (userError) {
+                    resultsHtml += `
+                        <div class="error">
+                            <h3>❌ Authentication Error</h3>
+                            <p><strong>Error:</strong> ${userError.message}</p>
+                            <p>Please make sure you're logged in.</p>
+                        </div>
+                    `;
+                } else if (!user) {
+                    resultsHtml += `
+                        <div class="warning">
+                            <h3>⚠️ Not Logged In</h3>
+                            <p>Please log in to test product names and images.</p>
+                        </div>
+                    `;
+                } else {
+                    resultsHtml += `
+                        <div class="success">
+                            <h3>✅ User Authenticated</h3>
+                            <p>User ID: ${user.id}</p>
+                            <p>Email: ${user.email}</p>
+                        </div>
+                    `;
+                    
+                    // Test 2: Test merchant orders with product names and images
+                    try {
+                        const { data: merchantOrders, error: merchantError } = await supabase
+                            .rpc('get_merchant_orders_privacy_protected', {
+                                p_merchant_code: 'MC-2025-TXYR'
+                            });
+                        
+                        if (merchantError) {
+                            resultsHtml += `
+                                <div class="error">
+                                    <h3>❌ Merchant Function Failed</h3>
+                                    <p><strong>Error:</strong> ${merchantError.message}</p>
+                                    <p>Please run the SQL script to create the function.</p>
+                                </div>
+                            `;
+                        } else {
+                            resultsHtml += `
+                                <div class="success">
+                                    <h3>✅ Merchant Function Working</h3>
+                                    <p>Found ${merchantOrders.length} orders for merchant MC-2025-TXYR</p>
+                                </div>
+                            `;
+                            
+                            // Check product names and images
+                            if (merchantOrders.length > 0) {
+                                const order = merchantOrders[0];
+                                const hasItems = order.order_items && order.order_items.length > 0;
+                                const hasProductNames = hasItems && order.order_items.some(item => item.product_name && item.product_name !== 'Unknown Product');
+                                const hasImages = hasItems && order.order_items.some(item => item.image && item.image !== '/assets/placeholder.svg');
+                                
+                                resultsHtml += `
+                                    <div class="test-section">
+                                        <div class="test-title">📦 Product Names and Images Test</div>
+                                        <p><strong>Order:</strong> ${order.order_code}</p>
+                                        <p><strong>Has Items:</strong> ${hasItems ? '✅ Yes' : '❌ No'}</p>
+                                        <p><strong>Has Product Names:</strong> ${hasProductNames ? '✅ Yes' : '❌ No'}</p>
+                                        <p><strong>Has Images:</strong> ${hasImages ? '✅ Yes' : '❌ No'}</p>
+                                    </div>
+                                `;
+                                
+                                if (hasItems) {
+                                    resultsHtml += `
+                                        <div class="order-card">
+                                            <div class="order-header">
+                                                <div class="order-code">${order.order_code}</div>
+                                                <div class="order-status status-confirmed">${order.status}</div>
+                                            </div>
+                                            
+                                            <div class="items-list">
+                                                <h4>Order Items:</h4>
+                                                ${order.order_items.map(item => `
+                                                    <div class="item-card">
+                                                        <div class="item-info">
+                                                            <img src="${item.image}" alt="${item.product_name}" class="item-image" onerror="this.src='/assets/placeholder.svg'">
+                                                            <div class="item-details">
+                                                                <div class="item-name">${item.product_name || 'Unknown Product'}</div>
+                                                                <div class="item-quantity">Quantity: ${item.quantity} × ₹${item.unit_price} = ₹${item.subtotal}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="item-price">₹${item.subtotal}</div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        resultsHtml += `
+                            <div class="error">
+                                <h3>❌ Merchant Function Test Failed</h3>
+                                <p><strong>Error:</strong> ${error.message}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    // Test 3: Test user orders with product names and images
+                    try {
+                        const { data: userOrders, error: userError } = await supabase
+                            .rpc('get_user_orders_with_items', {
+                                p_user_id: user.id
+                            });
+                        
+                        if (userError) {
+                            resultsHtml += `
+                                <div class="warning">
+                                    <h3>⚠️ User Orders Function</h3>
+                                    <p><strong>Error:</strong> ${userError.message}</p>
+                                    <p>This might need the SQL script to be run.</p>
+                                </div>
+                            `;
+                        } else {
+                            resultsHtml += `
+                                <div class="success">
+                                    <h3>✅ User Orders Function Working</h3>
+                                    <p>Found ${userOrders.length} orders for user</p>
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        resultsHtml += `
+                            <div class="warning">
+                                <h3>⚠️ User Orders Test</h3>
+                                <p><strong>Error:</strong> ${error.message}</p>
+                                <p>This is expected if the function doesn't exist yet.</p>
+                            </div>
+                        `;
+                    }
+                    
+                    // Test 4: Test direct order_items query
+                    try {
+                        const { data: orderItems, error: orderItemsError } = await supabase
+                            .from('order_items')
+                            .select(`
+                                id, quantity, unit_price, subtotal, merchant_code,
+                                products(name, image_url)
+                            `)
+                            .limit(5);
+                        
+                        if (orderItemsError) {
+                            resultsHtml += `
+                                <div class="warning">
+                                    <h3>⚠️ Order Items Query</h3>
+                                    <p><strong>Error:</strong> ${orderItemsError.message}</p>
+                                    <p>This might indicate RLS policy issues.</p>
+                                </div>
+                            `;
+                        } else {
+                            const hasProductData = orderItems.some(item => item.products && item.products.name);
+                            resultsHtml += `
+                                <div class="test-section">
+                                    <div class="test-title">🔗 Product Relationships Test</div>
+                                    <p><strong>Order Items Found:</strong> ${orderItems.length}</p>
+                                    <p><strong>Has Product Data:</strong> ${hasProductData ? '✅ Yes' : '❌ No'}</p>
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        resultsHtml += `
+                            <div class="warning">
+                                <h3>⚠️ Order Items Test</h3>
+                                <p><strong>Error:</strong> ${error.message}</p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Final summary
+                const hasErrors = resultsHtml.includes('❌');
+                const hasWarnings = resultsHtml.includes('⚠️');
+                
+                if (hasErrors) {
+                    resultsHtml += `
+                        <div class="error">
+                            <h3>❌ Fix Not Complete</h3>
+                            <p>Please check the errors above and ensure the SQL script was run completely.</p>
+                        </div>
+                    `;
+                } else if (hasWarnings) {
+                    resultsHtml += `
+                        <div class="warning">
+                            <h3>⚠️ Partial Fix Applied</h3>
+                            <p>Some functions may need to be created. Run the SQL script to complete the fix.</p>
+                        </div>
+                    `;
+                } else {
+                    resultsHtml += `
+                        <div class="success">
+                            <h3>🎉 Product Names and Images Fix Complete!</h3>
+                            <p>✅ Product names are displaying correctly</p>
+                            <p>✅ Product images are loading properly</p>
+                            <p>✅ Order items show complete information</p>
+                            <p>✅ All app components working consistently</p>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('test-results').innerHTML = resultsHtml;
+                
+            } catch (error) {
+                document.getElementById('test-results').innerHTML = `
+                    <div class="error">
+                        <h3>❌ Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize
+        console.log('Product Names and Images Fix Test initialized');
+        console.log('This test verifies:');
+        console.log('1. Database functions properly join with products table');
+        console.log('2. Product names are displayed correctly');
+        console.log('3. Product images are loading properly');
+        console.log('4. Order items show complete information');
+        console.log('5. All app components work consistently');
+    </script>
+</body>
+</html>

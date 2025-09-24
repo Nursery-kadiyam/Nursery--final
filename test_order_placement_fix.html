@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Placement Fix Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading { color: #007bff; }
+        .success-text { color: #155724; }
+        .error-text { color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Order Placement Fix Test</h1>
+    
+    <div class="container">
+        <h2>Database Connection Test</h2>
+        <div class="test-section">
+            <button onclick="testConnection()">Test Supabase Connection</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Orders Table Structure Test</h2>
+        <div class="test-section">
+            <button onclick="checkOrdersTable()">Check Orders Table Structure</button>
+            <div id="ordersTableResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Order Items Table Structure Test</h2>
+        <div class="test-section">
+            <button onclick="checkOrderItemsTable()">Check Order Items Table Structure</button>
+            <div id="orderItemsTableResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Constraint Test</h2>
+        <div class="test-section">
+            <button onclick="checkConstraints()">Check Orders Status Constraint</button>
+            <div id="constraintResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Duplicate Constraint Test</h2>
+        <div class="test-section">
+            <button onclick="checkDuplicateConstraints()">Check Duplicate Constraints</button>
+            <div id="duplicateConstraintResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Order Placement Test</h2>
+        <div class="test-section">
+            <button onclick="testOrderPlacement()">Test Order Placement Function</button>
+            <div id="orderPlacementResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        let supabase;
+        
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                return false;
+            }
+        }
+        
+        // Test database connection
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '<div class="loading">Testing connection...</div>';
+            
+            if (!initSupabase()) {
+                resultDiv.innerHTML = '<div class="error-text">Failed to initialize Supabase client</div>';
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Connection failed: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = '<div class="success-text">✅ Database connection successful!</div>';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Connection error: ${err.message}</div>`;
+            }
+        }
+        
+        // Check orders table structure
+        async function checkOrdersTable() {
+            const resultDiv = document.getElementById('ordersTableResult');
+            resultDiv.innerHTML = '<div class="loading">Checking orders table...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .rpc('get_table_columns', { table_name: 'orders' });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    const columns = data.map(col => `${col.column_name}: ${col.data_type} (${col.is_nullable})`).join('\n');
+                    resultDiv.innerHTML = `<div class="success-text">Orders table columns:\n${columns}</div>`;
+                }
+            } catch (err) {
+                // Fallback: try to query the table directly
+                try {
+                    const { data, error } = await supabase
+                        .from('orders')
+                        .select('*')
+                        .limit(1);
+                    
+                    if (error) {
+                        resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                    } else {
+                        resultDiv.innerHTML = '<div class="success-text">✅ Orders table exists and is accessible</div>';
+                    }
+                } catch (fallbackErr) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${fallbackErr.message}</div>`;
+                }
+            }
+        }
+        
+        // Check order_items table structure
+        async function checkOrderItemsTable() {
+            const resultDiv = document.getElementById('orderItemsTableResult');
+            resultDiv.innerHTML = '<div class="loading">Checking order_items table...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('order_items')
+                    .select('*')
+                    .limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = '<div class="success-text">✅ Order items table exists and is accessible</div>';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Check constraints
+        async function checkConstraints() {
+            const resultDiv = document.getElementById('constraintResult');
+            resultDiv.innerHTML = '<div class="loading">Checking constraints...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .rpc('check_orders_constraints');
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">Constraints check:\n${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (err) {
+                // Fallback: try to insert a test order with different statuses
+                resultDiv.innerHTML = '<div class="loading">Testing constraint by trying different statuses...</div>';
+                
+                const testStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'pending_payment'];
+                const results = [];
+                
+                for (const status of testStatuses) {
+                    try {
+                        const { error } = await supabase
+                            .from('orders')
+                            .insert([{
+                                user_id: '00000000-0000-0000-0000-000000000000', // dummy UUID
+                                delivery_address: {},
+                                shipping_address: 'test',
+                                total_amount: 0,
+                                cart_items: [],
+                                status: status
+                            }]);
+                        
+                        if (error) {
+                            results.push(`${status}: ❌ ${error.message}`);
+                        } else {
+                            results.push(`${status}: ✅ Valid`);
+                        }
+                    } catch (testErr) {
+                        results.push(`${status}: ❌ ${testErr.message}`);
+                    }
+                }
+                
+                resultDiv.innerHTML = `<div class="success-text">Status constraint test results:\n${results.join('\n')}</div>`;
+            }
+        }
+        
+        // Check duplicate constraints
+        async function checkDuplicateConstraints() {
+            const resultDiv = document.getElementById('duplicateConstraintResult');
+            resultDiv.innerHTML = '<div class="loading">Checking duplicate constraints...</div>';
+            
+            try {
+                // Check for problematic unique constraints
+                const { data, error } = await supabase
+                    .rpc('check_duplicate_constraints');
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">Duplicate constraints check:\n${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (err) {
+                // Fallback: try to query the orders table for duplicates
+                try {
+                    const { data, error } = await supabase
+                        .from('orders')
+                        .select('quotation_code, user_id, status, created_at')
+                        .not('quotation_code', 'is', null)
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) {
+                        resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                    } else {
+                        // Check for duplicates
+                        const duplicates = {};
+                        data.forEach(order => {
+                            const key = `${order.quotation_code}-${order.user_id}`;
+                            if (!duplicates[key]) {
+                                duplicates[key] = [];
+                            }
+                            duplicates[key].push(order);
+                        });
+                        
+                        const duplicateKeys = Object.keys(duplicates).filter(key => duplicates[key].length > 1);
+                        
+                        if (duplicateKeys.length > 0) {
+                            resultDiv.innerHTML = `<div class="error-text">❌ Found duplicate orders:\n${duplicateKeys.map(key => `${key}: ${duplicates[key].length} orders`).join('\n')}</div>`;
+                        } else {
+                            resultDiv.innerHTML = '<div class="success-text">✅ No duplicate orders found</div>';
+                        }
+                    }
+                } catch (fallbackErr) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${fallbackErr.message}</div>`;
+                }
+            }
+        }
+        
+        // Test order placement function
+        async function testOrderPlacement() {
+            const resultDiv = document.getElementById('orderPlacementResult');
+            resultDiv.innerHTML = '<div class="loading">Testing order placement function...</div>';
+            
+            try {
+                const testData = {
+                    p_user_id: '00000000-0000-0000-0000-000000000000', // dummy UUID
+                    p_delivery_address: {
+                        name: 'Test User',
+                        phone: '1234567890',
+                        address: 'Test Address'
+                    },
+                    p_cart_items: [{
+                        id: '00000000-0000-0000-0000-000000000001', // dummy product UUID
+                        quantity: 1,
+                        price: 100.00,
+                        unit_price: 100
+                    }],
+                    p_total_amount: 100.00,
+                    p_quotation_code: 'TEST-001',
+                    p_merchant_code: 'admin'
+                };
+                
+                const { data, error } = await supabase
+                    .rpc('create_or_update_simple_order', testData);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Order placement failed: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">✅ Order placement successful!\nResult: ${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Order placement error: ${err.message}</div>`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Order Placement Fix Test page loaded');
+        });
+    </script>
+</body>
+</html>

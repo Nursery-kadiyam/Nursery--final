@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Items Display Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-code {
+            font-weight: bold;
+            font-size: 18px;
+            color: #2563eb;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-shipped { background: #dbeafe; color: #1e40af; }
+        .status-delivered { background: #e0e7ff; color: #3730a3; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        
+        .items-section {
+            margin-top: 15px;
+        }
+        .item-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .item-specs {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .item-pricing {
+            font-size: 14px;
+            color: #059669;
+            font-weight: bold;
+        }
+        .no-items {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 2px dashed #d1d5db;
+        }
+        .debug-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #92400e;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order Items Display Test</h1>
+    <p>This page tests the order items display functionality for both user and merchant views.</p>
+    
+    <div class="container">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>First, run the SQL script <code>fix_order_items_display.sql</code> to populate missing order_items</li>
+            <li>Check the console for detailed logging about order items processing</li>
+            <li>Verify that orders show items instead of "No items found for this order"</li>
+            <li>Test both user orders page and merchant dashboard</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <h2>Database Status Check</h2>
+        <div id="database-status" class="loading">Checking database status...</div>
+    </div>
+
+    <div class="container">
+        <h2>Sample Orders (Last 10)</h2>
+        <div id="orders-list" class="loading">Loading orders...</div>
+    </div>
+
+    <div class="container">
+        <h2>Test Results</h2>
+        <div id="test-results">
+            <p>Run the test by checking the orders above and verifying:</p>
+            <ul>
+                <li>✅ Orders show actual items instead of "No items found"</li>
+                <li>✅ Item details include name, quantity, price, and image</li>
+                <li>✅ Both cart_items and order_items are handled properly</li>
+                <li>✅ Merchant dashboard shows merchant-specific items</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseKey = 'your-anon-key'; // Replace with your anon key
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Check database status
+        async function checkDatabaseStatus() {
+            try {
+                const statusDiv = document.getElementById('database-status');
+                
+                // Check orders count
+                const { count: ordersCount } = await supabase
+                    .from('orders')
+                    .select('*', { count: 'exact', head: true });
+                
+                // Check order_items count
+                const { count: orderItemsCount } = await supabase
+                    .from('order_items')
+                    .select('*', { count: 'exact', head: true });
+                
+                // Check orders with cart_items
+                const { data: ordersWithCartItems } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .not('cart_items', 'is', null);
+                
+                statusDiv.innerHTML = `
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">${ordersCount || 0}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${orderItemsCount || 0}</div>
+                            <div class="stat-label">Order Items</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${ordersWithCartItems?.length || 0}</div>
+                            <div class="stat-label">Orders with Cart Items</div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('database-status').innerHTML = `
+                    <div class="error">
+                        Error checking database status: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Load sample orders
+        async function loadSampleOrders() {
+            try {
+                const ordersDiv = document.getElementById('orders-list');
+                
+                // Fetch recent orders with order_items
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, total_amount, cart_items, created_at, status, merchant_code,
+                        order_items(id, product_id, quantity, price, unit_price, subtotal, products(name, image_url))
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                if (!orders || orders.length === 0) {
+                    ordersDiv.innerHTML = '<div class="no-items">No orders found</div>';
+                    return;
+                }
+                
+                let html = '';
+                orders.forEach(order => {
+                    const hasOrderItems = order.order_items && order.order_items.length > 0;
+                    const hasCartItems = order.cart_items && order.cart_items !== '[]' && order.cart_items !== 'null';
+                    
+                    html += `
+                        <div class="order-card">
+                            <div class="order-header">
+                                <div class="order-code">${order.order_code || order.id.slice(0, 8)}</div>
+                                <div class="order-status status-${order.status}">${order.status}</div>
+                            </div>
+                            
+                            <div><strong>Total:</strong> ₹${order.total_amount || 0}</div>
+                            <div><strong>Merchant:</strong> ${order.merchant_code || 'N/A'}</div>
+                            <div><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</div>
+                            
+                            <div class="items-section">
+                                <h4>Order Items (${hasOrderItems ? order.order_items.length : 0})</h4>
+                                ${hasOrderItems ? 
+                                    order.order_items.map(item => `
+                                        <div class="item-card">
+                                            <img src="${item.products?.image_url || '/assets/placeholder.svg'}" 
+                                                 class="item-image" 
+                                                 onerror="this.src='/assets/placeholder.svg'">
+                                            <div class="item-details">
+                                                <div class="item-name">${item.products?.name || 'Unknown Product'}</div>
+                                                <div class="item-specs">Qty: ${item.quantity} | Unit: ₹${item.unit_price || 0}</div>
+                                                <div class="item-pricing">Total: ₹${item.subtotal || (item.price * item.quantity)}</div>
+                                            </div>
+                                        </div>
+                                    `).join('') :
+                                    '<div class="no-items">No order items found</div>'
+                                }
+                            </div>
+                            
+                            <div class="debug-info">
+                                <strong>Debug Info:</strong><br>
+                                • Order Items: ${hasOrderItems ? `${order.order_items.length} found` : 'None'}<br>
+                                • Cart Items: ${hasCartItems ? 'Available' : 'None'}<br>
+                                • Order ID: ${order.id}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                ordersDiv.innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('orders-list').innerHTML = `
+                    <div class="error">
+                        Error loading orders: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize
+        checkDatabaseStatus();
+        loadSampleOrders();
+        
+        // Log detailed information
+        console.log('Order Items Display Test initialized');
+        console.log('Supabase URL:', supabaseUrl);
+        console.log('This test checks:');
+        console.log('1. Database connection');
+        console.log('2. Orders with order_items vs cart_items');
+        console.log('3. Item display functionality');
+        console.log('4. Debug information for troubleshooting');
+    </script>
+</body>
+</html>

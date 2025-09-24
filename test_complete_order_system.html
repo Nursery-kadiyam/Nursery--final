@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Order System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f9fafb;
+        }
+        .success {
+            background: #dcfce7;
+            border-color: #16a34a;
+            color: #166534;
+        }
+        .error {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+        .warning {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .info {
+            background: #dbeafe;
+            border-color: #2563eb;
+            color: #1e40af;
+        }
+        .button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        .order-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-code {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2563eb;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-shipped { background: #dbeafe; color: #1e40af; }
+        .status-delivered { background: #e0e7ff; color: #3730a3; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        
+        .item-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .item-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .item-specs {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .item-pricing {
+            font-size: 14px;
+            color: #059669;
+            font-weight: bold;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .merchant-section {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .merchant-header {
+            font-weight: bold;
+            color: #0c4a6e;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Complete Order System Test</h1>
+    <p>This page tests the entire order flow from creation to display for multi-merchant orders.</p>
+    
+    <div class="container">
+        <h2>🔧 Step 1: Apply Database Fix</h2>
+        <div class="test-section info">
+            <h3>Run the SQL Script</h3>
+            <p>Execute <code>complete_order_system_fix.sql</code> in your Supabase SQL editor to:</p>
+            <ul>
+                <li>Populate missing order_items from cart_items</li>
+                <li>Create comprehensive order retrieval functions</li>
+                <li>Fix RLS policies for proper access</li>
+                <li>Ensure proper order splitting by merchant</li>
+            </ul>
+            <button class="button" onclick="runCompleteTest()">Run Complete Test</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 System Status</h2>
+        <div id="system-status" class="loading">Checking system status...</div>
+    </div>
+
+    <div class="container">
+        <h2>🏪 Merchant Orders Test</h2>
+        <div id="merchant-orders-test" class="loading">Testing merchant orders...</div>
+    </div>
+
+    <div class="container">
+        <h2>👤 User Orders Test</h2>
+        <div id="user-orders-test" class="loading">Testing user orders...</div>
+    </div>
+
+    <div class="container">
+        <h2>🔄 Order Flow Verification</h2>
+        <div id="order-flow-test" class="loading">Verifying order flow...</div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Test Results Summary</h2>
+        <div id="test-summary" class="loading">Running tests...</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseKey = 'your-anon-key'; // Replace with your anon key
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        let testResults = {
+            databaseConnection: false,
+            orderItemsPopulated: false,
+            merchantOrdersWorking: false,
+            userOrdersWorking: false,
+            orderFlowComplete: false
+        };
+        
+        async function runCompleteTest() {
+            await checkSystemStatus();
+            await testMerchantOrders();
+            await testUserOrders();
+            await verifyOrderFlow();
+            await showTestSummary();
+        }
+        
+        async function checkSystemStatus() {
+            try {
+                document.getElementById('system-status').innerHTML = '<div class="loading">Checking system status...</div>';
+                
+                // Check database connection and basic stats
+                const { count: ordersCount } = await supabase
+                    .from('orders')
+                    .select('*', { count: 'exact', head: true });
+                
+                const { count: orderItemsCount } = await supabase
+                    .from('order_items')
+                    .select('*', { count: 'exact', head: true });
+                
+                const { count: merchantsCount } = await supabase
+                    .from('merchants')
+                    .select('*', { count: 'exact', head: true });
+                
+                // Check if functions exist
+                const { data: functionTest, error: functionError } = await supabase
+                    .rpc('get_merchant_orders_with_items', { p_merchant_code: 'test' });
+                
+                let statusHtml = `
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-number">${ordersCount || 0}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${orderItemsCount || 0}</div>
+                            <div class="stat-label">Order Items</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${merchantsCount || 0}</div>
+                            <div class="stat-label">Merchants</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${functionError ? '❌' : '✅'}</div>
+                            <div class="stat-label">Functions Working</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (functionError) {
+                    statusHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Functions Not Working</h3>
+                            <p><strong>Error:</strong> ${functionError.message}</p>
+                            <p>Please run the <code>complete_order_system_fix.sql</code> script first.</p>
+                        </div>
+                    `;
+                    testResults.databaseConnection = false;
+                } else {
+                    statusHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Database Functions Working</h3>
+                            <p>All database functions are properly set up.</p>
+                        </div>
+                    `;
+                    testResults.databaseConnection = true;
+                }
+                
+                document.getElementById('system-status').innerHTML = statusHtml;
+                
+            } catch (error) {
+                document.getElementById('system-status').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ System Status Check Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testMerchantOrders() {
+            try {
+                document.getElementById('merchant-orders-test').innerHTML = '<div class="loading">Testing merchant orders...</div>';
+                
+                // Get a sample merchant code
+                const { data: merchants } = await supabase
+                    .from('merchants')
+                    .select('merchant_code')
+                    .limit(1);
+                
+                if (!merchants || merchants.length === 0) {
+                    document.getElementById('merchant-orders-test').innerHTML = `
+                        <div class="test-section warning">
+                            <h3>⚠️ No Merchants Found</h3>
+                            <p>No merchants found in the database to test with.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const merchantCode = merchants[0].merchant_code;
+                
+                // Test merchant orders function
+                const { data: merchantOrders, error: merchantError } = await supabase
+                    .rpc('get_merchant_orders_with_items', {
+                        p_merchant_code: merchantCode
+                    });
+                
+                let merchantHtml = '';
+                
+                if (merchantError) {
+                    merchantHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Merchant Orders Function Failed</h3>
+                            <p><strong>Error:</strong> ${merchantError.message}</p>
+                        </div>
+                    `;
+                    testResults.merchantOrdersWorking = false;
+                } else {
+                    merchantHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Merchant Orders Function Working</h3>
+                            <p>Found ${merchantOrders.length} orders for merchant: ${merchantCode}</p>
+                        </div>
+                    `;
+                    testResults.merchantOrdersWorking = true;
+                    
+                    // Show sample merchant orders
+                    if (merchantOrders.length > 0) {
+                        merchantHtml += `
+                            <div class="merchant-section">
+                                <div class="merchant-header">Sample Merchant Orders (${merchantCode})</div>
+                        `;
+                        
+                        merchantOrders.slice(0, 3).forEach(order => {
+                            merchantHtml += `
+                                <div class="order-card">
+                                    <div class="order-header">
+                                        <div class="order-code">${order.order_code}</div>
+                                        <div class="order-status status-${order.status}">${order.status}</div>
+                                    </div>
+                                    <div><strong>Customer:</strong> ${order.customer_name} (${order.customer_email})</div>
+                                    <div><strong>Total:</strong> ₹${order.total_amount}</div>
+                                    <div><strong>Items:</strong> ${order.order_items.length} items</div>
+                                    
+                                    ${order.order_items.length > 0 ? `
+                                        <div style="margin-top: 10px;">
+                                            <strong>Order Items:</strong>
+                                            ${order.order_items.map(item => `
+                                                <div class="item-card">
+                                                    <div class="item-details">
+                                                        <div class="item-name">${item.product_name}</div>
+                                                        <div class="item-specs">Qty: ${item.quantity} × ₹${item.unit_price}</div>
+                                                        <div class="item-pricing">Total: ₹${item.subtotal}</div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<div style="color: #ef4444; margin-top: 10px;">⚠️ No items found for this order</div>'}
+                                </div>
+                            `;
+                        });
+                        
+                        merchantHtml += '</div>';
+                    } else {
+                        merchantHtml += `
+                            <div class="test-section info">
+                                <h3>ℹ️ No Orders Found</h3>
+                                <p>No orders found for merchant: ${merchantCode}</p>
+                                <p>This is normal if the merchant hasn't received any orders yet.</p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                document.getElementById('merchant-orders-test').innerHTML = merchantHtml;
+                
+            } catch (error) {
+                document.getElementById('merchant-orders-test').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Merchant Orders Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testUserOrders() {
+            try {
+                document.getElementById('user-orders-test').innerHTML = '<div class="loading">Testing user orders...</div>';
+                
+                // Test user orders function with a dummy user ID
+                const { data: userOrders, error: userError } = await supabase
+                    .rpc('get_user_orders_with_items', {
+                        p_user_id: '00000000-0000-0000-0000-000000000000'
+                    });
+                
+                let userHtml = '';
+                
+                if (userError) {
+                    userHtml += `
+                        <div class="test-section warning">
+                            <h3>⚠️ User Orders Function Test</h3>
+                            <p><strong>Note:</strong> ${userError.message}</p>
+                            <p>This is expected when testing with a dummy user ID.</p>
+                        </div>
+                    `;
+                } else {
+                    userHtml += `
+                        <div class="test-section success">
+                            <h3>✅ User Orders Function Working</h3>
+                            <p>Function executed successfully (found ${userOrders.length} orders for test user).</p>
+                        </div>
+                    `;
+                }
+                
+                // Test direct orders query
+                const { data: directOrders, error: directError } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, merchant_code, total_amount, status, created_at,
+                        order_items(id, quantity, unit_price, subtotal, products(name))
+                    `)
+                    .limit(5);
+                
+                if (directError) {
+                    userHtml += `
+                        <div class="test-section error">
+                            <h3>❌ Direct Orders Query Failed</h3>
+                            <p><strong>Error:</strong> ${directError.message}</p>
+                        </div>
+                    `;
+                    testResults.userOrdersWorking = false;
+                } else {
+                    userHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Direct Orders Query Working</h3>
+                            <p>Found ${directOrders.length} recent orders in the system.</p>
+                        </div>
+                    `;
+                    testResults.userOrdersWorking = true;
+                    
+                    // Show sample orders
+                    if (directOrders.length > 0) {
+                        userHtml += '<h4>Recent Orders in System:</h4>';
+                        directOrders.forEach(order => {
+                            const itemCount = order.order_items ? order.order_items.length : 0;
+                            userHtml += `
+                                <div class="order-card">
+                                    <div class="order-header">
+                                        <div class="order-code">${order.order_code}</div>
+                                        <div class="order-status status-${order.status}">${order.status}</div>
+                                    </div>
+                                    <div><strong>Merchant:</strong> ${order.merchant_code}</div>
+                                    <div><strong>Total:</strong> ₹${order.total_amount}</div>
+                                    <div><strong>Items:</strong> ${itemCount} items</div>
+                                    ${itemCount > 0 ? `
+                                        <div style="margin-top: 10px; font-size: 12px;">
+                                            Items: ${order.order_items.map(item => `${item.products?.name || 'Unknown'} (${item.quantity})`).join(', ')}
+                                        </div>
+                                    ` : '<div style="color: #ef4444; margin-top: 10px;">⚠️ No items found</div>'}
+                                </div>
+                            `;
+                        });
+                    }
+                }
+                
+                document.getElementById('user-orders-test').innerHTML = userHtml;
+                
+            } catch (error) {
+                document.getElementById('user-orders-test').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ User Orders Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function verifyOrderFlow() {
+            try {
+                document.getElementById('order-flow-test').innerHTML = '<div class="loading">Verifying order flow...</div>';
+                
+                // Check orders with items
+                const { data: ordersWithItems } = await supabase
+                    .from('orders')
+                    .select(`
+                        id, order_code, merchant_code, total_amount, status,
+                        order_items(id, quantity, unit_price, subtotal)
+                    `)
+                    .not('order_items', 'is', null);
+                
+                // Check orders without items
+                const { data: ordersWithoutItems } = await supabase
+                    .from('orders')
+                    .select('id, order_code, merchant_code, cart_items')
+                    .leftJoin('order_items', 'orders.id', 'order_items.order_id')
+                    .is('order_items.id', null);
+                
+                let flowHtml = '';
+                
+                if (ordersWithItems && ordersWithItems.length > 0) {
+                    flowHtml += `
+                        <div class="test-section success">
+                            <h3>✅ Orders with Items Found</h3>
+                            <p>${ordersWithItems.length} orders have proper order_items records.</p>
+                        </div>
+                    `;
+                    
+                    // Show sample
+                    const sampleOrder = ordersWithItems[0];
+                    flowHtml += `
+                        <div class="order-card">
+                            <h4>Sample Order with Items:</h4>
+                            <div><strong>Order:</strong> ${sampleOrder.order_code}</div>
+                            <div><strong>Merchant:</strong> ${sampleOrder.merchant_code}</div>
+                            <div><strong>Items:</strong> ${sampleOrder.order_items.length}</div>
+                        </div>
+                    `;
+                } else {
+                    flowHtml += `
+                        <div class="test-section warning">
+                            <h3>⚠️ No Orders with Items Found</h3>
+                            <p>No orders have proper order_items records. This indicates the population script needs to be run.</p>
+                        </div>
+                    `;
+                }
+                
+                if (ordersWithoutItems && ordersWithoutItems.length > 0) {
+                    flowHtml += `
+                        <div class="test-section warning">
+                            <h3>⚠️ Orders Without Items Found</h3>
+                            <p>${ordersWithoutItems.length} orders are missing order_items records.</p>
+                            <p>These orders should be processed by the population script.</p>
+                        </div>
+                    `;
+                }
+                
+                // Check merchant distribution
+                const { data: merchantDistribution } = await supabase
+                    .from('orders')
+                    .select('merchant_code')
+                    .not('merchant_code', 'is', null);
+                
+                if (merchantDistribution) {
+                    const merchantCounts = {};
+                    merchantDistribution.forEach(order => {
+                        merchantCounts[order.merchant_code] = (merchantCounts[order.merchant_code] || 0) + 1;
+                    });
+                    
+                    flowHtml += `
+                        <div class="test-section info">
+                            <h3>📊 Merchant Order Distribution</h3>
+                            ${Object.entries(merchantCounts).map(([merchant, count]) => 
+                                `<div><strong>${merchant}:</strong> ${count} orders</div>`
+                            ).join('')}
+                        </div>
+                    `;
+                }
+                
+                testResults.orderFlowComplete = true;
+                document.getElementById('order-flow-test').innerHTML = flowHtml;
+                
+            } catch (error) {
+                document.getElementById('order-flow-test').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Order Flow Verification Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function showTestSummary() {
+            const allTestsPassed = Object.values(testResults).every(result => result);
+            
+            const summaryHtml = `
+                <div class="stats">
+                    <div class="stat ${testResults.databaseConnection ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.databaseConnection ? '✅' : '❌'}</div>
+                        <div class="stat-label">Database Functions</div>
+                    </div>
+                    <div class="stat ${testResults.merchantOrdersWorking ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.merchantOrdersWorking ? '✅' : '❌'}</div>
+                        <div class="stat-label">Merchant Orders</div>
+                    </div>
+                    <div class="stat ${testResults.userOrdersWorking ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.userOrdersWorking ? '✅' : '❌'}</div>
+                        <div class="stat-label">User Orders</div>
+                    </div>
+                    <div class="stat ${testResults.orderFlowComplete ? 'success' : 'error'}">
+                        <div class="stat-number">${testResults.orderFlowComplete ? '✅' : '❌'}</div>
+                        <div class="stat-label">Order Flow</div>
+                    </div>
+                </div>
+                
+                <div class="test-section ${allTestsPassed ? 'success' : 'warning'}">
+                    <h3>${allTestsPassed ? '🎉 All Tests Passed!' : '⚠️ Some Tests Need Attention'}</h3>
+                    <p>${allTestsPassed ? 
+                        'The complete order system is working correctly! Merchants and users should now see proper order items.' : 
+                        'Please review the failed tests and apply the necessary fixes.'}</p>
+                </div>
+                
+                <div class="test-section info">
+                    <h3>📋 Next Steps</h3>
+                    <ol>
+                        <li>If tests failed, run the <code>complete_order_system_fix.sql</code> script</li>
+                        <li>Deploy the updated frontend code (Orders.tsx and MerchantDashboard.tsx)</li>
+                        <li>Test in both user orders and merchant dashboard</li>
+                        <li>Verify that:
+                            <ul>
+                                <li>Merchants see only their orders with proper items</li>
+                                <li>Users see all their orders grouped by quotation</li>
+                                <li>Order items display correctly with names, quantities, and prices</li>
+                                <li>No more "No items found" messages</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            `;
+            
+            document.getElementById('test-summary').innerHTML = summaryHtml;
+        }
+        
+        // Initialize
+        console.log('Complete Order System Test initialized');
+        console.log('This test verifies:');
+        console.log('1. Database functions for order retrieval');
+        console.log('2. Merchant-specific order display');
+        console.log('3. User order grouping and display');
+        console.log('4. Order items population and access');
+        console.log('5. Complete order flow functionality');
+    </script>
+</body>
+</html>

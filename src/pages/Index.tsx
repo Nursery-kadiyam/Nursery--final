@@ -205,7 +205,7 @@ const Index = () => {
               Discover ornamental, flowering, fruit, medicinal, and exotic plants — delivered across India
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start items-center">
-              <Link to="/shop">
+              <Link to="/catalog">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto bg-gold-600 hover:bg-gold-700 text-white px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg min-h-[48px] font-montserrat"

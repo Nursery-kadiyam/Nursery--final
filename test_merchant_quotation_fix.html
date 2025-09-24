@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Quotation Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .step { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Merchant Quotation Fix Test</h1>
+    
+    <div class="test-section success">
+        <h2>✅ Issue Fixed: Missing modified_specifications Parameter</h2>
+        <p><strong>Problem:</strong> Function <code>submit_merchant_quotation_simple</code> was missing the <code>p_modified_specifications</code> parameter</p>
+        <p><strong>Solution:</strong> Updated function definition to include all required parameters</p>
+        <p><strong>Status:</strong> Fixed - Function now accepts modified_specifications parameter</p>
+    </div>
+
+    <div class="test-section success">
+        <h2>✅ Issue Fixed: Merchant Response Display</h2>
+        <p><strong>Problem:</strong> Merchant responses were displayed in green, making them hard to distinguish</p>
+        <p><strong>Solution:</strong> Updated MyQuotations.tsx to display merchant responses in red color</p>
+        <p><strong>Status:</strong> Fixed - Merchant responses now have red highlighting</p>
+    </div>
+
+    <div class="test-section warning">
+        <h2>⚠️ Required Action: Run SQL Script</h2>
+        <p><strong>Action Required:</strong> You need to run the SQL script to fix the database function</p>
+        <div class="step">
+            <h3>Step 1: Open Supabase SQL Editor</h3>
+            <p>Go to your Supabase dashboard → SQL Editor</p>
+        </div>
+        <div class="step">
+            <h3>Step 2: Run the Fix Script</h3>
+            <p>Copy and paste the contents of <code>fix_merchant_quotation_function.sql</code> into the SQL Editor and run it</p>
+        </div>
+        <div class="step">
+            <h3>Step 3: Test the Function</h3>
+            <p>Try submitting a merchant quotation to verify it works</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Changes Made</h2>
+        
+        <h3>1. Database Function Fix (fix_merchant_quotation_function.sql)</h3>
+        <pre>-- Updated function signature to include modified_specifications
+CREATE OR REPLACE FUNCTION public.submit_merchant_quotation_simple(
+    p_custom_work_cost NUMERIC,
+    p_estimated_delivery_days INTEGER,
+    p_merchant_code TEXT,
+    p_modified_specifications JSONB,  -- ✅ Added this parameter
+    p_quotation_code TEXT,
+    p_transport_cost NUMERIC,
+    p_unit_prices JSONB
+)</pre>
+
+        <h3>2. Frontend Display Update (MyQuotations.tsx)</h3>
+        <pre>// Changed merchant response cards from green to red
+&lt;div className="p-4 bg-red-50 border-b border-red-200 rounded-t-lg"&gt;
+  &lt;h4 className="font-bold text-red-700 text-lg"&gt;{response.merchant_code}&lt;/h4&gt;
+  &lt;p className="text-sm text-red-600"&gt;...&lt;/p&gt;
+&lt;/div&gt;</pre>
+
+        <h3>3. Merchant Selector Buttons</h3>
+        <pre>// Updated selected merchant button styling
+className={`... ${
+  selectedMerchant === response.merchant_code
+    ? 'bg-red-600 text-white'  // ✅ Changed from green to red
+    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+}`}</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Expected Results After Fix</h2>
+        <ul>
+            <li>✅ <strong>Quotation Submission:</strong> Merchants can submit quotations without errors</li>
+            <li>✅ <strong>Modified Specifications:</strong> Merchant modifications are properly saved and displayed</li>
+            <li>✅ <strong>Red Highlighting:</strong> Merchant responses are clearly visible with red color scheme</li>
+            <li>✅ <strong>Function Parameters:</strong> All required parameters are properly handled</li>
+            <li>✅ <strong>Database Integration:</strong> Quotations are saved correctly in the database</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Testing Steps</h2>
+        <ol>
+            <li><strong>Run SQL Script:</strong> Execute <code>fix_merchant_quotation_function.sql</code> in Supabase</li>
+            <li><strong>Login as Merchant:</strong> Access merchant dashboard</li>
+            <li><strong>Submit Quotation:</strong> Try submitting a quotation with modified specifications</li>
+            <li><strong>Check User View:</strong> Login as user and view quotations - merchant responses should be red</li>
+            <li><strong>Verify Data:</strong> Check that modified specifications are saved and displayed correctly</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🐛 Troubleshooting</h2>
+        <h3>If quotation submission still fails:</h3>
+        <ul>
+            <li>Check Supabase logs for any remaining function errors</li>
+            <li>Verify the function was created successfully in the database</li>
+            <li>Check that all parameters are being passed correctly from the frontend</li>
+        </ul>
+        
+        <h3>If merchant responses don't show red:</h3>
+        <ul>
+            <li>Clear browser cache and refresh the page</li>
+            <li>Check that the MyQuotations.tsx file was saved correctly</li>
+            <li>Verify the CSS classes are being applied properly</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h2>✅ Summary</h2>
+        <p>The merchant quotation system has been fixed with the following improvements:</p>
+        <ul>
+            <li>✅ <strong>Function Definition:</strong> Added missing modified_specifications parameter</li>
+            <li>✅ <strong>Visual Distinction:</strong> Merchant responses now have red highlighting</li>
+            <li>✅ <strong>Data Integrity:</strong> Modified specifications are properly saved and displayed</li>
+            <li>✅ <strong>User Experience:</strong> Clear visual distinction between user requests and merchant responses</li>
+        </ul>
+        <p><strong>Next Step:</strong> Run the SQL script in Supabase to complete the fix!</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Refresh Orders</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading { color: #007bff; }
+        .success-text { color: #155724; }
+        .error-text { color: #721c24; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .status-confirmed { background-color: #d1ecf1; color: #0c5460; }
+        .status-shipped { background-color: #d4edda; color: #155724; }
+        .status-delivered { background-color: #d4edda; color: #155724; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Force Refresh Orders</h1>
+    
+    <div class="container">
+        <h2>Database Connection Test</h2>
+        <div class="test-section">
+            <button onclick="testConnection()">Test Supabase Connection</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Check Current Orders Status</h2>
+        <div class="test-section">
+            <button onclick="checkOrdersStatus()">Check Orders Status</button>
+            <div id="ordersStatusResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Force Update Pending Orders</h2>
+        <div class="test-section">
+            <button onclick="forceUpdatePendingOrders()">Force Update All Pending Orders</button>
+            <div id="forceUpdateResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Clear Browser Cache</h2>
+        <div class="test-section">
+            <button onclick="clearCache()">Clear Cache and Reload</button>
+            <div id="cacheResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Verify Orders Table</h2>
+        <div class="test-section">
+            <button onclick="verifyOrdersTable()">Verify Orders Table Structure</button>
+            <div id="verifyResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        let supabase;
+        
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                return false;
+            }
+        }
+        
+        // Test database connection
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '<div class="loading">Testing connection...</div>';
+            
+            if (!initSupabase()) {
+                resultDiv.innerHTML = '<div class="error-text">Failed to initialize Supabase client</div>';
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Connection failed: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = '<div class="success-text">✅ Database connection successful!</div>';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Connection error: ${err.message}</div>`;
+            }
+        }
+        
+        // Check current orders status
+        async function checkOrdersStatus() {
+            const resultDiv = document.getElementById('ordersStatusResult');
+            resultDiv.innerHTML = '<div class="loading">Checking orders status...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('id, order_code, status, created_at, updated_at')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    // Group by status
+                    const statusCounts = {};
+                    data.forEach(order => {
+                        statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
+                    });
+                    
+                    let html = '<div class="success-text">✅ Orders Status Check:\n\n';
+                    html += 'Status Distribution:\n';
+                    Object.entries(statusCounts).forEach(([status, count]) => {
+                        html += `- ${status}: ${count} orders\n`;
+                    });
+                    
+                    html += '\nRecent Orders:\n';
+                    html += '<table><tr><th>Order Code</th><th>Status</th><th>Created</th><th>Updated</th></tr>';
+                    data.forEach(order => {
+                        const statusClass = `status-${order.status}`;
+                        html += `<tr>
+                            <td>${order.order_code || order.id}</td>
+                            <td class="${statusClass}">${order.status}</td>
+                            <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                            <td>${new Date(order.updated_at).toLocaleDateString()}</td>
+                        </tr>`;
+                    });
+                    html += '</table></div>';
+                    
+                    resultDiv.innerHTML = html;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Force update pending orders
+        async function forceUpdatePendingOrders() {
+            const resultDiv = document.getElementById('forceUpdateResult');
+            resultDiv.innerHTML = '<div class="loading">Force updating pending orders...</div>';
+            
+            try {
+                // First, check what orders need updating
+                const { data: pendingOrders, error: fetchError } = await supabase
+                    .from('orders')
+                    .select('id, order_code, status')
+                    .in('status', ['pending', 'pending_payment', 'processing', 'in_progress', 'active', 'waiting', 'awaiting']);
+                
+                if (fetchError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error fetching orders: ${fetchError.message}</div>`;
+                    return;
+                }
+                
+                if (pendingOrders.length === 0) {
+                    resultDiv.innerHTML = '<div class="success-text">✅ No pending orders found!</div>';
+                    return;
+                }
+                
+                // Update all pending orders
+                const { data: updateData, error: updateError } = await supabase
+                    .from('orders')
+                    .update({ 
+                        status: 'confirmed', 
+                        updated_at: new Date().toISOString() 
+                    })
+                    .in('id', pendingOrders.map(o => o.id));
+                
+                if (updateError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error updating orders: ${updateError.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">✅ Updated ${pendingOrders.length} orders to confirmed status!</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Clear browser cache
+        function clearCache() {
+            const resultDiv = document.getElementById('cacheResult');
+            resultDiv.innerHTML = '<div class="loading">Clearing cache...</div>';
+            
+            try {
+                // Clear localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                // Force reload
+                setTimeout(() => {
+                    resultDiv.innerHTML = '<div class="success-text">✅ Cache cleared! Reloading page...</div>';
+                    window.location.reload(true);
+                }, 1000);
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error clearing cache: ${err.message}</div>`;
+            }
+        }
+        
+        // Verify orders table structure
+        async function verifyOrdersTable() {
+            const resultDiv = document.getElementById('verifyResult');
+            resultDiv.innerHTML = '<div class="loading">Verifying orders table...</div>';
+            
+            try {
+                // Check table structure
+                const { data: columns, error: columnsError } = await supabase
+                    .rpc('get_table_columns', { table_name: 'orders' });
+                
+                if (columnsError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${columnsError.message}</div>`;
+                    return;
+                }
+                
+                // Check constraints
+                const { data: constraints, error: constraintsError } = await supabase
+                    .rpc('get_table_constraints', { table_name: 'orders' });
+                
+                let html = '<div class="success-text">✅ Orders Table Verification:\n\n';
+                html += 'Table Columns:\n';
+                columns.forEach(col => {
+                    html += `- ${col.column_name}: ${col.data_type} (${col.is_nullable})\n`;
+                });
+                
+                html += '\nConstraints:\n';
+                if (constraints) {
+                    constraints.forEach(constraint => {
+                        html += `- ${constraint.constraint_name}: ${constraint.constraint_definition}\n`;
+                    });
+                }
+                
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Force Refresh Orders page loaded');
+        });
+    </script>
+</body>
+</html>

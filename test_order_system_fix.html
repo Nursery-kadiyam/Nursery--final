@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order System Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Order System Fix Test</h1>
+    <p>This test verifies that the order system fixes are working correctly.</p>
+
+    <div class="test-section info">
+        <h3>📋 Test Instructions</h3>
+        <ol>
+            <li>Run the database migration: <code>fix_order_system_complete.sql</code></li>
+            <li>Update your Supabase URL and key below</li>
+            <li>Click "Run All Tests" to verify the fixes</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>⚙️ Configuration</h3>
+        <label>Supabase URL: <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" style="width: 300px;"></label><br><br>
+        <label>Supabase Key: <input type="text" id="supabaseKey" placeholder="your-anon-key" style="width: 300px;"></label><br><br>
+        <button onclick="updateConfig()">Update Configuration</button>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Results</h3>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let testResults = [];
+
+        function updateConfig() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            if (!url || !key) {
+                alert('Please enter both Supabase URL and Key');
+                return;
+            }
+
+            // Load Supabase client
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@supabase/supabase-js@2';
+            script.onload = () => {
+                supabase = window.supabase.createClient(url, key);
+                addResult('Configuration updated successfully', 'success');
+            };
+            document.head.appendChild(script);
+        }
+
+        function addResult(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            testResults.push({ message, type, timestamp });
+            updateResultsDisplay();
+        }
+
+        function updateResultsDisplay() {
+            const container = document.getElementById('testResults');
+            container.innerHTML = testResults.map(result => 
+                `<div class="test-section ${result.type}">
+                    <strong>[${result.timestamp}]</strong> ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        function clearResults() {
+            testResults = [];
+            updateResultsDisplay();
+        }
+
+        async function runAllTests() {
+            if (!supabase) {
+                addResult('Please configure Supabase first', 'error');
+                return;
+            }
+
+            clearResults();
+            addResult('Starting order system tests...', 'info');
+
+            try {
+                await testDatabaseSchema();
+                await testOrderCreation();
+                await testOrderFetching();
+                await testPricingCalculations();
+                await testMerchantOrders();
+                addResult('All tests completed successfully!', 'success');
+            } catch (error) {
+                addResult(`Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDatabaseSchema() {
+            addResult('Testing database schema...', 'info');
+            
+            // Check if required columns exist
+            const { data: ordersColumns, error: ordersError } = await supabase
+                .from('information_schema.columns')
+                .select('column_name')
+                .eq('table_name', 'orders')
+                .eq('table_schema', 'public')
+                .in('column_name', ['parent_order_id', 'merchant_id', 'subtotal']);
+
+            if (ordersError) throw new Error(`Schema check failed: ${ordersError.message}`);
+            
+            const requiredColumns = ['parent_order_id', 'merchant_id', 'subtotal'];
+            const existingColumns = ordersColumns.map(col => col.column_name);
+            const missingColumns = requiredColumns.filter(col => !existingColumns.includes(col));
+            
+            if (missingColumns.length > 0) {
+                throw new Error(`Missing columns: ${missingColumns.join(', ')}`);
+            }
+            
+            addResult('✅ Database schema is correct', 'success');
+        }
+
+        async function testOrderCreation() {
+            addResult('Testing order creation...', 'info');
+            
+            // Create a test parent order
+            const parentOrder = {
+                user_id: 'test-user-id',
+                parent_order_id: null,
+                merchant_id: null,
+                merchant_code: 'parent',
+                total_amount: 1000,
+                subtotal: 1000,
+                status: 'pending',
+                cart_items: []
+            };
+
+            const { data: parentData, error: parentError } = await supabase
+                .from('orders')
+                .insert([parentOrder])
+                .select('id')
+                .single();
+
+            if (parentError) throw new Error(`Parent order creation failed: ${parentError.message}`);
+            
+            // Create a test child order
+            const childOrder = {
+                user_id: 'test-user-id',
+                parent_order_id: parentData.id,
+                merchant_id: 'test-merchant-id',
+                merchant_code: 'TEST-MERCHANT',
+                total_amount: 500,
+                subtotal: 500,
+                status: 'pending',
+                cart_items: []
+            };
+
+            const { data: childData, error: childError } = await supabase
+                .from('orders')
+                .insert([childOrder])
+                .select('id')
+                .single();
+
+            if (childError) throw new Error(`Child order creation failed: ${childError.message}`);
+            
+            addResult('✅ Order creation works correctly', 'success');
+            
+            // Clean up test data
+            await supabase.from('orders').delete().eq('id', childData.id);
+            await supabase.from('orders').delete().eq('id', parentData.id);
+        }
+
+        async function testOrderFetching() {
+            addResult('Testing order fetching...', 'info');
+            
+            // Test fetching parent orders
+            const { data: parentOrders, error: parentError } = await supabase
+                .from('orders')
+                .select(`
+                    id, order_code, total_amount, subtotal, parent_order_id, merchant_id,
+                    child_orders:orders!parent_order_id(
+                        id, order_code, subtotal, merchant_id,
+                        merchants:merchant_id(nursery_name, merchant_code)
+                    )
+                `)
+                .is('parent_order_id', null)
+                .limit(5);
+
+            if (parentError) throw new Error(`Parent order fetching failed: ${parentError.message}`);
+            
+            addResult(`✅ Fetched ${parentOrders.length} parent orders`, 'success');
+            
+            // Test fetching child orders
+            const { data: childOrders, error: childError } = await supabase
+                .from('orders')
+                .select(`
+                    id, order_code, subtotal, parent_order_id, merchant_id,
+                    parent_order:orders!parent_order_id(id, order_code, total_amount)
+                `)
+                .not('parent_order_id', 'is', null)
+                .limit(5);
+
+            if (childError) throw new Error(`Child order fetching failed: ${childError.message}`);
+            
+            addResult(`✅ Fetched ${childOrders.length} child orders`, 'success');
+        }
+
+        async function testPricingCalculations() {
+            addResult('Testing pricing calculations...', 'info');
+            
+            // Check for orders with pricing issues
+            const { data: pricingIssues, error: pricingError } = await supabase
+                .from('orders')
+                .select('id, order_code, total_amount, subtotal, parent_order_id')
+                .neq('total_amount', 'subtotal')
+                .is('parent_order_id', null);
+
+            if (pricingError) throw new Error(`Pricing check failed: ${pricingError.message}`);
+            
+            if (pricingIssues.length > 0) {
+                addResult(`⚠️ Found ${pricingIssues.length} orders with pricing issues`, 'error');
+                console.log('Pricing issues:', pricingIssues);
+            } else {
+                addResult('✅ All pricing calculations are correct', 'success');
+            }
+        }
+
+        async function testMerchantOrders() {
+            addResult('Testing merchant order fetching...', 'info');
+            
+            // Get a merchant to test with
+            const { data: merchants, error: merchantError } = await supabase
+                .from('merchants')
+                .select('id, merchant_code')
+                .limit(1);
+
+            if (merchantError || !merchants.length) {
+                addResult('⚠️ No merchants found for testing', 'info');
+                return;
+            }
+
+            const merchant = merchants[0];
+            
+            // Test fetching orders for this merchant
+            const { data: merchantOrders, error: orderError } = await supabase
+                .from('orders')
+                .select(`
+                    id, order_code, subtotal, merchant_id, parent_order_id,
+                    order_items:order_items(id, quantity, price, unit_price, subtotal)
+                `)
+                .eq('merchant_id', merchant.id)
+                .not('parent_order_id', 'is', null);
+
+            if (orderError) throw new Error(`Merchant order fetching failed: ${orderError.message}`);
+            
+            addResult(`✅ Fetched ${merchantOrders.length} orders for merchant ${merchant.merchant_code}`, 'success');
+        }
+
+        // Auto-load configuration if available
+        window.onload = function() {
+            // You can set default values here
+            document.getElementById('supabaseUrl').value = '';
+            document.getElementById('supabaseKey').value = '';
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Order Fix Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading { color: #007bff; }
+        .success-text { color: #155724; }
+        .error-text { color: #721c24; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .status-confirmed { background-color: #d1ecf1; color: #0c5460; }
+        .status-shipped { background-color: #d4edda; color: #155724; }
+        .status-delivered { background-color: #d4edda; color: #155724; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Merchant Order Fix Test</h1>
+    
+    <div class="container">
+        <h2>Database Connection Test</h2>
+        <div class="test-section">
+            <button onclick="testConnection()">Test Supabase Connection</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Check Order-Merchant Linking</h2>
+        <div class="test-section">
+            <button onclick="checkOrderMerchantLinking()">Check Order-Merchant Linking</button>
+            <div id="linkingResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Test Merchant Dashboard Orders</h2>
+        <div class="test-section">
+            <input type="text" id="merchantCodeInput" placeholder="Enter merchant code (e.g., MC-2025-TXYR)" style="width: 300px; padding: 8px; margin-right: 10px;">
+            <button onclick="testMerchantOrders()">Test Merchant Orders</button>
+            <div id="merchantOrdersResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Fix Order-Merchant Linking</h2>
+        <div class="test-section">
+            <button onclick="fixOrderMerchantLinking()">Fix Order-Merchant Linking</button>
+            <div id="fixResult" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Test New Order Creation</h2>
+        <div class="test-section">
+            <button onclick="testNewOrderCreation()">Test New Order Creation</button>
+            <div id="newOrderResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        let supabase;
+        
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                return false;
+            }
+        }
+        
+        // Test database connection
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '<div class="loading">Testing connection...</div>';
+            
+            if (!initSupabase()) {
+                resultDiv.innerHTML = '<div class="error-text">Failed to initialize Supabase client</div>';
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Connection failed: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = '<div class="success-text">✅ Database connection successful!</div>';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Connection error: ${err.message}</div>`;
+            }
+        }
+        
+        // Check order-merchant linking
+        async function checkOrderMerchantLinking() {
+            const resultDiv = document.getElementById('linkingResult');
+            resultDiv.innerHTML = '<div class="loading">Checking order-merchant linking...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select(`
+                        order_code,
+                        merchant_code,
+                        quotation_code,
+                        status,
+                        total_amount,
+                        created_at,
+                        quotations!inner(merchant_code)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    let html = '<div class="success-text">✅ Order-Merchant Linking Check:\n\n';
+                    html += '<table><tr><th>Order Code</th><th>Order Merchant</th><th>Quotation Merchant</th><th>Status</th><th>Amount</th><th>Date</th></tr>';
+                    
+                    data.forEach(order => {
+                        const quotationMerchant = order.quotations?.merchant_code || 'N/A';
+                        const isLinked = order.merchant_code === quotationMerchant;
+                        const statusClass = `status-${order.status}`;
+                        
+                        html += `<tr>
+                            <td>${order.order_code || order.id}</td>
+                            <td>${order.merchant_code || 'N/A'}</td>
+                            <td>${quotationMerchant}</td>
+                            <td class="${statusClass}">${order.status}</td>
+                            <td>₹${order.total_amount || 0}</td>
+                            <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</table></div>';
+                    resultDiv.innerHTML = html;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Test merchant orders
+        async function testMerchantOrders() {
+            const resultDiv = document.getElementById('merchantOrdersResult');
+            const merchantCode = document.getElementById('merchantCodeInput').value.trim();
+            
+            if (!merchantCode) {
+                resultDiv.innerHTML = '<div class="error-text">Please enter a merchant code</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Testing merchant orders...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('merchant_code', merchantCode)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
+                } else {
+                    let html = `<div class="success-text">✅ Orders for Merchant ${merchantCode}:\n\n`;
+                    
+                    if (data.length === 0) {
+                        html += 'No orders found for this merchant code.';
+                    } else {
+                        html += '<table><tr><th>Order Code</th><th>Status</th><th>Amount</th><th>Items</th><th>Date</th></tr>';
+                        
+                        data.forEach(order => {
+                            const statusClass = `status-${order.status}`;
+                            const itemCount = order.cart_items ? (Array.isArray(order.cart_items) ? order.cart_items.length : 1) : 0;
+                            
+                            html += `<tr>
+                                <td>${order.order_code || order.id}</td>
+                                <td class="${statusClass}">${order.status}</td>
+                                <td>₹${order.total_amount || 0}</td>
+                                <td>${itemCount} items</td>
+                                <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                            </tr>`;
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Fix order-merchant linking
+        async function fixOrderMerchantLinking() {
+            const resultDiv = document.getElementById('fixResult');
+            resultDiv.innerHTML = '<div class="loading">Fixing order-merchant linking...</div>';
+            
+            try {
+                // This would need to be done via a database function or direct SQL
+                // For now, we'll just show what needs to be fixed
+                const { data: ordersToFix, error: fetchError } = await supabase
+                    .from('orders')
+                    .select(`
+                        id,
+                        order_code,
+                        merchant_code,
+                        quotation_code,
+                        quotations!inner(merchant_code)
+                    `)
+                    .eq('merchant_code', 'admin')
+                    .not('quotation_code', 'is', null);
+                
+                if (fetchError) {
+                    resultDiv.innerHTML = `<div class="error-text">Error fetching orders: ${fetchError.message}</div>`;
+                    return;
+                }
+                
+                let html = '<div class="success-text">✅ Order-Merchant Linking Fix:\n\n';
+                html += `Found ${ordersToFix.length} orders that need fixing:\n\n`;
+                
+                if (ordersToFix.length > 0) {
+                    html += '<table><tr><th>Order Code</th><th>Current Merchant</th><th>Should Be</th><th>Quotation Code</th></tr>';
+                    
+                    ordersToFix.forEach(order => {
+                        const shouldBeMerchant = order.quotations?.merchant_code || 'Unknown';
+                        html += `<tr>
+                            <td>${order.order_code || order.id}</td>
+                            <td>${order.merchant_code}</td>
+                            <td>${shouldBeMerchant}</td>
+                            <td>${order.quotation_code}</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</table>\n\n';
+                    html += 'Run the SQL script "fix_merchant_order_display.sql" to fix these orders.';
+                } else {
+                    html += 'No orders need fixing!';
+                }
+                
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Error: ${err.message}</div>`;
+            }
+        }
+        
+        // Test new order creation
+        async function testNewOrderCreation() {
+            const resultDiv = document.getElementById('newOrderResult');
+            resultDiv.innerHTML = '<div class="loading">Testing new order creation...</div>';
+            
+            try {
+                // Test the order creation function
+                const testData = {
+                    p_user_id: '00000000-0000-0000-0000-000000000000', // dummy UUID
+                    p_delivery_address: {
+                        name: 'Test User',
+                        phone: '1234567890',
+                        address: 'Test Address'
+                    },
+                    p_cart_items: [{
+                        id: '00000000-0000-0000-0000-000000000001', // dummy product UUID
+                        quantity: 1,
+                        price: 100.00,
+                        unit_price: 100
+                    }],
+                    p_total_amount: 100.00,
+                    p_quotation_code: 'TEST-001',
+                    p_merchant_code: 'MC-2025-TEST'
+                };
+                
+                const { data, error } = await supabase
+                    .rpc('create_or_update_simple_order', testData);
+                
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error-text">Order creation failed: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success-text">✅ Order creation successful!\nResult: ${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error-text">Order creation error: ${err.message}</div>`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Merchant Order Fix Test page loaded');
+        });
+    </script>
+</body>
+</html>
