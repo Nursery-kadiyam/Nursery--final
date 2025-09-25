@@ -525,7 +525,20 @@ const ProductDetails = () => {
         }
     };
 
-    const addToCartHandler = () => {
+    const addToCartHandler = async () => {
+        // Check if user is logged in
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            // User not logged in - show login popup
+            window.dispatchEvent(new CustomEvent('open-login-popup'));
+            toast({
+                title: "Login Required",
+                description: "Please log in to add items to your cart.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         const cartQuantity = quotationForm.quantity;
         if (!cartQuantity || isNaN(Number(cartQuantity)) || Number(cartQuantity) < 1) {
             toast({

@@ -20,6 +20,20 @@ const Shop = () => {
   const navigate = useNavigate();
   const initialCategory = searchParams.get('category') || 'all';
 
+  // Add global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault(); // Prevent the default browser behavior
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
@@ -115,88 +129,112 @@ const Shop = () => {
   // Load wishlist on component mount
   useEffect(() => {
     const loadWishlist = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Fetch wishlist from Supabase for logged-in user
-        const { data, error } = await supabase
-          .from('wishlist')
-          .select('product_id')
-          .eq('user_id', user.id);
-        if (!error && data) {
-          setWishlistItems(data.map((item: any) => item.product_id));
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Fetch wishlist from Supabase for logged-in user
+          const { data, error } = await supabase
+            .from('wishlist')
+            .select('product_id')
+            .eq('user_id', user.id);
+          if (!error && data) {
+            setWishlistItems(data.map((item: any) => item.product_id));
+          } else {
+            setWishlistItems([]);
+          }
         } else {
-          setWishlistItems([]);
+          // Fallback to localStorage for guests
+          try {
+            const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+            setWishlistItems(wishlist.map((item: any) => item.id));
+          } catch (error) {
+            setWishlistItems([]);
+          }
         }
-      } else {
-        // Fallback to localStorage for guests
-        try {
-          const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-          setWishlistItems(wishlist.map((item: any) => item.id));
-        } catch (error) {
-          setWishlistItems([]);
-        }
+      } catch (error) {
+        console.error('Error loading wishlist:', error);
+        setWishlistItems([]);
       }
     };
 
-    loadWishlist();
-    window.addEventListener('wishlist-updated', loadWishlist);
+    loadWishlist().catch(error => {
+      console.error('Unhandled promise rejection in loadWishlist:', error);
+    });
+    
+    const handleWishlistUpdate = () => {
+      loadWishlist().catch(error => {
+        console.error('Unhandled promise rejection in wishlist update:', error);
+      });
+    };
+    
+    window.addEventListener('wishlist-updated', handleWishlistUpdate);
     return () => {
-      window.removeEventListener('wishlist-updated', loadWishlist);
+      window.removeEventListener('wishlist-updated', handleWishlistUpdate);
     };
   }, []);
 
   const addToWishlist = async (plant: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    const { data: { user } } = await supabase.auth.getUser();
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (user) {
-      if (wishlistItems.includes(plant.id)) {
-        // Remove from Supabase
-        await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', plant.id);
-        setWishlistItems(prev => prev.filter(id => id !== plant.id));
-        toast({
-          title: "Removed from Wishlist",
-          description: `${plant.name} has been removed from your wishlist.`,
-        });
+      if (user) {
+        if (wishlistItems.includes(plant.id)) {
+          // Remove from Supabase
+          await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', plant.id);
+          setWishlistItems(prev => prev.filter(id => id !== plant.id));
+          toast({
+            title: "Removed from Wishlist",
+            description: `${plant.name} has been removed from your wishlist.`,
+          });
+        } else {
+          // Insert into Supabase
+          const { error } = await supabase.from('wishlist').insert([
+            { user_id: user.id, product_id: plant.id }
+          ]);
+          if (!error) {
+            setWishlistItems(prev => [...prev, plant.id]);
+            toast({
+              title: "Added to Wishlist",
+              description: `${plant.name} has been added to your wishlist.`,
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: "Could not add to wishlist.",
+            });
+          }
+        }
       } else {
-        // Insert into Supabase
-        const { error } = await supabase.from('wishlist').insert([
-          { user_id: user.id, product_id: plant.id }
-        ]);
-        if (!error) {
+        // Fallback to localStorage for guests
+        const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+        if (wishlistItems.includes(plant.id)) {
+          const updatedWishlist = wishlist.filter((item: any) => item.id !== plant.id);
+          localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
+          setWishlistItems(prev => prev.filter(id => id !== plant.id));
+          toast({
+            title: "Removed from Wishlist",
+            description: `${plant.name} has been removed from your wishlist.`,
+          });
+        } else {
+          wishlist.push(plant);
+          localStorage.setItem('wishlist', JSON.stringify(wishlist));
           setWishlistItems(prev => [...prev, plant.id]);
           toast({
             title: "Added to Wishlist",
             description: `${plant.name} has been added to your wishlist.`,
           });
-        } else {
-          toast({
-            title: "Error",
-            description: "Could not add to wishlist.",
-          });
         }
+        window.dispatchEvent(new CustomEvent('wishlist-updated'));
       }
-    } else {
-      // Fallback to localStorage for guests
-      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      if (wishlistItems.includes(plant.id)) {
-        const updatedWishlist = wishlist.filter((item: any) => item.id !== plant.id);
-        localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
-        setWishlistItems(prev => prev.filter(id => id !== plant.id));
-        toast({
-          title: "Removed from Wishlist",
-          description: `${plant.name} has been removed from your wishlist.`,
-        });
-      } else {
-        wishlist.push(plant);
-        localStorage.setItem('wishlist', JSON.stringify(wishlist));
-        setWishlistItems(prev => [...prev, plant.id]);
-        toast({
-          title: "Added to Wishlist",
-          description: `${plant.name} has been added to your wishlist.`,
-        });
-      }
-      window.dispatchEvent(new CustomEvent('wishlist-updated'));
+    } catch (error) {
+      console.error('Error in addToWishlist:', error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -215,8 +253,8 @@ const Shop = () => {
     // Clear old cart data (with numeric ids)
     localStorage.removeItem('cart');
     
-          const fetchProducts = async () => {
-        setLoading(true);
+    const fetchProducts = async () => {
+      setLoading(true);
       try {
         console.log('🔄 Fetching products from database...');
         const { data, error } = await supabase.from('products').select('*');
@@ -248,9 +286,12 @@ const Shop = () => {
       } finally {
         setLoading(false);
       }
-      };
+    };
     
-    fetchProducts();
+    fetchProducts().catch(error => {
+      console.error('Unhandled promise rejection in fetchProducts:', error);
+      setLoading(false);
+    });
   }, [toast]);
 
   return (
