@@ -135,12 +135,13 @@ const OrderSummaryPage = () => {
                         
                         setAddresses(userAddresses);
                         setSelectedAddressIdx(0); // Auto-select the first (and only) address
+                        setDeliveryAddress(userAddresses[0]); // Set as delivery address
                         
                         console.log('OrderSummaryPage: Addresses set:', userAddresses);
                     } else {
                         console.error('OrderSummaryPage: Error fetching user profile:', error);
                         // Fallback to basic user data
-                setAddresses([{
+                        const fallbackAddress = {
                             name: user.user_metadata?.first_name || 'User',
                             phone: '',
                             address: '',
@@ -148,12 +149,15 @@ const OrderSummaryPage = () => {
                             state: '',
                             pincode: '',
                             addressType: 'Home'
-                        }]);
+                        };
+                        setAddresses([fallbackAddress]);
+                        setSelectedAddressIdx(0);
+                        setDeliveryAddress(fallbackAddress);
                     }
                 } catch (error) {
                     console.error('OrderSummaryPage: Error in checkUser:', error);
                     // Fallback to basic user data
-                    setAddresses([{
+                    const errorFallbackAddress = {
                         name: user.user_metadata?.first_name || 'User',
                         phone: '',
                         address: '',
@@ -161,7 +165,10 @@ const OrderSummaryPage = () => {
                         state: '',
                         pincode: '',
                         addressType: 'Home'
-                    }]);
+                    };
+                    setAddresses([errorFallbackAddress]);
+                    setSelectedAddressIdx(0);
+                    setDeliveryAddress(errorFallbackAddress);
                 }
             }
         };
@@ -568,8 +575,8 @@ const OrderSummaryPage = () => {
             return;
         }
         
-        if (!deliveryAddress) {
-            alert('Please add a delivery address before placing your order.');
+        if (!deliveryAddress || !deliveryAddress.address || !deliveryAddress.city || !deliveryAddress.pincode) {
+            alert('Please add a complete delivery address before placing your order.');
             return;
         }
         
@@ -727,9 +734,55 @@ const OrderSummaryPage = () => {
                                                             const newAddresses = addresses.filter((_, idx) => idx !== selectedAddressIdx);
                                                             setAddresses(newAddresses);
                                                             setSelectedAddressIdx(newAddresses.length > 0 ? 0 : null);
+                                                            // Clear delivery address if the selected address was deleted
+                                                            if (selectedAddressIdx === 0 && newAddresses.length === 0) {
+                                                                setDeliveryAddress(null);
+                                                            }
                                                         }}>Delete</Button>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        ) : addresses.length > 0 ? (
+                                            <div className="space-y-2">
+                                                <p className="text-sm text-gray-600 mb-2">Select a delivery address:</p>
+                                                {addresses.map((address, index) => (
+                                                    <div key={index} className="border rounded p-3 cursor-pointer hover:bg-gray-50" onClick={() => {
+                                                        setSelectedAddressIdx(index);
+                                                        setDeliveryAddress(address);
+                                                    }}>
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <div className="font-semibold">{address.name} <span className="text-gray-600">{address.phone}</span></div>
+                                                                <div className="text-gray-700 text-sm">
+                                                                    {address.address}, {address.city}, {address.state} – {address.pincode}
+                                                                </div>
+                                                                <div className="text-xs mt-1"><span className="px-2 py-1 rounded bg-gray-200 text-gray-800">{address.addressType}</span></div>
+                                                            </div>
+                                                            <Button size="sm" variant="outline" onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setNewAddress({
+                                                                    name: address.name,
+                                                                    phone: address.phone,
+                                                                    addressLine: address.address,
+                                                                    city: address.city,
+                                                                    state: address.state,
+                                                                    pincode: address.pincode,
+                                                                    addressType: address.addressType
+                                                                });
+                                                                setEditingAddressIdx(index);
+                                                                setShowAddAddressForm(true);
+                                                            }}>Edit</Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-fit mt-2"
+                                                    onClick={() => setShowAddAddressForm(v => !v)}
+                                                >
+                                                    + Add New Address
+                                                </Button>
                                             </div>
                                         ) : (
                                             <Button
@@ -755,6 +808,12 @@ const OrderSummaryPage = () => {
                                                     updatedAddresses.push({ ...newAddress });
                                                 }
                                                 setAddresses(updatedAddresses);
+                                                
+                                                // Set as selected address and delivery address if it's the first address or if editing the currently selected one
+                                                if (updatedAddresses.length === 1 || editingAddressIdx === selectedAddressIdx) {
+                                                    setSelectedAddressIdx(updatedAddresses.length - 1);
+                                                    setDeliveryAddress(newAddress);
+                                                }
                                                 
                                                 // Save to database if user is logged in
                                                 if (user) {
