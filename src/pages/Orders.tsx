@@ -736,12 +736,12 @@ const Orders: React.FC = () => {
                       <p className="text-sm text-gray-600">
                         <strong>Date & Time:</strong> {formatDate(selectedOrder.created_at)}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 flex items-center">
                         <strong>Overall Status:</strong> 
                         <Badge className={`ml-2 ${statusConfig[getOrderStatus(childOrders) as keyof typeof statusConfig]?.color || 'bg-gray-100 text-gray-800'}`}>
                           {getOrderStatusText(childOrders)}
                         </Badge>
-                      </p>
+                      </div>
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg mb-2">Payment Information</h3>
@@ -834,12 +834,12 @@ const Orders: React.FC = () => {
                                       <strong>Contact:</strong> {merchant.phone_number}
                                     </p>
                                   )}
-                                  <p className="text-sm text-gray-600">
-                                    Delivery Status: 
+                                  <div className="text-sm text-gray-600 flex items-center">
+                                    <span>Delivery Status:</span>
                                     <Badge className={`ml-2 ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}>
                                       {statusInfo?.name || merchantStatus}
                                     </Badge>
-                                  </p>
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <div className="text-lg font-semibold text-green-600">

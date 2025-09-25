@@ -48,87 +48,61 @@ import {
     Search,
     Download,
     Printer,
-    ExternalLink
+    ExternalLink,
+    Phone
 } from 'lucide-react';
 
-// Get plant image based on plant name
-const getPlantImage = (plantName: string) => {
-    if (!plantName) return '/assets/placeholder.svg';
-    
-    // Map common plant names to their corresponding images
-    const plantImageMap: {[key: string]: string} = {
-        'golden bamboo': '/assets/golden bamboo.jpeg',
-        'akalifa pink': '/assets/akalifa pink.jpeg',
-        'arkeliform': '/assets/Arkeliform.jpeg',
-        'ashoka': '/assets/Ashoka.jpeg',
-        'bamboo': '/assets/Bamboo plants.jpeg',
-        'boston fern': '/assets/Boston Fern.jpeg',
-        'cassia': '/assets/Cassia Tree.jpeg',
-        'croton': '/assets/Croton plant.jpeg',
-        'gulmohar': '/assets/Gulmohar.jpeg',
-        'neem': '/assets/Neem.jpeg',
-        'rose': '/assets/Rose Bush.jpeg',
-        'spider lily': '/assets/Spider lilly.jpeg',
-        'star fruit': '/assets/Star fruit .jpeg',
-        'terminalia': '/assets/Terminalia green.jpeg',
-        'thailand ixora': '/assets/Thailand ixora.jpeg',
-        'tiwan pink jama': '/assets/Tiwan pink jama.jpeg',
-        'ujenia avenue': '/assets/Ujenia avenue.jpeg',
-        'vepa': '/assets/Vepa.jpeg',
-        'hibiscus': '/assets/lipstick red.jpeg',
-        'ganuga': '/assets/ganuga.jpeg',
-        'bogada': '/assets/Bogada.jpeg',
-        'conacorpus': '/assets/ConaCorpus.jpeg',
-        'conokarpas': '/assets/Conokarpas.jpeg',
-        'cypress': '/assets/Cypress old.jpeg',
-        'dianella grass': '/assets/Dianella grass.jpeg',
-        'dismodiya': '/assets/Dismodiya.jpeg',
-        'dracina': '/assets/Dracina.jpeg',
-        'drogun fruits': '/assets/Drogun Fruits.jpeg',
-        'ficus lyrata': '/assets/Ficus lyrata.jpeg',
-        'foxtail': '/assets/Foxtail.jpeg',
-        'grandis': '/assets/Grandis.jpeg',
-        'gulmohar avenue': '/assets/Gulmohar avenue plants.jpeg',
-        'helikoniya': '/assets/Helikoniya.jpeg',
-        'jatropha': '/assets/Jatropha.jpeg',
-        'kaya': '/assets/kaya.jpeg',
-        'kobbari': '/assets/kobbari.jpeg',
-        'konacorpus': '/assets/Konacorpus.jpeg',
-        'lipstick red': '/assets/lipstick red.jpeg',
-        'mahagani': '/assets/Mahagani.jpeg',
-        'mahatama': '/assets/mahatama.jpeg',
-        'market nimma': '/assets/Market nimma.jpeg',
-        'marri trees': '/assets/marri trees.jpeg',
-        'micro carfa spiral': '/assets/Micro carfa spiral shape.jpeg',
-        'micro multi balls': '/assets/Micro multi balls.jpeg',
-        'mirchi mere green': '/assets/Mirchi mere green.jpeg',
-        'mirchi mery gold': '/assets/Mirchi mery gold.jpeg',
-        'noda': '/assets/Noda.jpeg',
-        'pendanus': '/assets/pendanus.jpeg',
-        'ravi': '/assets/Ravi.jpeg',
-        'rela': '/assets/Rela.jpeg',
-        'seetapalam': '/assets/Seetapalam.jpeg',
-        'starlight': '/assets/Starlight.jpeg',
-        'tabibiya roja': '/assets/Tabibiya roja.jpeg',
-        'tabibiya rosea': '/assets/Tabibiya rosea.jpeg',
-        'terminalia green': '/assets/Terminalia green.jpeg',
-        'terminiliya': '/assets/Terminiliya.jpeg',
-        'thailemon': '/assets/Thailemon .jpeg',
-        'ujenia mini': '/assets/Ujniya mini.jpeg',
-        'mango': '/assets/mango.jpeg',
-        'banganapalli': '/assets/mango.jpeg',
-        'banganapalli mango': '/assets/mango.jpeg',
-        'hibiscus red': '/assets/lipstick red.jpeg'
-    };
-    
-    const lowerPlantName = plantName.toLowerCase();
-    for (const [key, imagePath] of Object.entries(plantImageMap)) {
-        if (lowerPlantName.includes(key)) {
-            return imagePath;
-        }
+// Helper function to get product image from database
+const getProductImage = (product: any, fallbackName?: string) => {
+    // If product has image_url, use it
+    if (product?.image_url) {
+        return product.image_url;
     }
     
-    return '/assets/placeholder.svg';
+    // If no image_url, return null to show no image instead of placeholder
+    return null;
+};
+
+// Helper function to find product by name match (case-insensitive)
+const findProductByName = (products: any[], itemName: string) => {
+    if (!itemName || !products || products.length === 0) return null;
+    
+    const normalizedItemName = itemName.toLowerCase().trim();
+    
+    // First try exact match
+    let product = products.find(p => p.name && p.name.toLowerCase().trim() === normalizedItemName);
+    if (product) return product;
+    
+    // Then try partial match (item name contains product name or vice versa)
+    product = products.find(p => {
+        if (!p.name) return false;
+        const normalizedProductName = p.name.toLowerCase().trim();
+        return normalizedItemName.includes(normalizedProductName) || 
+               normalizedProductName.includes(normalizedItemName);
+    });
+    if (product) return product;
+    
+    // Finally try word-by-word matching
+    const itemWords = normalizedItemName.split(/\s+/);
+    product = products.find(p => {
+        if (!p.name) return false;
+        const productWords = p.name.toLowerCase().trim().split(/\s+/);
+        return itemWords.some(word => 
+            productWords.some(pWord => 
+                word.includes(pWord) || pWord.includes(word)
+            )
+        );
+    });
+    
+    return product || null;
+};
+
+// Helper function to get image URL by dynamically matching plant name with products
+const getImageByPlantName = async (itemName: string, products: any[] = []) => {
+    if (!itemName) return null;
+    
+    const product = findProductByName(products, itemName);
+    return product?.image_url || null;
 };
 
 const MerchantDashboard: React.FC = () => {
@@ -945,15 +919,26 @@ const ProductManagement: React.FC<{ merchantCode: string | null }> = ({ merchant
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {products.map((product) => (
                         <Card key={product.id} className="overflow-hidden">
-                            {product.image_url && (
-                                <div className="aspect-video bg-gray-100">
-                                    <img 
-                                        src={product.image_url} 
-                                        alt={product.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            )}
+                            {(() => {
+                                const imageUrl = getProductImage(product);
+                                
+                                return imageUrl ? (
+                                    <div className="aspect-video bg-gray-100">
+                                        <img 
+                                            src={imageUrl} 
+                                            alt={product.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                                        <Package className="w-12 h-12 text-gray-400" />
+                                    </div>
+                                );
+                            })()}
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-base sm:text-lg truncate">{product.name}</CardTitle>
                                 <CardDescription className="text-sm space-y-1">
@@ -1152,6 +1137,7 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
     const [formStates, setFormStates] = useState<{ [id: string]: any }>({});
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [productMap, setProductMap] = useState<{ [id: string]: any }>({});
+    const [allProducts, setAllProducts] = useState<any[]>([]);
     const [modifiedSpecs, setModifiedSpecs] = useState<{ [quotationId: string]: { [itemIndex: number]: any } }>({});
 
     useEffect(() => {
@@ -1200,7 +1186,18 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                 
                 setQuotations(availableQuotations);
             
-            // Fetch products for all items in quotations
+            // Fetch all products for dynamic name matching
+            const { data: allProductsData, error: allProductsError } = await supabase
+                .from('products')
+                .select('id, name, image_url')
+                .order('name');
+            
+            if (!allProductsError && allProductsData) {
+                setAllProducts(allProductsData);
+                console.log('All products loaded for dynamic matching:', allProductsData.length);
+            }
+            
+            // Fetch products for all items in quotations (for product_id based lookups)
             const allProductIds = Array.from(new Set(
                 availableQuotations.flatMap((q: any) => 
                     Array.isArray(q.items) ? q.items.map((item: any) => item.product_id) : []
@@ -1531,17 +1528,41 @@ const MerchantQuotations: React.FC<{ merchantCode: string | null }> = ({ merchan
                                                     <div key={idx} className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                                                         {/* Product Header */}
                                                         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
-                                                                <img 
-                                                                src={isCatalogQuotation ? 
-                                                                    getPlantImage(item.product_name || item.name || item.title || item.plant_name || item.variety || '') : 
-                                                                    (product?.image_url || item.image || item.image_url || '/assets/placeholder.svg')
-                                                                } 
-                                                                    alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || '') : (product?.name || item.name || item.title || '')} 
-                                                                    className="w-16 h-16 object-cover rounded-lg self-start sm:self-center"
-                                                                    onError={(e) => {
-                                                                    e.currentTarget.src = '/assets/placeholder.svg';
-                                                                    }}
-                                                                />
+                                                                {(() => {
+                                                                    let imageUrl = null;
+                                                                    
+                                                                    if (isCatalogQuotation) {
+                                                                        // For catalog quotations, try to match by plant name
+                                                                        const plantName = item.product_name || item.name || item.title || item.plant_name || item.variety || '';
+                                                                        if (plantName && allProducts.length > 0) {
+                                                                            const matchedProduct = findProductByName(allProducts, plantName);
+                                                                            imageUrl = matchedProduct?.image_url || null;
+                                                                            console.log(`Dynamic match for "${plantName}":`, matchedProduct ? matchedProduct.name : 'No match');
+                                                                        }
+                                                                    } else {
+                                                                        // For individual shop products, use product_id lookup
+                                                                        imageUrl = getProductImage(product);
+                                                                    }
+                                                                    
+                                                                    return imageUrl ? (
+                                                                        <img 
+                                                                            src={imageUrl}
+                                                                            alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || '') : (product?.name || item.name || item.title || '')} 
+                                                                            className="w-16 h-16 object-cover rounded-lg self-start sm:self-center"
+                                                                            onError={(e) => {
+                                                                                console.log('Image failed to load:', e.currentTarget.src);
+                                                                                e.currentTarget.style.display = 'none';
+                                                                            }}
+                                                                            onLoad={(e) => {
+                                                                                console.log('Image loaded successfully:', e.currentTarget.src);
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-16 h-16 bg-gray-100 rounded-lg self-start sm:self-center flex items-center justify-center">
+                                                                            <Package className="w-8 h-8 text-gray-400" />
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             <div className="flex-1 min-w-0">
                                                                 <h4 className="font-semibold text-lg text-gray-800 mb-1">
                                                                     {isCatalogQuotation ? (
@@ -1775,6 +1796,7 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
     const [myQuotations, setMyQuotations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [productMap, setProductMap] = useState<{ [id: string]: any }>({});
+    const [allProducts, setAllProducts] = useState<any[]>([]);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const prevApprovedIds = useRef<Set<string>>(new Set());
     const [closingQuotation, setClosingQuotation] = useState<string | null>(null);
@@ -1808,6 +1830,17 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                     setTimeout(() => setShowToast(false), 3000);
                 }
                 prevApprovedIds.current = new Set(approvedNow.map((q: any) => q.id));
+                // Fetch all products for dynamic name matching
+                const { data: allProductsData, error: allProductsError } = await supabase
+                    .from('products')
+                    .select('id, name, image_url')
+                    .order('name');
+                
+                if (!allProductsError && allProductsData) {
+                    setAllProducts(allProductsData);
+                    console.log('All products loaded for dynamic matching:', allProductsData.length);
+                }
+                
                 const allProductIds = Array.from(new Set(
                     data.flatMap((q: any) => Array.isArray(q.items) ? q.items.map((item: any) => {
                         // Handle different data structures:
@@ -2081,17 +2114,41 @@ const MySubmittedQuotations: React.FC<{ merchantCode: string | null }> = ({ merc
                                                         <div key={idx} className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                                                             {/* Product Header */}
                                                             <div className="flex items-center space-x-3 mb-4">
-                                                                    <img 
-                                                                    src={isCatalogQuotation ? 
-                                                                        getPlantImage(item.product_name || item.name || item.title || item.plant_name || item.variety || '') : 
-                                                                        (product?.image_url || item.image || item.image_url || '/assets/placeholder.svg')
-                                                                    } 
-                                                                        alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || `Product ${idx + 1}`) : (product?.name || item.name || item.title || `Product ${productId || idx + 1}`)} 
-                                                                        className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                                                                        onError={(e) => {
-                                                                        e.currentTarget.src = '/assets/placeholder.svg';
-                                                                        }}
-                                                                    />
+                                                                    {(() => {
+                                                                        let imageUrl = null;
+                                                                        
+                                                                        if (isCatalogQuotation) {
+                                                                            // For catalog quotations, try to match by plant name
+                                                                            const plantName = item.product_name || item.name || item.title || item.plant_name || item.variety || '';
+                                                                            if (plantName && allProducts.length > 0) {
+                                                                                const matchedProduct = findProductByName(allProducts, plantName);
+                                                                                imageUrl = matchedProduct?.image_url || null;
+                                                                                console.log(`Dynamic match for "${plantName}":`, matchedProduct ? matchedProduct.name : 'No match');
+                                                                            }
+                                                                        } else {
+                                                                            // For individual shop products, use product_id lookup
+                                                                            imageUrl = getProductImage(product);
+                                                                        }
+                                                                        
+                                                                        return imageUrl ? (
+                                                                            <img 
+                                                                                src={imageUrl}
+                                                                                alt={isCatalogQuotation ? (item.product_name || item.name || item.title || item.plant_name || item.variety || `Product ${idx + 1}`) : (product?.name || item.name || item.title || `Product ${productId || idx + 1}`)} 
+                                                                                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                                                                                onError={(e) => {
+                                                                                    console.log('Image failed to load:', e.currentTarget.src);
+                                                                                    e.currentTarget.style.display = 'none';
+                                                                                }}
+                                                                                onLoad={(e) => {
+                                                                                    console.log('Image loaded successfully:', e.currentTarget.src);
+                                                                                }}
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                                                                <Package className="w-6 h-6 text-gray-400" />
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 <div className="flex-1 min-w-0">
                                                                     <h4 className="font-semibold text-lg text-gray-800 mb-1">
                                                                         {isCatalogQuotation ? (
@@ -2287,7 +2344,7 @@ const RecentOrders: React.FC<{ merchantCode: string | null }> = ({ merchantCode 
                         order_items: order.order_items?.map((item: any) => ({
                             ...item,
                             product_name: item.product_name || 'Unknown Product',
-                            product_image: item.product_image || '/assets/placeholder.svg'
+                                    product_image: item.product_image || null
                         }))
                     })) || [];
                     
@@ -2679,8 +2736,8 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                     price: item.subtotal || item.price || 0,
                                     unit_price: item.unit_price || 0,
                                     subtotal: item.subtotal || (item.price * item.quantity) || 0,
-                                    image: item.product_image || item.image || item.image_url || '/assets/placeholder.svg',
-                                    image_url: item.product_image || item.image || item.image_url || '/assets/placeholder.svg',
+                                    image: item.product_image || item.image || item.image_url || null,
+                                    image_url: item.product_image || item.image || item.image_url || null,
                                     product_id: item.product_id,
                                     quotation_id: item.quotation_id,
                                     merchant_code: merchantCode
@@ -2700,8 +2757,8 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                     price: item.price || 0,
                                     unit_price: item.unit_price || (item.price / item.quantity) || 0,
                                     subtotal: item.price || 0,
-                                    image: item.image || item.image_url || '/assets/placeholder.svg',
-                                    image_url: item.image || item.image_url || '/assets/placeholder.svg',
+                                    image: item.image || item.image_url || null,
+                                    image_url: item.image || item.image_url || null,
                                     product_id: item.id,
                                     quotation_id: item.quotation_id,
                                     merchant_code: merchantCode
@@ -2927,8 +2984,8 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                                     price: item.subtotal || item.price || 0,
                                                     unit_price: item.unit_price || 0,
                                                     subtotal: item.subtotal || (item.price * item.quantity) || 0,
-                                                    image: item.image || item.image_url || '/assets/placeholder.svg',
-                                                    image_url: item.image || item.image_url || '/assets/placeholder.svg',
+                                    image: item.image || item.image_url || null,
+                                    image_url: item.image || item.image_url || null,
                                                     product_id: item.product_id,
                                                     quotation_id: item.quotation_id,
                                                     merchant_code: merchantCode
@@ -3112,16 +3169,24 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                             {items.length > 0 ? (
                                                 items.map((item, index) => (
                                                     <div key={item.id || index} className="flex items-center space-x-3 p-3 bg-white rounded-lg border">
-                                                        {item.image && (
-                                                            <img
-                                                                src={item.image}
-                                                                alt={item.name}
-                                                                className="w-12 h-12 object-cover rounded"
-                                                                onError={(e) => {
-                                                                    e.currentTarget.style.display = 'none';
-                                                                }}
-                                                            />
-                                                        )}
+                                                        {(() => {
+                                                            const imageUrl = item.image || item.image_url;
+                                                            
+                                                            return imageUrl ? (
+                                                                <img
+                                                                    src={imageUrl}
+                                                                    alt={item.name}
+                                                                    className="w-12 h-12 object-cover rounded"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                                                                    <Package className="w-6 h-6 text-gray-400" />
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         <div className="flex-1">
                                                             <h6 className="font-medium text-gray-900">{item.name}</h6>
                                                             <div className="text-sm text-gray-500">
@@ -3324,14 +3389,24 @@ const OrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchantCo
                                                     console.log('Rendering item:', item);
                                                     return (
                                                         <div key={item.id || index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                                            <img
-                                                                src={item.product_image || item.image || item.image_url || '/assets/placeholder.svg'}
-                                                                alt={item.product_name || item.name || 'Product'}
-                                                                className="w-16 h-16 object-cover rounded"
-                                                                onError={(e) => {
-                                                                    e.currentTarget.src = '/assets/placeholder.svg';
-                                                                }}
-                                                            />
+                                                            {(() => {
+                                                                const imageUrl = item.product_image || item.image || item.image_url;
+                                                                
+                                                                return imageUrl ? (
+                                                                    <img
+                                                                        src={imageUrl}
+                                                                        alt={item.product_name || item.name || 'Product'}
+                                                                        className="w-16 h-16 object-cover rounded"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.style.display = 'none';
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                                                                        <Package className="w-8 h-8 text-gray-400" />
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                             <div className="flex-1">
                                                                 <h6 className="font-medium text-gray-900">
                                                                     {item.product_name || item.name || 'Unknown Product'}
@@ -3905,6 +3980,7 @@ const B2BOrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchan
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
     const [showOrderDetails, setShowOrderDetails] = useState(false);
+    const [allProducts, setAllProducts] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -3915,6 +3991,17 @@ const B2BOrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchan
 
             try {
                 console.log('Fetching orders for merchant code:', merchantCode);
+                
+                // Fetch all products for dynamic name matching
+                const { data: allProductsData, error: allProductsError } = await supabase
+                    .from('products')
+                    .select('id, name, image_url')
+                    .order('name');
+                
+                if (!allProductsError && allProductsData) {
+                    setAllProducts(allProductsData);
+                    console.log('All products loaded for dynamic matching:', allProductsData.length);
+                }
                 
                 // Use the new RPC function that returns correct product names
                 const { data: ordersData, error: ordersError } = await supabase
@@ -3978,7 +4065,8 @@ const B2BOrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchan
                 ));
                 
                 // Refresh orders to get latest data
-                fetchOrders();
+                // Note: fetchOrders is defined in useEffect, so we'll trigger a re-render instead
+                setOrders(prev => [...prev]);
                 
                 toast({
                     title: "Order Updated",
@@ -4254,19 +4342,39 @@ const B2BOrderManagement: React.FC<{ merchantCode: string | null }> = ({ merchan
                                         <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white">
                                             {/* Plant Header with Image */}
                                             <div className="flex items-start gap-4 mb-4">
-                                                <img
-                                                    src={item.product_image || item.image || item.image_url || '/assets/placeholder.svg'}
-                                                    alt={item.product_name || item.name || 'Product Image'}
-                                                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                                                    onError={(e) => {
-                                                        console.log('Image failed to load:', e.currentTarget.src);
-                                                        console.log('Item data:', item);
-                                                        e.currentTarget.src = '/assets/placeholder.svg';
-                                                    }}
-                                                    onLoad={() => {
-                                                        console.log('Image loaded successfully:', item.product_name, 'from:', e.currentTarget.src);
-                                                    }}
-                                                />
+                                                {(() => {
+                                                    let imageUrl = item.product_image || item.image || item.image_url;
+                                                    
+                                                    // If no direct image URL, try to match by product name
+                                                    if (!imageUrl && allProducts.length > 0) {
+                                                        const productName = item.product_name || item.name || '';
+                                                        if (productName) {
+                                                            const matchedProduct = findProductByName(allProducts, productName);
+                                                            imageUrl = matchedProduct?.image_url || null;
+                                                            console.log(`Dynamic match for "${productName}":`, matchedProduct ? matchedProduct.name : 'No match');
+                                                        }
+                                                    }
+                                                    
+                                                    return imageUrl ? (
+                                                        <img
+                                                            src={imageUrl}
+                                                            alt={item.product_name || item.name || 'Product Image'}
+                                                            className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                                            onError={(e) => {
+                                                                console.log('Image failed to load:', e.currentTarget.src);
+                                                                console.log('Item data:', item);
+                                                                e.currentTarget.style.display = 'none';
+                                                            }}
+                                                            onLoad={(e) => {
+                                                                console.log('Image loaded successfully:', item.product_name, 'from:', e.currentTarget.src);
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                                                            <Package className="w-8 h-8 text-gray-400" />
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <div className="flex-1">
                                                     <h4 className="font-bold text-lg text-gray-900 mb-2">
                                                         {item.product_name || item.name || 'Unknown Product'}
